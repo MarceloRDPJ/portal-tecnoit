@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tecno iT - Portal de Chamados</title>
+  <link rel="icon" href="https://placehold.co/32x32/ff5a00/FFFFFF?text=iT" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
   </style>
@@ -32,7 +33,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (Modular v10) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
@@ -42,9 +43,6 @@
   <div id="root"></div>
 
   <script type="text/babel">
-      // Firebase variables will be initialized later
-      let initializeApp, getAuth, signInAnonymously, getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, query, serverTimestamp;
-
       // --- Ícones SVG embutidos como componentes React ---
       const SvgIcon = ({ className, children }) => (
         <svg
@@ -88,48 +86,52 @@
         measurementId: "G-MLEH036DLK"
       };
       // --- Fim do Bloco de Configuração do Firebase ---
+      
+      // Variáveis globais para os serviços do Firebase
+      let app, auth, db, userId;
 
-      let app;
-      let auth;
-      let db;
-      let userId;
+      // Funções do SDK Modular do Firebase que serão extraídas do objeto global `firebase`
+      let initializeApp, getAuth, signInAnonymously, getFirestore, doc, onSnapshot, setDoc, collection, query, orderBy, addDoc, serverTimestamp;
 
-      // Função para inicializar o Firebase e autenticar
+      // Função para inicializar o Firebase e autenticar usando a sintaxe modular (v9+)
       async function initFirebase() {
           try {
-              if (typeof firebase === 'undefined' || typeof firebase.initializeApp === 'undefined' || typeof firebase.getAuth === 'undefined' || typeof firebase.getFirestore === 'undefined') {
+              if (typeof firebase === 'undefined' || !firebase.app || !firebase.auth || !firebase.firestore) {
                   throw new Error("Firebase SDK não foi carregado corretamente.");
               }
-              // Assign functions directly from the firebase global
-              initializeApp = firebase.initializeApp;
-              getAuth = firebase.getAuth;
-              signInAnonymously = firebase.signInAnonymously;
-              getFirestore = firebase.getFirestore;
-              doc = firebase.doc;
-              setDoc = firebase.setDoc;
-              getDoc = firebase.getDoc;
-              collection = firebase.collection;
-              addDoc = firebase.addDoc;
-              onSnapshot = firebase.onSnapshot;
-              query = firebase.query;
-              serverTimestamp = firebase.serverTimestamp;
+              
+              // Extrai as funções necessárias dos namespaces do Firebase
+              initializeApp = firebase.app.initializeApp;
+              getAuth = firebase.auth.getAuth;
+              signInAnonymously = firebase.auth.signInAnonymously;
+              getFirestore = firebase.firestore.getFirestore;
+              doc = firebase.firestore.doc;
+              onSnapshot = firebase.firestore.onSnapshot;
+              setDoc = firebase.firestore.setDoc;
+              collection = firebase.firestore.collection;
+              query = firebase.firestore.query;
+              orderBy = firebase.firestore.orderBy;
+              addDoc = firebase.firestore.addDoc;
+              serverTimestamp = firebase.firestore.serverTimestamp;
 
               if (!firebaseConfig || !firebaseConfig.apiKey) {
                   throw new Error("Configuração do Firebase não encontrada.");
               }
+
               app = initializeApp(firebaseConfig);
               auth = getAuth(app);
               db = getFirestore(app);
-              await signInAnonymously(auth);
-              userId = auth.currentUser.uid;
+
+              const userCredential = await signInAnonymously(auth);
+              userId = userCredential.user.uid;
               console.log("Usuário autenticado anonimamente:", userId);
+              
               return { app, auth, db, userId };
           } catch (error) {
               console.error("Erro na inicialização ou autenticação do Firebase:", error);
               throw error;
           }
       }
-
 
       // Componente principal da aplicação
       class App extends React.Component {
@@ -610,14 +612,13 @@
 
           React.useEffect(() => {
               if (!db || !userId) return;
-              const messagesCol = collection(db, `artifacts/${app.options.appId}/public/data/chat`);
-              const q = query(messagesCol);
+              const messagesColRef = collection(db, `artifacts/${app.options.appId}/public/data/chat`);
+              const q = query(messagesColRef, orderBy('timestamp', 'asc'));
               const unsubscribe = onSnapshot(q, (querySnapshot) => {
                   const msgs = [];
                   querySnapshot.forEach((doc) => {
                       msgs.push({ id: doc.id, ...doc.data() });
                   });
-                  msgs.sort((a, b) => a.timestamp?.toMillis() - b.timestamp?.toMillis());
                   setMessages(msgs);
               });
               return () => unsubscribe();
@@ -630,8 +631,8 @@
           const handleSendMessage = async (e) => {
               e.preventDefault();
               if (newMessage.trim() === '') return;
-              const messagesCol = collection(db, `artifacts/${app.options.appId}/public/data/chat`);
-              await addDoc(messagesCol, {
+              const messagesColRef = collection(db, `artifacts/${app.options.appId}/public/data/chat`);
+              await addDoc(messagesColRef, {
                   text: newMessage,
                   timestamp: serverTimestamp(),
                   uid: userId,
@@ -679,8 +680,8 @@
 
           React.useEffect(() => {
                if (!db || !userId) return;
-               const tasksCol = collection(db, `artifacts/${app.options.appId}/users/${userId}/tasks`);
-               const q = query(tasksCol);
+               const tasksColRef = collection(db, `artifacts/${app.options.appId}/users/${userId}/tasks`);
+               const q = query(tasksColRef, orderBy('createdAt', 'desc'));
                const unsubscribe = onSnapshot(q, (snapshot) => {
                    const userTasks = [];
                    snapshot.forEach(doc => userTasks.push({ id: doc.id, ...doc.data() }));
@@ -692,8 +693,8 @@
           const handleAddTask = async (e) => {
               e.preventDefault();
               if (newTask.trim() === '') return;
-               const tasksCol = collection(db, `artifacts/${app.options.appId}/users/${userId}/tasks`);
-              await addDoc(tasksCol, { text: newTask, completed: false, createdAt: serverTimestamp() });
+               const tasksColRef = collection(db, `artifacts/${app.options.appId}/users/${userId}/tasks`);
+              await addDoc(tasksColRef, { text: newTask, completed: false, createdAt: serverTimestamp() });
               setNewTask('');
           };
           
@@ -721,7 +722,7 @@
           );
       }
       
-      // --- Application Entry Point ---
+      // --- Ponto de Entrada da Aplicação ---
       const renderError = (error) => {
           const root = ReactDOM.createRoot(document.getElementById("root"));
           root.render(
@@ -739,7 +740,7 @@
 
       const startApp = async () => {
           try {
-              // Show a simple loading indicator before React mounts
+              // Exibe um indicador de carregamento simples
               document.getElementById("root").innerHTML = `
                   <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #1a2035;">
                       <svg class="animate-spin h-12 w-12 text-tecnoit-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 3rem; height: 3rem; color: #ff5a00;">
@@ -755,27 +756,25 @@
           }
       };
       
-      // A robust way to ensure Firebase is ready before starting the app.
+      // Garante que o Firebase esteja pronto antes de iniciar o aplicativo
       function ensureFirebaseIsReady(callback, timeout = 8000) {
           const startTime = Date.now();
           const interval = setInterval(() => {
-              // Check for specific functions to be available on the window.firebase object
               if (typeof window.firebase !== 'undefined' && 
-                  typeof window.firebase.initializeApp === 'function' && 
-                  typeof window.firebase.getAuth === 'function' && 
-                  typeof window.firebase.getFirestore === 'function') {
+                  typeof window.firebase.app !== 'undefined' && 
+                  typeof window.firebase.auth !== 'undefined' && 
+                  typeof window.firebase.firestore !== 'undefined') {
                   
                   clearInterval(interval);
-                  callback(); // Firebase is ready, proceed with the app start
+                  callback();
               } else if (Date.now() - startTime > timeout) {
-                  // If it takes too long, stop checking and show an error
                   clearInterval(interval);
                   renderError(new Error("Timeout: O SDK do Firebase demorou muito para carregar. Verifique sua conexão com a internet ou possíveis bloqueadores de script."));
               }
-          }, 100); // Check every 100ms
+          }, 100);
       }
 
-      // Start the initialization process.
+      // Inicia o processo de inicialização
       ensureFirebaseIsReady(startApp);
 
   </script>
