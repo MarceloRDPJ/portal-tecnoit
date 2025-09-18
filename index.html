@@ -99,7 +99,9 @@
                 }
 
                 const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-                    if (!currentUser) {
+                    if (currentUser) {
+                        setUser(currentUser);
+                    } else {
                         try {
                            await signInAnonymously(auth);
                         } catch (error) {
@@ -108,8 +110,6 @@
                                 setConfigError("As chaves de configuração do Firebase não são válidas.");
                             }
                         }
-                    } else {
-                        setUser(currentUser);
                     }
                     setAuthReady(true);
                 });
@@ -272,7 +272,6 @@
                             const loadedConfig = docSnap.data();
                             setConfig(loadedConfig);
                             if(loadedConfig.sessionToken) {
-                                setSessionToken(loadedConfig.sessionToken);
                                 await fetchTickets(loadedConfig.sessionToken, loadedConfig);
                             }
                         }
@@ -303,7 +302,6 @@
                     
                     await setDoc(configDocRef, newConfig, { merge: true });
                     setConfig(newConfig);
-                    setSessionToken(data.session_token);
                     await fetchTickets(data.session_token, newConfig);
 
                 } catch (err) { setError(err.message); }
@@ -320,7 +318,11 @@
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Erro ao buscar chamados');
                     setTickets(data);
-                } catch (err) { setError(`Erro ao buscar chamados: ${err.message}`); setSessionToken(null); } 
+                    setSessionToken(token); // Confirma que o token é válido
+                } catch (err) { 
+                    setError(`Sessão expirada ou inválida. Por favor, conecte-se novamente.`); 
+                    setSessionToken(null); 
+                } 
                 finally { setIsLoading(false); }
             };
 
@@ -347,7 +349,7 @@
         }
 
         function ConnectionForm({ onConnect, isLoading, error, savedConfig }) {
-            const [loginType, setLoginType] = useState('token');
+            const [loginType, setLoginType] = useState('credentials');
             const [apiToken, setApiToken] = useState(savedConfig?.apiToken || '');
             const [username, setUsername] = useState(savedConfig?.username || '');
             const [password, setPassword] = useState('');
@@ -466,7 +468,7 @@
                 <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Icon className="w-5 h-5" /> {title}</h3>
                     <div className="space-y-4">{children}</div>
-                    <button onClick={onSubmit} disabled={isSubmitting} className="mt-4 w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}</button>
+                    <button onClick={onSubmit} disabled={isSubmitting} className="mt-4 w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}</button>
                 </div>
             );
         }
