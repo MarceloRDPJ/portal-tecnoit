@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TecnoiT - Central de Chamados</title>
+    <title>Tecno iT - Central de Chamados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,14 +32,13 @@
       Engrenagem (Configurações do projeto) > Geral > Seus apps > App da Web > Configuração (Objeto de configuração).
     -->
     <script>
-       const firebaseConfig = {
-    apiKey: "AIzaSyCh47eM6oXz-vN-2iAZXbDtTIi0CvFe_wY",
-    authDomain: "app-tecnoit.firebaseapp.com",
-    projectId: "app-tecnoit",
-    storageBucket: "app-tecnoit.firebasestorage.app",
-    messagingSenderId: "675993906644",
-    appId: "1:675993906644:web:90f5fdbbb852a5caa43a41",
-    measurementId: "G-MLEH036DLK"
+        const firebaseConfig = {
+            apiKey: "COLE_SUA_API_KEY_AQUI",
+            authDomain: "COLE_SEU_AUTH_DOMAIN_AQUI",
+            projectId: "COLE_SEU_PROJECT_ID_AQUI",
+            storageBucket: "COLE_SEU_STORAGE_BUCKET_AQUI",
+            messagingSenderId: "COLE_SEU_MESSAGING_SENDER_ID_AQUI",
+            appId: "COLE_SEU_APP_ID_AQUI"
         };
     </script>
 
@@ -49,7 +48,6 @@
         const { useState, useEffect, useRef, useMemo } = React;
 
         // As dependências do Firebase e Lucide serão importadas de um CDN
-        // Este é um truque para usar módulos em um ambiente de script simples
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
         let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, Users, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck;
 
@@ -96,7 +94,6 @@
             const { initializeApp } = window.firebase.app;
             const { getAuth, onAuthStateChanged, signInAnonymously } = window.firebase.auth;
             
-            // --- Inicialização do Firebase ---
             const app = useMemo(() => initializeApp(firebaseConfig), []);
             const auth = useMemo(() => getAuth(app), [app]);
             
@@ -106,7 +103,6 @@
             const [configError, setConfigError] = useState(null);
 
             useEffect(() => {
-                // Validação inicial para evitar chamada com chaves de placeholder
                 if (firebaseConfig.apiKey === "COLE_SUA_API_KEY_AQUI") {
                     setConfigError("As chaves de configuração do Firebase não foram inseridas. Por favor, edite o arquivo index.html e adicione suas chaves para o aplicativo funcionar.");
                     setAuthReady(true);
@@ -165,8 +161,10 @@
             return (
                 <div className="flex items-center justify-center h-screen bg-[#060818] text-white">
                     <div className="text-center">
-                        <LogIn className="w-16 h-16 animate-pulse mx-auto text-[#ff5a00]" />
-                        <p className="mt-4 text-xl">Carregando TecnoiT...</p>
+                        <div className="w-16 h-16 animate-pulse mx-auto text-[#ff5a00] flex items-center justify-center">
+                            <div className="w-16 h-16 bg-[#ff5a00] rounded-full flex items-center justify-center text-white text-3xl font-bold">iT</div>
+                        </div>
+                        <p className="mt-4 text-xl">Carregando Tecno iT...</p>
                         <p className="text-sm text-gray-400">Estabelecendo conexão segura...</p>
                     </div>
                 </div>
@@ -183,8 +181,8 @@
             return (
                 <nav className="w-16 md:w-64 bg-[#04050d] p-2 md:p-4 flex flex-col border-r border-[#2a2f4c]">
                     <div className="flex items-center mb-10">
-                        <img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" />
-                        <h1 className="text-2xl font-bold ml-3 hidden md:block text-white">TecnoiT</h1>
+                         <div className="w-10 h-10 bg-[#ff5a00] rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0">iT</div>
+                        <h1 className="text-2xl font-bold ml-3 hidden md:block text-white">Tecno <span className="text-gray-400">iT</span></h1>
                     </div>
                     <ul className="space-y-2">
                         {navItems.map(item => (
@@ -218,7 +216,7 @@
                 <div className="bg-[#12162d]/50 rounded-xl p-6 border border-[#2a2f4c] shadow-lg hover:bg-[#12162d] transition-all hover:scale-[1.02]"><div className="flex items-center gap-4 mb-3">{icon}<h3 className="text-xl font-bold text-white">{title}</h3></div><p className="text-gray-400">{children}</p></div>
             );
             return (
-                <div className="animate-fade-in"><h2 className="text-3xl font-bold mb-6 text-white">Painel Principal</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><Card icon={<Ticket className="w-8 h-8 text-[#ff5a00]"/>} title="Integração GLPI">Visualize e gerencie seus chamados do GLPI diretamente do TecnoiT. Uma visão centralizada para sua produtividade.</Card><Card icon={<MessageSquare className="w-8 h-8 text-[#ff5a00]"/>} title="Chat da Equipe">Comunique-se em tempo real com sua equipe nos canais de projeto. Mantenha todos alinhados e as conversas organizadas.</Card><Card icon={<CheckSquare className="w-8 h-8 text-[#ff5a00]"/>} title="Gerencie Suas Tarefas">Crie, organize e conclua suas tarefas. Mantenha o foco no que é importante para atingir seus objetivos diários.</Card></div></div>
+                <div className="animate-fade-in"><h2 className="text-3xl font-bold mb-6 text-white">Painel Principal</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><Card icon={<Ticket className="w-8 h-8 text-[#ff5a00]"/>} title="Integração GLPI">Visualize e gerencie seus chamados do GLPI diretamente do App Tecno iT. Uma visão centralizada para sua produtividade.</Card><Card icon={<MessageSquare className="w-8 h-8 text-[#ff5a00]"/>} title="Chat da Equipe">Comunique-se em tempo real com sua equipe nos canais de projeto. Mantenha todos alinhados e as conversas organizadas.</Card><Card icon={<CheckSquare className="w-8 h-8 text-[#ff5a00]"/>} title="Gerencie Suas Tarefas">Crie, organize e conclua suas tarefas. Mantenha o foco no que é importante para atingir seus objetivos diários.</Card></div></div>
             );
         }
         
@@ -248,7 +246,7 @@
         function Chat({ user, app }) {
             const { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
-            const appId = firebaseConfig.appId; // ID compartilhado por todos no site
+            const appId = firebaseConfig.appId;
             const [channels] = useState([{ id: 'geral', name: 'Geral' }, { id: 'projetos', name: 'Projetos' }]);
             const [selectedChannel, setSelectedChannel] = useState('geral');
             const [messages, setMessages] = useState([]);
@@ -362,7 +360,7 @@
         function ConnectionForm({ config, setConfig, handleConnect, isLoading, error }) {
             return (
                 <div className="max-w-lg mx-auto mt-10 p-8 bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl animate-fade-in">
-                    <div className="text-center mb-6"><Ticket className="w-12 h-12 mx-auto text-[#ff5a00]" /><h2 className="text-2xl font-bold mt-4 text-white">Conectar ao GLPI</h2><p className="text-gray-400">Insira seu token de acesso para visualizar os chamados.</p></div>
+                    <div className="text-center mb-6"><div className="w-12 h-12 bg-[#ff5a00] rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto">iT</div><h2 className="text-2xl font-bold mt-4 text-white">Conectar ao GLPI</h2><p className="text-gray-400">Insira seu token de acesso para visualizar os chamados.</p></div>
                     <form onSubmit={handleConnect} className="space-y-4">
                         <div><label className="text-sm font-medium text-gray-300">URL da Instância GLPI</label><input type="text" value={config.url} disabled className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white cursor-not-allowed" /></div>
                         <div><label className="text-sm font-medium text-gray-300">Seu App-Token</label><input type="password" value={config.apiToken} onChange={e => setConfig({...config, apiToken: e.target.value})} placeholder="Token de acesso da API" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
