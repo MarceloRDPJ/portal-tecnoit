@@ -44,7 +44,7 @@
 
         // As dependências do Firebase e Lucide serão importadas de um CDN
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, Users, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck;
+        let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck;
 
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -60,7 +60,7 @@
                     import(firebaseAuthUrl),
                     import(firestoreUrl),
                 ]).then(([lucide, app, auth, firestore]) => {
-                    ({ LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, Users, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck } = lucide);
+                    ({ LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck } = lucide);
                     window.firebase = { app, auth, firestore };
                     setLibsLoaded(true);
                 }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -89,15 +89,8 @@
             const [page, setPage] = useState('glpi');
             const [user, setUser] = useState(null);
             const [authReady, setAuthReady] = useState(false);
-            const [configError, setConfigError] = useState(null);
 
             useEffect(() => {
-                if (firebaseConfig.apiKey === "COLE_SUA_API_KEY_AQUI") {
-                    setConfigError("As chaves de configuração do Firebase não foram inseridas.");
-                    setAuthReady(true);
-                    return;
-                }
-
                 const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
                     if (currentUser) {
                         setUser(currentUser);
@@ -106,9 +99,6 @@
                            await signInAnonymously(auth);
                         } catch (error) {
                             console.error("Erro na autenticação anônima:", error);
-                            if (error.code === 'auth/api-key-not-valid') {
-                                setConfigError("As chaves de configuração do Firebase não são válidas.");
-                            }
                         }
                     }
                     setAuthReady(true);
@@ -116,30 +106,17 @@
                 return () => unsubscribe();
             }, [auth]);
             
-            if (configError) return <ConfigErrorScreen message={configError} />;
             if (!authReady || !user) return <LoadingScreen />;
 
             return (
                 <div className="flex h-screen bg-[#060818] text-gray-200">
                     <Sidebar setPage={setPage} currentPage={page} />
                     <main className="flex-1 flex flex-col overflow-hidden">
-                        <Header user={user} />
+                        <Header />
                         <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
                             <ContentArea page={page} user={user} app={app} />
                         </div>
                     </main>
-                </div>
-            );
-        }
-
-        function ConfigErrorScreen({ message }) {
-            return (
-                <div className="flex items-center justify-center h-screen bg-red-900/20 text-white p-4">
-                    <div className="text-center p-8 max-w-2xl bg-[#12162d] border border-red-500 rounded-xl">
-                        <Server className="w-16 h-16 mx-auto text-red-400" />
-                        <h2 className="mt-4 text-2xl font-bold">Erro de Configuração</h2>
-                        <p className="mt-2 text-red-300">{message}</p>
-                    </div>
                 </div>
             );
         }
@@ -161,6 +138,7 @@
                 { id: 'dashboard', icon: LayoutDashboard, label: 'Painel' },
                 { id: 'chat', icon: MessageSquare, label: 'Chat' },
                 { id: 'tasks', icon: CheckSquare, label: 'Tarefas' },
+                { id: 'profile', icon: User, label: 'Meu Perfil' }
             ];
             return (
                 <nav className="w-16 md:w-64 bg-[#04050d] p-2 md:p-4 flex flex-col border-r border-[#2a2f4c]">
@@ -177,7 +155,7 @@
             );
         }
 
-        function Header({ user }) {
+        function Header() {
             return (
                 <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4 flex justify-between items-center">
                     <div><h2 className="text-xl font-semibold text-white">Bem-vindo(a) de volta!</h2><p className="text-sm text-gray-400">Pronto para um dia produtivo?</p></div>
@@ -188,8 +166,9 @@
         function ContentArea({ page, user, app }) {
             switch (page) {
                 case 'dashboard': return <Dashboard />;
-                case 'chat': return <Chat user={user} app={app} />;
-                case 'tasks': return <Tasks user={user} app={app} />;
+                case 'chat': return <div>Em desenvolvimento</div>;
+                case 'tasks': return <div>Em desenvolvimento</div>;
+                case 'profile': return <div>Em desenvolvimento</div>;
                 case 'glpi': return <GlpiTickets user={user} app={app} />;
                 default: return <Dashboard />;
             }
@@ -204,81 +183,28 @@
             );
         }
         
-        function Tasks({ user, app }) {
-            const { getFirestore, collection, addDoc, query, onSnapshot, doc, updateDoc, serverTimestamp, deleteDoc } = window.firebase.firestore;
-            const db = useMemo(() => getFirestore(app), [app]);
-            const [tasks, setTasks] = useState([]);
-            const [newTask, setNewTask] = useState('');
-            const tasksCollectionRef = useMemo(() => collection(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/tasks`), [db, user.uid]);
-            
-            useEffect(() => {
-                const q = query(tasksCollectionRef);
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    let tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    tasksData.sort((a, b) => {
-                        if (a.completed !== b.completed) return a.completed ? 1 : -1;
-                        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-                    });
-                    setTasks(tasksData);
-                });
-                return () => unsubscribe();
-            }, [tasksCollectionRef]);
-
-            const handleAddTask = async (e) => { e.preventDefault(); if (newTask.trim() === '') return; await addDoc(tasksCollectionRef, { text: newTask, completed: false, createdAt: serverTimestamp() }); setNewTask(''); };
-            const toggleTask = async (task) => { await updateDoc(doc(tasksCollectionRef, task.id), { completed: !task.completed }); };
-            const handleDeleteTask = async (taskId) => { await deleteDoc(doc(tasksCollectionRef, taskId)); };
-            
-            return (<div className="max-w-3xl mx-auto animate-fade-in"><h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3"><CheckSquare className="w-8 h-8" /> Suas Tarefas</h2><form onSubmit={handleAddTask} className="flex gap-2 mb-6"><input type="text" value={newTask} onChange={(e) => setNewTask(e.target.value)} placeholder="Adicionar nova tarefa..." className="flex-1 bg-[#12162d] border border-[#2a2f4c] rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /><button type="submit" className="bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors"><Plus className="w-6 h-6" /></button></form><div className="space-y-3">{tasks.map(task => (<div key={task.id} className={`flex items-center gap-4 p-4 rounded-lg transition-all ${ task.completed ? 'bg-[#12162d]/50' : 'bg-[#12162d]' }`}><div onClick={() => toggleTask(task)} className="flex-1 flex items-center gap-4 cursor-pointer"><div className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center border-2 ${ task.completed ? 'bg-green-500 border-green-500' : 'border-gray-600'}`}>{task.completed && <CheckSquare className="w-4 h-4 text-white" />}</div><span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : 'text-gray-200'}`}>{task.text}</span></div><button onClick={() => handleDeleteTask(task.id)} className="p-2 rounded-full hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button></div>))}</div></div>);
-        }
-
-        function Chat({ user, app }) {
-            const { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, orderBy } = window.firebase.firestore;
-            const db = useMemo(() => getFirestore(app), [app]);
-            const [selectedChannel, setSelectedChannel] = useState('geral');
-            const [messages, setMessages] = useState([]);
-            const [newMessage, setNewMessage] = useState('');
-            const messagesEndRef = useRef(null);
-            const messagesCollectionRef = useMemo(() => collection(db, `/artifacts/${firebaseConfig.appId}/public/data/channels/${selectedChannel}/messages`), [db, selectedChannel]);
-
-            useEffect(() => { 
-                const q = query(messagesCollectionRef, orderBy('timestamp', 'asc')); 
-                const unsubscribe = onSnapshot(q, (snapshot) => setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
-                return () => unsubscribe(); 
-            }, [messagesCollectionRef]);
-
-            useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-            
-            const handleSendMessage = async (e) => { e.preventDefault(); if (newMessage.trim() === '') return; await addDoc(messagesCollectionRef, { text: newMessage, senderId: user.uid, senderName: `Técnico`, timestamp: serverTimestamp() }); setNewMessage(''); };
-
-            return (<div className="flex h-full animate-fade-in"><div className="w-1/4 max-w-xs bg-[#12162d]/50 border-r border-[#2a2f4c] rounded-l-xl flex flex-col"><div className="p-4 border-b border-[#2a2f4c]"><h2 className="text-xl font-bold text-white">Canais</h2></div><ul className="flex-1 p-2 space-y-1 overflow-y-auto">{[{ id: 'geral', name: 'Geral' }, { id: 'projetos', name: 'Projetos' }].map(c => (<li key={c.id}><button onClick={() => setSelectedChannel(c.id)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedChannel === c.id ? 'bg-[#ff5a00] text-white' : 'hover:bg-[#12162d] text-gray-300'}`}># {c.name}</button></li>))}</ul></div><div className="flex-1 flex flex-col bg-[#12162d] rounded-r-xl"><div className="flex-1 p-6 overflow-y-auto">{messages.map(msg => (<div key={msg.id} className={`flex mb-4 ${msg.senderId === user.uid ? 'justify-end' : 'justify-start'}`}><div className={`max-w-md p-3 rounded-xl ${msg.senderId === user.uid ? 'bg-[#ff5a00] text-white' : 'bg-[#2a2f4c] text-gray-200'}`}><p className="text-sm font-bold mb-1">{msg.senderName}</p><p>{msg.text}</p></div></div>))}<div ref={messagesEndRef} /></div><div className="p-4 bg-[#12162d]/50 border-t border-[#2a2f4c] rounded-br-xl"><form onSubmit={handleSendMessage} className="flex items-center gap-3"><input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={`Mensagem em #${selectedChannel}`} className="flex-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"/><button type="submit" className="bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors"><Send className="w-6 h-6" /></button></form></div></div></div>);
-        }
-
         function GlpiTickets({ user, app }) {
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
-            const [config, setConfig] = useState(null);
             const [sessionToken, setSessionToken] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
             const [tickets, setTickets] = useState([]);
-            const [selectedTicket, setSelectedTicket] = useState(null);
+            const [selectedTicketId, setSelectedTicketId] = useState(null);
             const configDocRef = useMemo(() => doc(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/glpiConfig/config`), [db, user.uid]);
 
             useEffect(() => {
-                const loadConfig = async () => {
+                const loadSession = async () => {
                     try {
                         const docSnap = await getDoc(configDocRef);
-                        if (docSnap.exists()) {
-                            const loadedConfig = docSnap.data();
-                            setConfig(loadedConfig);
-                            if(loadedConfig.sessionToken) {
-                                await fetchTickets(loadedConfig.sessionToken, loadedConfig);
-                            }
+                        if (docSnap.exists() && docSnap.data().sessionToken) {
+                            const savedConfig = docSnap.data();
+                            await fetchTickets(savedConfig.sessionToken, savedConfig.glpiUrl);
                         }
-                    } catch (err) { setError("Não foi possível carregar sua configuração do GLPI."); }
+                    } catch (err) { setError("Não foi possível carregar sua sessão salva."); }
                     finally { setIsLoading(false); }
                 };
-                loadConfig();
+                loadSession();
             }, [configDocRef]);
             
             const handleConnect = async (authDetails) => {
@@ -296,27 +222,22 @@
                     const newConfig = {
                         glpiUrl: authDetails.glpiUrl,
                         sessionToken: data.session_token,
-                        ...(authDetails.apiToken && { apiToken: authDetails.apiToken }),
-                        ...(authDetails.username && { username: authDetails.username }),
                     };
                     
                     await setDoc(configDocRef, newConfig, { merge: true });
-                    setConfig(newConfig);
-                    // Await the fetchTickets call to ensure it completes before setting loading to false
-                    await fetchTickets(data.session_token, newConfig);
-
+                    await fetchTickets(data.session_token, authDetails.glpiUrl);
                 } catch (err) { 
                     setError(err.message); 
-                    setIsLoading(false); // Ensure loading is false on error
+                    setIsLoading(false);
                 }
             };
 
-            const fetchTickets = async (token, currentConfig) => {
+            const fetchTickets = async (token, url) => {
                 setIsLoading(true);
                 try {
                     const response = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl: currentConfig.glpiUrl, sessionToken: token })
+                        body: JSON.stringify({ glpiUrl: url, sessionToken: token })
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Erro ao buscar chamados');
@@ -333,12 +254,12 @@
                 await setDoc(configDocRef, { sessionToken: null }, { merge: true });
                 setSessionToken(null); 
                 setTickets([]); 
-                setSelectedTicket(null); 
+                setSelectedTicketId(null); 
             };
             
-            if (isLoading && !config) { return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin" /></div>; }
-            if (!sessionToken) { return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} savedConfig={config} />; }
-            if (selectedTicket) { return <TicketDetail ticket={selectedTicket} goBack={() => setSelectedTicket(null)} sessionToken={sessionToken} glpiUrl={config.glpiUrl} />; }
+            if (isLoading) { return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin text-[#ff5a00]" /></div>; }
+            if (!sessionToken) { return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} />; }
+            if (selectedTicketId) { return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} />; }
             
             return (
                 <div className="animate-fade-in">
@@ -346,16 +267,17 @@
                         <h2 className="text-3xl font-bold text-white flex items-center gap-3"><Ticket className="w-8 h-8" /> Seus Chamados GLPI</h2>
                         <button onClick={handleDisconnect} className="flex items-center gap-2 text-sm bg-[#12162d] hover:bg-[#2a2f4c] text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors"><Unplug className="w-4 h-4" />Desconectar</button>
                     </div>
-                    {isLoading ? (<div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin" /></div>) : (<TicketList tickets={tickets} onSelectTicket={setSelectedTicket} />)}
+                    <TicketList tickets={tickets} onSelectTicket={setSelectedTicketId} />
                 </div>
             );
         }
 
-        function ConnectionForm({ onConnect, isLoading, error, savedConfig }) {
+        function ConnectionForm({ onConnect, isLoading, error }) {
             const [loginType, setLoginType] = useState('credentials');
-            const [apiToken, setApiToken] = useState(savedConfig?.apiToken || '');
-            const [username, setUsername] = useState(savedConfig?.username || '');
+            const [apiToken, setApiToken] = useState('');
+            const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
@@ -379,14 +301,12 @@
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <input type="text" value="https://suporte.tecnoit.com.br" disabled className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-gray-500 cursor-not-allowed" />
-                        
                         {loginType === 'token' ? (
                             <div><label className="text-sm font-medium text-gray-300">Seu App-Token</label><input type="password" value={apiToken} onChange={e => setApiToken(e.target.value)} placeholder="Cole seu token de API aqui" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
                         ) : (
                             <>
                                 <div><label className="text-sm font-medium text-gray-300">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
-                                <div><label className="text-sm font-medium text-gray-300">Senha</label><input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
+                                <div className="relative"><label className="text-sm font-medium text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-white">{showPassword ? <EyeOff className="h-5 w-5"/> : <Eye className="h-5 w-5"/>}</button></div>
                             </>
                         )}
 
@@ -413,7 +333,7 @@
                 <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl overflow-hidden"><table className="w-full text-left">
                     <thead className="bg-[#12162d]"><tr><th className="p-4 font-semibold">ID</th><th className="p-4 font-semibold">Título</th><th className="p-4 font-semibold">Status</th><th className="p-4 font-semibold">Prioridade</th></tr></thead>
                     <tbody>{tickets.map(ticket => (
-                        <tr key={ticket.id} onClick={() => onSelectTicket(ticket)} className="border-t border-[#2a2f4c] hover:bg-[#12162d] transition-colors cursor-pointer">
+                        <tr key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="border-t border-[#2a2f4c] hover:bg-[#12162d] transition-colors cursor-pointer">
                             <td className="p-4 font-mono text-gray-400">#{ticket.id}</td><td className="p-4 text-white">{ticket.name}</td>
                             <td className="p-4"><StatusBadge status={ticket.status} /></td>
                             <td className="p-4"><PriorityBadge priority={ticket.priority} /></td>
@@ -423,55 +343,69 @@
             );
         }
 
-        function TicketDetail({ ticket, goBack, sessionToken, glpiUrl }) {
-            const [newFollowup, setNewFollowup] = useState('');
-            const [newSolution, setNewSolution] = useState('');
-            const [isSubmitting, setIsSubmitting] = useState(false);
-            const [submitSuccess, setSubmitSuccess] = useState('');
-            const handleSubmit = async (type, content) => {
-                if (!content.trim()) return;
-                setIsSubmitting(true);
-                setSubmitSuccess('');
-                const endpoint = type === 'followup' ? 'ITILFollowup' : 'ITILSolution';
+        function TicketDetail({ ticketId, goBack, sessionToken }) {
+            const [ticket, setTicket] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [error, setError] = useState('');
+            
+            useEffect(() => {
+              const fetchDetails = async () => {
+                setIsLoading(true);
+                setError('');
                 try {
-                    const proxyUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/addTicketAction`;
-                    const response = await fetch(proxyUrl, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, sessionToken, items_id: ticket.id, content, endpoint })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erro ao adicionar');
-                    setSubmitSuccess(`Ação '${type}' adicionada com sucesso!`);
-                    if (type === 'followup') setNewFollowup('');
-                    if (type === 'solution') setNewSolution('');
-                    setTimeout(() => setSubmitSuccess(''), 3000);
-                } catch (err) { alert(`Erro: ${err.message}`); } finally { setIsSubmitting(false); }
-            };
-            return (
-                <div className="animate-fade-in"><button onClick={goBack} className="flex items-center gap-2 text-sm text-[#ff5a00] hover:text-orange-400 mb-6"><ArrowLeft className="w-4 h-4" />Voltar para a lista</button>
-                    {submitSuccess && <div className="bg-green-500/20 text-green-300 text-center p-3 rounded-lg mb-4">{submitSuccess}</div>}
-                    <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6 mb-6">
-                        <h2 className="text-2xl font-bold text-white mb-2">#{ticket.id} - {ticket.name}</h2>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4 text-sm">
-                            <span className="font-bold text-gray-400">Status:</span><span>{ticket.status_text || 'Não definido'}</span>
-                            <span className="font-bold text-gray-400">Prioridade:</span><span>{ticket.priority_text || 'Não definido'}</span>
-                        </div>
-                        <div className="bg-[#060818]/50 p-4 rounded-lg"><p className="text-gray-300 whitespace-pre-wrap">{ticket.content}</p></div>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <ActionCard title="Adicionar Acompanhamento" icon={MessageSquarePlus} onSubmit={() => handleSubmit('followup', newFollowup)} isSubmitting={isSubmitting}><textarea value={newFollowup} onChange={(e) => setNewFollowup(e.target.value)} rows="4" placeholder="Descreva o que foi feito ou verificado..." className="w-full bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"></textarea></ActionCard>
-                        <ActionCard title="Adicionar Solução" icon={ClipboardCheck} onSubmit={() => handleSubmit('solution', newSolution)} isSubmitting={isSubmitting}><textarea value={newSolution} onChange={(e) => setNewSolution(e.target.value)} rows="4" placeholder="Descreva a solução aplicada para o chamado..." className="w-full bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"></textarea></ActionCard>
-                    </div>
-                </div>
-            );
-        }
+                  const response = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTicketDetails/${ticketId}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        glpiUrl: 'https://suporte.tecnoit.com.br', 
+                        sessionToken: sessionToken 
+                      })
+                  });
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.message || 'Erro ao buscar detalhes do chamado');
+                  setTicket(data);
+                } catch (err) {
+                  setError(err.message);
+                } finally {
+                  setIsLoading(false);
+                }
+              };
+              if (ticketId && sessionToken) {
+                fetchDetails();
+              }
+            }, [ticketId, sessionToken]);
 
-        function ActionCard({ title, icon: Icon, onSubmit, isSubmitting, children }) {
+            if (isLoading) return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin text-[#ff5a00]" /></div>;
+            if (error) return <div className="text-center text-red-400">{error}</div>;
+            if (!ticket) return null;
+
+            const DetailItem = ({ icon: Icon, label, value }) => (
+              <div className="flex items-start gap-3">
+                <Icon className="w-5 h-5 text-gray-400 mt-1" />
+                <div>
+                  <p className="font-semibold text-gray-400">{label}</p>
+                  <p className="text-white">{value || 'Não informado'}</p>
+                </div>
+              </div>
+            );
+
             return (
-                <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Icon className="w-5 h-5" /> {title}</h3>
-                    <div className="space-y-4">{children}</div>
-                    <button onClick={onSubmit} disabled={isSubmitting} className="mt-4 w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}</button>
+                <div className="animate-fade-in">
+                  <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#ff5a00] hover:text-orange-400 mb-6"><ArrowLeft className="w-4 h-4" />Voltar para a lista</button>
+                  <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6 mb-6">
+                      <h2 className="text-2xl font-bold text-white mb-4">#{ticket.id} - {ticket.name}</h2>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                          <DetailItem icon={User} label="Solicitante" value={ticket['12']} />
+                          <DetailItem icon={UserCheck} label="Técnico Atribuído" value={ticket['5']} />
+                          <DetailItem icon={Calendar} label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} />
+                      </div>
+
+                      <div className="bg-[#060818]/50 p-4 rounded-lg">
+                        <h3 className="font-bold text-lg mb-2 text-white">Descrição</h3>
+                        <div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div>
+                      </div>
+                  </div>
                 </div>
             );
         }
