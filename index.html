@@ -97,22 +97,22 @@
       // Função para inicializar o Firebase e autenticar
       async function initFirebase() {
           try {
-              if (typeof firebase === 'undefined' || !firebase.app) {
+              if (typeof firebase === 'undefined' || typeof firebase.initializeApp === 'undefined' || typeof firebase.getAuth === 'undefined' || typeof firebase.getFirestore === 'undefined') {
                   throw new Error("Firebase SDK não foi carregado corretamente.");
               }
-              // Initialize functions from the global firebase object
+              // Assign functions directly from the firebase global
               initializeApp = firebase.initializeApp;
-              getAuth = firebase.auth.getAuth;
-              signInAnonymously = firebase.auth.signInAnonymously;
-              getFirestore = firebase.firestore.getFirestore;
-              doc = firebase.firestore.doc;
-              setDoc = firebase.firestore.setDoc;
-              getDoc = firebase.firestore.getDoc;
-              collection = firebase.firestore.collection;
-              addDoc = firebase.firestore.addDoc;
-              onSnapshot = firebase.firestore.onSnapshot;
-              query = firebase.firestore.query;
-              serverTimestamp = firebase.firestore.serverTimestamp;
+              getAuth = firebase.getAuth;
+              signInAnonymously = firebase.signInAnonymously;
+              getFirestore = firebase.getFirestore;
+              doc = firebase.doc;
+              setDoc = firebase.setDoc;
+              getDoc = firebase.getDoc;
+              collection = firebase.collection;
+              addDoc = firebase.addDoc;
+              onSnapshot = firebase.onSnapshot;
+              query = firebase.query;
+              serverTimestamp = firebase.serverTimestamp;
 
               if (!firebaseConfig || !firebaseConfig.apiKey) {
                   throw new Error("Configuração do Firebase não encontrada.");
@@ -755,8 +755,28 @@
           }
       };
       
-      // We wait for the entire window to load before trying to initialize Firebase
-      window.addEventListener('load', startApp);
+      // A robust way to ensure Firebase is ready before starting the app.
+      function ensureFirebaseIsReady(callback, timeout = 8000) {
+          const startTime = Date.now();
+          const interval = setInterval(() => {
+              // Check for specific functions to be available on the window.firebase object
+              if (typeof window.firebase !== 'undefined' && 
+                  typeof window.firebase.initializeApp === 'function' && 
+                  typeof window.firebase.getAuth === 'function' && 
+                  typeof window.firebase.getFirestore === 'function') {
+                  
+                  clearInterval(interval);
+                  callback(); // Firebase is ready, proceed with the app start
+              } else if (Date.now() - startTime > timeout) {
+                  // If it takes too long, stop checking and show an error
+                  clearInterval(interval);
+                  renderError(new Error("Timeout: O SDK do Firebase demorou muito para carregar. Verifique sua conexão com a internet ou possíveis bloqueadores de script."));
+              }
+          }, 100); // Check every 100ms
+      }
+
+      // Start the initialization process.
+      ensureFirebaseIsReady(startApp);
 
   </script>
 </body>
