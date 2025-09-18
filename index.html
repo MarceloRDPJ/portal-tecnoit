@@ -302,10 +302,13 @@
                     
                     await setDoc(configDocRef, newConfig, { merge: true });
                     setConfig(newConfig);
+                    // Await the fetchTickets call to ensure it completes before setting loading to false
                     await fetchTickets(data.session_token, newConfig);
 
-                } catch (err) { setError(err.message); }
-                finally { setIsLoading(false); }
+                } catch (err) { 
+                    setError(err.message); 
+                    setIsLoading(false); // Ensure loading is false on error
+                }
             };
 
             const fetchTickets = async (token, currentConfig) => {
@@ -318,7 +321,7 @@
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Erro ao buscar chamados');
                     setTickets(data);
-                    setSessionToken(token); // Confirma que o token é válido
+                    setSessionToken(token);
                 } catch (err) { 
                     setError(`Sessão expirada ou inválida. Por favor, conecte-se novamente.`); 
                     setSessionToken(null); 
@@ -333,9 +336,9 @@
                 setSelectedTicket(null); 
             };
             
-            if (isLoading) { return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin" /></div>; }
+            if (isLoading && !config) { return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin" /></div>; }
             if (!sessionToken) { return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} savedConfig={config} />; }
-            if (selectedTicket) { return <TicketDetail ticket={selectedTicket} goBack={() => setSelectedTicket(null)} sessionToken={sessionToken} glpiUrl={config.glpiUrl} apiToken={config.apiToken} />; }
+            if (selectedTicket) { return <TicketDetail ticket={selectedTicket} goBack={() => setSelectedTicket(null)} sessionToken={sessionToken} glpiUrl={config.glpiUrl} />; }
             
             return (
                 <div className="animate-fade-in">
@@ -420,7 +423,7 @@
             );
         }
 
-        function TicketDetail({ ticket, goBack, sessionToken, glpiUrl, apiToken }) {
+        function TicketDetail({ ticket, goBack, sessionToken, glpiUrl }) {
             const [newFollowup, setNewFollowup] = useState('');
             const [newSolution, setNewSolution] = useState('');
             const [isSubmitting, setIsSubmitting] = useState(false);
@@ -434,7 +437,7 @@
                     const proxyUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/addTicketAction`;
                     const response = await fetch(proxyUrl, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, sessionToken, apiToken, items_id: ticket.id, content, endpoint })
+                        body: JSON.stringify({ glpiUrl, sessionToken, items_id: ticket.id, content, endpoint })
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.message || 'Erro ao adicionar');
@@ -468,7 +471,7 @@
                 <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4"><Icon className="w-5 h-5" /> {title}</h3>
                     <div className="space-y-4">{children}</div>
-                    <button onClick={onSubmit} disabled={isSubmitting} className="mt-4 w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}</button>
+                    <button onClick={onSubmit} disabled={isSubmitting} className="mt-4 w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}</button>
                 </div>
             );
         }
