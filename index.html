@@ -17,7 +17,6 @@
         body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .tab-button-active { background-color: #ff5a00; color: white; }
         .tab-button { color: #d1d5db; }
-        /* Custom scrollbar for better look */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #04050d; }
         ::-webkit-scrollbar-thumb { background: #2a2f4c; border-radius: 4px; }
@@ -40,10 +39,10 @@
     </script>
 
     <script type="text/babel" data-presets="react">
-        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback } = React;
 
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, ListTodo, FileText, Solution;
+        let User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search;
 
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -54,7 +53,7 @@
             useEffect(() => {
                 Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
                     .then(([lucide, app, auth, firestore]) => {
-                        ({ LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, ListTodo, FileText, Solution } = lucide);
+                        ({ User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search } = lucide);
                         window.firebase = { app, auth, firestore };
                         setLibsLoaded(true);
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -104,11 +103,12 @@
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
             const [tickets, setTickets] = useState([]);
+            const [totalTickets, setTotalTickets] = useState(0);
             const [currentUserData, setCurrentUserData] = useState(null);
             
             useEffect(() => { onSessionUpdate(currentUserData); }, [currentUserData, onSessionUpdate]);
 
-            const value = { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, currentUserData, setCurrentUserData };
+            const value = { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, totalTickets, setTotalTickets, currentUserData, setCurrentUserData };
             return <GlpiContext.Provider value={value}>{children}</GlpiContext.Provider>;
         }
         const useGlpi = () => React.useContext(GlpiContext);
@@ -126,10 +126,7 @@
         );
 
         function Sidebar({ setPage, currentPage }) {
-            const navItems = [
-                { id: 'glpi', icon: Ticket, label: 'Chamados' },
-                { id: 'profile', icon: User, label: 'Meu Perfil' }
-            ];
+            const navItems = [ { id: 'glpi', icon: Ticket, label: 'Chamados' }, { id: 'profile', icon: User, label: 'Meu Perfil' } ];
             return (
                 <nav className="w-16 md:w-64 bg-[#04050d] p-2 md:p-4 flex flex-col border-r border-[#2a2f4c]">
                     <div className="flex items-center mb-10"><img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" /><h1 className="text-2xl font-bold ml-3 hidden md:block text-white">TecnoiT</h1></div>
@@ -142,9 +139,7 @@
 
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
-            return (
-                <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2></header>
-            );
+            return (<header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2></header>);
         };
 
         function ContentArea({ page, user, app }) {
@@ -176,9 +171,13 @@
         function GlpiTickets({ user, app }) {
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
-            const { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, currentUserData, setCurrentUserData } = useGlpi();
+            const { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, totalTickets, setTotalTickets, currentUserData, setCurrentUserData } = useGlpi();
+            
             const [selectedTicketId, setSelectedTicketId] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage, setItemsPerPage] = useState(50);
+            
             const configDocRef = useMemo(() => doc(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/glpiConfig/config`), [db, user.uid]);
 
             const fetchFullSession = useCallback(async (token, url) => {
@@ -189,17 +188,22 @@
                 } catch (err) { console.error("Falha ao buscar dados da sessão:", err); }
             }, [setCurrentUserData]);
 
-            const fetchTickets = useCallback(async (token, url) => {
+            const fetchTickets = useCallback(async (token, url, page = 1, limit = 50) => {
                 setIsLoading(true);
+                const rangeStart = (page - 1) * limit;
+                const rangeEnd = rangeStart + limit - 1;
+                const range = `${rangeStart}-${rangeEnd}`;
                 try {
-                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token }) });
+                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token, range }) });
                     if (!res.ok) throw new Error('Erro ao buscar chamados');
-                    setTickets(await res.json());
+                    const data = await res.json();
+                    setTickets(data.tickets);
+                    setTotalTickets(data.totalCount);
                     setSessionToken(token);
-                    await fetchFullSession(token, url);
+                    if(!currentUserData) await fetchFullSession(token, url);
                 } catch (err) { setError(`Sessão expirada ou inválida.`); setSessionToken(null); } 
                 finally { setIsLoading(false); }
-            }, [fetchFullSession, setIsLoading, setTickets, setSessionToken, setError]);
+            }, [fetchFullSession, setIsLoading, setTickets, setSessionToken, setError, setTotalTickets, currentUserData]);
 
             useEffect(() => {
                 const loadSession = async () => {
@@ -209,13 +213,13 @@
                         if (docSnap.exists() && docSnap.data().sessionToken) {
                             const savedConfig = docSnap.data();
                             setGlpiConfig(savedConfig);
-                            await fetchTickets(savedConfig.sessionToken, savedConfig.glpiUrl);
+                            await fetchTickets(savedConfig.sessionToken, savedConfig.glpiUrl, currentPage, itemsPerPage);
                         }
                     } catch (err) { setError("Não foi possível carregar sua sessão salva."); } 
                     finally { setIsLoading(false); }
                 };
                 if(user) loadSession();
-            }, [configDocRef, fetchTickets, setGlpiConfig, setIsLoading, setError, user]);
+            }, [configDocRef, setGlpiConfig, setIsLoading, setError, user]);
             
             const handleConnect = async (authDetails) => {
                 setError(''); setIsLoading(true);
@@ -240,7 +244,20 @@
                 setSessionToken(null); setTickets([]); setSelectedTicketId(null); setCurrentUserData(null);
             };
 
+            const handlePageChange = (newPage) => {
+                setCurrentPage(newPage);
+                fetchTickets(sessionToken, glpiConfig.glpiUrl, newPage, itemsPerPage);
+            };
+
+            const handleItemsPerPageChange = (newLimit) => {
+                const newLimitNumber = parseInt(newLimit, 10);
+                setItemsPerPage(newLimitNumber);
+                setCurrentPage(1);
+                fetchTickets(sessionToken, glpiConfig.glpiUrl, 1, newLimitNumber);
+            };
+
             const filteredTickets = useMemo(() => {
+                if (!tickets) return [];
                 if (!searchTerm) return tickets;
                 return tickets.filter(ticket => 
                     ticket.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -248,9 +265,9 @@
                 );
             }, [tickets, searchTerm]);
             
-            if (isLoading) return <LoadingScreen message="Carregando dados do GLPI..." />;
+            if (isLoading && tickets.length === 0) return <LoadingScreen message="Carregando dados do GLPI..." />;
             if (!sessionToken) return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} />;
-            if (selectedTicketId) return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={() => fetchTickets(sessionToken, glpiConfig.glpiUrl)}/>;
+            if (selectedTicketId) return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={() => fetchTickets(sessionToken, glpiConfig.glpiUrl, currentPage, itemsPerPage)}/>;
             
             return (
                 <div className="animate-fade-in">
@@ -258,22 +275,59 @@
                         <h2 className="text-3xl font-bold text-white flex items-center gap-3"><Ticket className="w-8 h-8" /> Seus Chamados</h2>
                         <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-[#12162d] hover:bg-[#2a2f4c] text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors"><Unplug className="w-4 h-4" />Desconectar</button>
                     </div>
-                    <div className="mb-4">
+                    <div className="relative mb-4">
                         <input 
                             type="text"
-                            placeholder="Pesquisar por ID ou título do chamado..."
+                            placeholder="Pesquisar por ID ou título nos chamados carregados..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#12162d] border border-[#2a2f4c] rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"
+                            className="w-full bg-[#12162d] border border-[#2a2f4c] rounded-lg p-3 pl-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"
                         />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                     </div>
-                    <TicketList tickets={filteredTickets} onSelectTicket={setSelectedTicketId} />
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                        <PerPageSelector value={itemsPerPage} onChange={handleItemsPerPageChange} />
+                        <Pagination currentPage={currentPage} totalItems={totalTickets} itemsPerPage={itemsPerPage} onPageChange={handlePageChange} />
+                    </div>
+
+                    {isLoading ? <LoadingScreen message="Buscando chamados..." /> : <TicketList tickets={filteredTickets} onSelectTicket={setSelectedTicketId} />}
+                </div>
+            );
+        }
+        
+        function PerPageSelector({ value, onChange }) {
+            return (
+                <div className="flex items-center gap-2">
+                    <label htmlFor="items-per-page" className="text-sm text-gray-400">Mostrar:</label>
+                    <select id="items-per-page" value={value} onChange={(e) => onChange(e.target.value)}
+                        className="bg-[#12162d] border border-[#2a2f4c] rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#ff5a00]">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                     <span className="text-sm text-gray-400">por página</span>
+                </div>
+            );
+        }
+
+        function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            if (totalPages <= 1) return null;
+
+            return (
+                <div className="flex items-center gap-2">
+                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}
+                        className="px-3 py-1 rounded-lg bg-[#12162d] hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
+                    <span className="text-sm text-gray-400">Página {currentPage} de {totalPages}</span>
+                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}
+                        className="px-3 py-1 rounded-lg bg-[#12162d] hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
                 </div>
             );
         }
 
         function ConnectionForm({ onConnect, isLoading, error }) {
-            const [username, setUsername] = useState('');
+             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
             const [rememberMe, setRememberMe] = useState(false);
@@ -406,13 +460,28 @@
             );
         }
 
-        const TicketDetailsView = ({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) => {
+        function TicketDetailsView({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) {
             const DetailCard = ({ title, icon: Icon, children }) => (<div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2"><Icon className="w-5 h-5 text-[#ff5a00]" /> {title}</h3>{children}</div>);
             const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
+            
             const AttachmentItem = ({ doc }) => {
-                const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${glpiConfig.glpiUrl}`;
+                const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${encodeURIComponent(glpiConfig.glpiUrl)}`;
                 const isImage = /\.(jpe?g|png|gif|webp)$/i.test(doc.filename);
-                return (<a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#ff5a00] transition-colors">{isImage ? (<img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />) : (<div className="w-12 h-12 flex-shrink-0 bg-[#04050d] rounded-md flex items-center justify-center"><Paperclip className="w-6 h-6 text-gray-400" /></div>)}<div className="overflow-hidden"><p className="text-sm text-white font-medium truncate">{doc.filename}</p><p className="text-xs text-gray-400">{doc.comment || 'Anexo'}</p></div></a>);
+                return (
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#ff5a00] transition-colors">
+                        {isImage ? (
+                            <img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
+                        ) : (
+                            <div className="w-12 h-12 flex-shrink-0 bg-[#04050d] rounded-md flex items-center justify-center">
+                                <Paperclip className="w-6 h-6 text-gray-400" />
+                            </div>
+                        )}
+                        <div className="overflow-hidden">
+                            <p className="text-sm text-white font-medium truncate">{doc.filename}</p>
+                            <p className="text-xs text-gray-400">{doc.comment || 'Anexo'}</p>
+                        </div>
+                    </a>
+                );
             };
             
             const StatusDropdown = () => {
