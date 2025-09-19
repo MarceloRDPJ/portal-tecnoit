@@ -313,7 +313,7 @@
             
             if (isLoading && (!tickets || tickets.length === 0)) return <LoadingScreen message="Carregando dados do GLPI..." />;
             if (!sessionToken) return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} />;
-            if (selectedTicketId) return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={() => fetchTickets(sessionToken, glpiConfig.glpiUrl, currentPage, itemsPerPage)}/>;
+            if (selectedTicketId) return <WorkflowWizard ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={() => fetchTickets(sessionToken, glpiConfig.glpiUrl, currentPage, itemsPerPage)}/>;
             
             return (
                 <div className="animate-fade-in">
@@ -430,6 +430,261 @@
             );
         }
         
+        function ChecklistFormComponent({ ticket, goBack, sessionToken, glpiConfig, currentUserData, refreshTicketsList }) {
+            const [formData, setFormData] = useState({
+                localPonto: ticket.location_name || '',
+                tipoEquipamento: '',
+                numeroSerie: '',
+                fabricanteModelo: '',
+                defeitoReclamado: ticket.name || '',
+                condicoesObservadas: '',
+                severidade: 'Normal',
+                testesRealizados: '',
+                causaProvavel: '',
+                observacoes: '',
+                acaoCorretiva: [],
+                outroAcaoCorretiva: '',
+                resultadoSituacao: 'Normalizado',
+                testesValidacao: [],
+                fotosAnteriores: null,
+                pecasSubstituidas: false,
+                fotosPecas: null,
+                novasPecasSN: ''
+            });
+            const [isSubmitting, setIsSubmitting] = useState(false);
+
+            const handleChange = (e) => {
+                const { name, value, type, checked } = e.target;
+                if (name === "acaoCorretiva" || name === "testesValidacao") {
+                    const currentValues = formData[name];
+                    const newValues = checked ? [...currentValues, value] : currentValues.filter(item => item !== value);
+                    setFormData(prev => ({ ...prev, [name]: newValues }));
+                } else {
+                    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+                }
+            };
+
+            const handleFileChange = (e) => {
+                const { name, files } = e.target;
+                if (files.length > 0) setFormData(prev => ({ ...prev, [name]: files[0] }));
+            };
+
+            const uploadFile = async (file) => {
+                if (!file) return null;
+                const uploadForm = new FormData();
+                uploadForm.append('file', file);
+                uploadForm.append('glpiUrl', glpiConfig.glpiUrl);
+                uploadForm.append('sessionToken', sessionToken);
+
+                const res = await fetch(`/api/proxy/uploadDocument/${ticket.id}`, { method: 'POST', body: uploadForm });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({ message: 'Falha no upload do arquivo' }));
+                    throw new Error(errData.message);
+                }
+                return res.json();
+            };
+
+            const formatChecklistToHTML = (data) => {
+                return `
+                    <h2>Checklist de Atendimento Corretivo</h2>
+                    <p><strong>Chamado:</strong> #${ticket.id} - ${ticket.name}</p>
+                    <hr>
+                    <h3>1. Identificação do Equipamento</h3>
+                    <ul>
+                        <li><strong>Local / Ponto:</strong> ${data.localPonto}</li>
+                        <li><strong>Tipo de equipamento:</strong> ${data.tipoEquipamento}</li>
+                        <li><strong>Número de Série (SN):</strong> ${data.numeroSerie}</li>
+                        <li><strong>Fabricante / Modelo:</strong> ${data.fabricanteModelo}</li>
+                    </ul>
+                    <h3>2. Descrição da Ocorrência</h3>
+                    <ul>
+                        <li><strong>Defeito Reclamado:</strong> ${data.defeitoReclamado}</li>
+                        <li><strong>Condições observadas:</strong> ${data.condicoesObservadas}</li>
+                        <li><strong>Severidade:</strong> ${data.severidade}</li>
+                    </ul>
+                    <h3>3. Análise do Técnico</h3>
+                    <ul>
+                        <li><strong>Testes realizados:</strong> ${data.testesRealizados}</li>
+                        <li><strong>Causa provável:</strong> ${data.causaProvavel}</li>
+                        <li><strong>Observações:</strong> ${data.observacoes}</li>
+                    </ul>
+                    <h3>4. Ação Corretiva Executada</h3>
+                    <ul>
+                        ${data.acaoCorretiva.map(item => `<li>${item}</li>`).join('')}
+                        ${data.outroAcaoCorretiva ? `<li><strong>Outro:</strong> ${data.outroAcaoCorretiva}</li>` : ''}
+                    </ul>
+                    <h3>5. Resultado do atendimento</h3>
+                    <ul>
+                        <li><strong>Situação:</strong> ${data.resultadoSituacao}</li>
+                        <li><strong>Testes de validação:</strong> ${data.testesValidacao.join(', ')}</li>
+                    </ul>
+                    <h3>6. Controle de Peças</h3>
+                    <ul>
+                        <li><strong>Peças Substituídas:</strong> ${data.pecasSubstituidas ? 'Sim' : 'Não'}</li>
+                        ${data.pecasSubstituidas ? `<li><strong>N° de série novas peças:</strong> ${data.novasPecasSN}</li>` : ''}
+                    </ul>
+                    <hr>
+                    <p><em>Checklist preenchido via App de Campo.</em></p>
+                `;
+            };
+
+            const getNewStatus = (resultado) => {
+                switch(resultado) {
+                    case 'Normalizado': return 5; // Solucionado
+                    case 'Parcialmente normalizado': return 4; // Pendente
+                    case 'Não solucionado': return 4; // Pendente
+                    default: return 4; // Pendente as a fallback
+                }
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!confirm("Você tem certeza que deseja enviar este checklist? Esta ação não pode ser desfeita.")) return;
+
+                setIsSubmitting(true);
+                try {
+                    await uploadFile(formData.fotosAnteriores);
+                    await uploadFile(formData.fotosPecas);
+
+                    const followupContent = formatChecklistToHTML(formData);
+                    await fetch(`/api/proxy/addFollowup`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, ticketId: ticket.id, content: followupContent })
+                    });
+
+                    const newStatus = getNewStatus(formData.resultadoSituacao);
+                    await fetch(`/api/proxy/updateTicket/${ticket.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, updateData: { status: newStatus } })
+                    });
+
+                    if (currentUserData && ticket.users_id_tech === 0) {
+                         await fetch(`/api/proxy/updateTicket/${ticket.id}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, updateData: { users_id_tech: currentUserData.glpiID } })
+                        });
+                    }
+
+                    alert('Checklist enviado com sucesso!');
+                    refreshTicketsList();
+                    goBack();
+                } catch (error) {
+                    console.error("Falha ao enviar o checklist:", error);
+                    alert(`Erro ao enviar o checklist: ${error.message}`);
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-gray-50 p-4 rounded-lg mb-6 shadow-sm"><h3 className="font-bold text-lg mb-3 text-gray-800 flex items-center gap-2 border-b border-gray-200 pb-2">{IconComponent && <IconComponent className="w-6 h-6 text-[#0033A0]" />} {title}</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div></div>);
+            const FormInput = ({ label, name, value, onChange, placeholder, colSpan = 'md:col-span-1' }) => (<div className={colSpan}><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder || ''} className="w-full bg-white border border-gray-300 rounded-lg p-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]" /></div>);
+            const RadioGroup = ({ label, name, value, onChange, options, colSpan = 'md:col-span-2' }) => (<div className={colSpan}><label className="block text-sm font-medium text-gray-700 mb-2">{label}</label><div className="flex flex-wrap gap-x-4 gap-y-2">{options.map(opt => (<label key={opt} className="inline-flex items-center"><input type="radio" name={name} value={opt} checked={value === opt} onChange={onChange} className="h-4 w-4 text-[#0033A0] border-gray-300 focus:ring-[#0033A0]"/><span className="ml-2 text-sm text-gray-800">{opt}</span></label>))}</div></div>);
+            const CheckboxGroup = ({ label, name, values, onChange, options, colSpan = 'md:col-span-2' }) => (<div className={colSpan}><label className="block text-sm font-medium text-gray-700 mb-2">{label}</label><div className="flex flex-wrap gap-x-4 gap-y-2">{options.map(opt => (<label key={opt} className="inline-flex items-center"><input type="checkbox" name={name} value={opt} checked={values.includes(opt)} onChange={onChange} className="h-4 w-4 rounded text-[#0033A0] border-gray-300 focus:ring-[#0033A0]"/><span className="ml-2 text-sm text-gray-800">{opt}</span></label>))}</div></div>);
+            const FileInput = ({ label, name, onChange, colSpan = 'md:col-span-1' }) => (<div className={colSpan}><label className="block text-sm font-medium text-gray-700 mb-1">{label}</label><input type="file" name={name} onChange={onChange} accept="image/*" className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/></div>);
+
+            return (
+                <div className="animate-fade-in">
+                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#0033A0] hover:opacity-75 mb-4 font-semibold">{ArrowLeft && <ArrowLeft className="w-4 h-4" />} Voltar</button>
+                    <form onSubmit={handleSubmit}>
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6">
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Checklist de Atendimento Corretivo - Chamado #{ticket.id}</h2>
+
+                            <DetailCard title="1. Identificação do Equipamento" icon={Server}>
+                                <FormInput label="Local / Ponto" name="localPonto" value={formData.localPonto} onChange={handleChange} colSpan="md:col-span-2" />
+                                <RadioGroup label="Tipo de equipamento" name="tipoEquipamento" value={formData.tipoEquipamento} onChange={handleChange} options={['Câmera', 'Nobreak', 'Access Point', 'Controladora', 'Inject PoE', 'Outros']} />
+                                <FormInput label="Número de Série (SN)" name="numeroSerie" value={formData.numeroSerie} onChange={handleChange} />
+                                <FormInput label="Fabricante / Modelo" name="fabricanteModelo" value={formData.fabricanteModelo} onChange={handleChange} />
+                            </DetailCard>
+
+                            <DetailCard title="2. Descrição da Ocorrência" icon={MessageSquare}>
+                                <FormInput label="Defeito Reclamado" name="defeitoReclamado" value={formData.defeitoReclamado} onChange={handleChange} colSpan="md:col-span-2" />
+                                <FormInput label="Condições observadas" name="condicoesObservadas" value={formData.condicoesObservadas} onChange={handleChange} colSpan="md:col-span-2" />
+                                <RadioGroup label="Severidade" name="severidade" value={formData.severidade} onChange={handleChange} options={['Crítica', 'Normal', 'Baixa']} />
+                            </DetailCard>
+
+                            <DetailCard title="3. Análise do Técnico" icon={UserCheck}>
+                                <FormInput label="Testes realizados" name="testesRealizados" value={formData.testesRealizados} onChange={handleChange} colSpan="md:col-span-2" />
+                                <FormInput label="Causa provável" name="causaProvavel" value={formData.causaProvavel} onChange={handleChange} colSpan="md:col-span-2" />
+                                <FormInput label="Observações" name="observacoes" value={formData.observacoes} onChange={handleChange} colSpan="md:col-span-2" />
+                            </DetailCard>
+
+                            <DetailCard title="4. Ação Corretiva Executada" icon={CheckSquare}>
+                                <CheckboxGroup label="Ações" name="acaoCorretiva" values={formData.acaoCorretiva} onChange={handleChange} options={['Verificação de cabeamento/rede', 'Reconfiguração de software/firmware', 'Substituição de componente', 'Substituição de equipamento completo', 'Limpeza/ajuste físico']} />
+                                <FormInput label="Outro" name="outroAcaoCorretiva" value={formData.outroAcaoCorretiva} onChange={handleChange} placeholder="Descreva outra ação realizada" />
+                            </DetailCard>
+
+                            <DetailCard title="5. Resultado do atendimento" icon={FileText}>
+                                <RadioGroup label="Situação" name="resultadoSituacao" value={formData.resultadoSituacao} onChange={handleChange} options={['Normalizado', 'Parcialmente normalizado', 'Não solucionado']} />
+                                <CheckboxGroup label="Testes de validação" name="testesValidacao" values={formData.testesValidacao} onChange={handleChange} options={['Imagem OK', 'Gravação OK', 'Transmissão OK', 'OCR/RF OK']} />
+                            </DetailCard>
+
+                            <DetailCard title="6. Controle de Fotos e Peças" icon={Paperclip}>
+                                <FileInput label="Fotos anteriores anexadas" name="fotosAnteriores" onChange={handleFileChange} />
+                                <div className="md:col-span-1 flex items-end">
+                                    <RadioGroup label="Peças Substituídas?" name="pecasSubstituidas" value={String(formData.pecasSubstituidas)} onChange={(e) => setFormData(prev => ({...prev, pecasSubstituidas: e.target.value === 'true'}))} options={['true', 'false']} />
+                                </div>
+                                {formData.pecasSubstituidas && <>
+                                    <FileInput label="Fotos das Peças anexadas" name="fotosPecas" onChange={handleFileChange} />
+                                    <FormInput label="N° de série (SN) novas peças/equipamentos" name="novasPecasSN" value={formData.novasPecasSN} onChange={handleChange} />
+                                </>}
+                            </DetailCard>
+
+                            <div className="flex justify-end mt-6">
+                                <button type="submit" disabled={isSubmitting} className="bg-[#0033A0] hover:opacity-80 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enviar Checklist e Finalizar Atendimento'}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            );
+        }
+
+        function WorkflowWizard({ ticketId, goBack, sessionToken, glpiConfig, currentUserData, refreshTicketsList }) {
+            const [ticket, setTicket] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [error, setError] = useState('');
+
+            const fetchTicketDetails = useCallback(async () => {
+                if (!ticketId) return;
+                setIsLoading(true); setError('');
+                try {
+                    const proxyUrl = 'https://tecnoit-glpi-proxy.onrender.com/api/proxy';
+                    const body = JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken });
+                    const headers = { 'Content-Type': 'application/json' };
+                    const detailsRes = await fetch(`${proxyUrl}/getTicketDetails/${ticketId}`, { method: 'POST', body, headers });
+                    if (!detailsRes.ok) throw new Error('Falha ao buscar detalhes do chamado para o workflow');
+                    const ticketData = await detailsRes.json();
+                    setTicket(ticketData);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setIsLoading(false);
+                }
+            }, [ticketId, sessionToken, glpiConfig.glpiUrl]);
+
+            useEffect(() => {
+                fetchTicketDetails();
+            }, [fetchTicketDetails]);
+
+            if (isLoading) return <LoadingScreen message="Carregando workflow do chamado..." />;
+            if (error) return <div className="text-center text-red-500 p-4">{error}</div>;
+            if (!ticket) return null;
+
+            // The status map from the TicketList component is:
+            // { 1: "Novo", 2: "Em Atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" }
+            switch (ticket.status) {
+                case 3: // Status 'Planejado'
+                    return <ChecklistFormComponent ticket={ticket} goBack={goBack} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={refreshTicketsList} />;
+                default:
+                    // For any other status, we'll render the original TicketDetail view for now.
+                    return <TicketDetail ticketId={ticketId} goBack={goBack} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={refreshTicketsList} />;
+            }
+        }
+
         function TicketDetail({ ticketId, goBack, sessionToken, glpiConfig, currentUserData, refreshTicketsList }) {
             const [ticket, setTicket] = useState(null);
             const [followups, setFollowups] = useState([]);
