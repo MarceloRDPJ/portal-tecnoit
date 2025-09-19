@@ -44,7 +44,7 @@
 
         // As dependências do Firebase e Lucide serão importadas de um CDN
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck;
+        let LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck, Paperclip;
 
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -60,7 +60,7 @@
                     import(firebaseAuthUrl),
                     import(firestoreUrl),
                 ]).then(([lucide, app, auth, firestore]) => {
-                    ({ LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck } = lucide);
+                    ({ LayoutDashboard, MessageSquare, CheckSquare, Send, Plus, LogIn, User, Trash2, Ticket, Unplug, ArrowLeft, Loader2, Server, Save, MessageSquarePlus, ClipboardCheck, Eye, EyeOff, Calendar, UserCheck, Paperclip } = lucide);
                     window.firebase = { app, auth, firestore };
                     setLibsLoaded(true);
                 }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -186,6 +186,7 @@
         function GlpiTickets({ user, app }) {
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
+            const [glpiConfig, setGlpiConfig] = useState(null);
             const [sessionToken, setSessionToken] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
@@ -199,6 +200,7 @@
                         const docSnap = await getDoc(configDocRef);
                         if (docSnap.exists() && docSnap.data().sessionToken) {
                             const savedConfig = docSnap.data();
+                            setGlpiConfig(savedConfig);
                             await fetchTickets(savedConfig.sessionToken, savedConfig.glpiUrl);
                         }
                     } catch (err) { setError("Não foi possível carregar sua sessão salva."); }
@@ -225,6 +227,7 @@
                     };
                     
                     await setDoc(configDocRef, newConfig, { merge: true });
+                    setGlpiConfig(newConfig);
                     await fetchTickets(data.session_token, authDetails.glpiUrl);
                 } catch (err) { 
                     setError(err.message); 
@@ -259,7 +262,7 @@
             
             if (isLoading) { return <div className="flex justify-center items-center h-full"><Loader2 className="w-8 h-8 animate-spin text-[#ff5a00]" /></div>; }
             if (!sessionToken) { return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} />; }
-            if (selectedTicketId) { return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} />; }
+            if (selectedTicketId) { return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} />; }
             
             return (
                 <div className="animate-fade-in">
@@ -343,7 +346,7 @@
             );
         }
 
-        function TicketDetail({ ticketId, goBack, sessionToken }) {
+        function TicketDetail({ ticketId, goBack, sessionToken, glpiConfig }) {
             const [ticket, setTicket] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
@@ -357,7 +360,7 @@
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 
-                        glpiUrl: 'https://suporte.tecnoit.com.br', 
+                        glpiUrl: glpiConfig.glpiUrl, 
                         sessionToken: sessionToken 
                       })
                   });
@@ -388,6 +391,8 @@
                 </div>
               </div>
             );
+            
+            const hasDocuments = ticket._documents && ticket._documents.length > 0;
 
             return (
                 <div className="animate-fade-in">
@@ -405,6 +410,23 @@
                         <h3 className="font-bold text-lg mb-2 text-white">Descrição</h3>
                         <div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div>
                       </div>
+
+                      {hasDocuments && (
+                        <div className="mt-6">
+                          <h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2"><Paperclip className="w-5 h-5" /> Anexos</h3>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {ticket._documents.map(doc => {
+                                const imageUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${glpiConfig.glpiUrl}`;
+                                return (
+                                  <a key={doc.id} href={imageUrl} target="_blank" rel="noopener noreferrer" className="block border-2 border-[#2a2f4c] rounded-lg overflow-hidden hover:border-[#ff5a00] transition-colors">
+                                    <img src={imageUrl} alt={doc.filename} className="w-full h-32 object-cover" />
+                                    <p className="text-xs text-center p-2 bg-[#04050d] text-gray-300 truncate">{doc.filename}</p>
+                                  </a>
+                                );
+                            })}
+                          </div>
+                        </div>
+                      )}
                   </div>
                 </div>
             );
