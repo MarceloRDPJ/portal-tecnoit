@@ -13,6 +13,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <meta name="theme-color" content="#0033A0">
+    <link rel="apple-touch-icon" href="assets/logo.png">
     <style>
         body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .tab-button-active { background-color: #0033A0; color: white; }
@@ -145,7 +147,7 @@
 
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
-            return (<header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4"><h2 className="text-xl font-semibold text-gray-900">{welcomeMessage}</h2></header>);
+            return (<header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4"><h2 className="text-lg md:text-xl font-semibold text-gray-900">{welcomeMessage}</h2></header>);
         };
 
         function ContentArea({ page, user, app }) {
@@ -418,7 +420,7 @@
             
             const TabButton = ({ id, label, icon: IconComponent }) => (
                 <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-gray-200'}`}>
-                    {IconComponent && <IconComponent className="w-4 h-4 md:w-5 md:h-5" />} <span className="hidden sm:inline">{label}</span>
+                    {IconComponent && <IconComponent className="w-4 h-4 md:w-5 md:h-5" />} <span className="hidden xs:inline sm:inline">{label}</span>
                 </button>
             );
 
@@ -568,6 +570,16 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AppWrapper />);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
