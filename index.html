@@ -301,7 +301,7 @@
                 );
             }, [tickets, searchTerm]);
             
-            if (isLoading && tickets.length === 0) return <LoadingScreen message="Carregando dados do GLPI..." />;
+            if (isLoading && (!tickets || tickets.length === 0)) return <LoadingScreen message="Carregando dados do GLPI..." />;
             if (!sessionToken) return <ConnectionForm onConnect={handleConnect} isLoading={isLoading} error={error} />;
             if (selectedTicketId) return <TicketDetail ticketId={selectedTicketId} goBack={() => setSelectedTicketId(null)} sessionToken={sessionToken} glpiConfig={glpiConfig} currentUserData={currentUserData} refreshTicketsList={() => fetchTickets(sessionToken, glpiConfig.glpiUrl, currentPage, itemsPerPage)}/>;
             
@@ -421,7 +421,6 @@
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
             const [activeTab, setActiveTab] = useState('details');
-
             const fetchAllTicketData = useCallback(async () => {
                 setIsLoading(true); setError('');
                 try {
@@ -494,7 +493,6 @@
         function TicketDetailsView({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) {
             const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#0033A0] dark:text-[#ff5a00]" />} {title}</h3>{children}</div>);
             const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-600 dark:text-gray-400">{label}</p><p className="text-gray-900 dark:text-white">{value || 'Não informado'}</p></div>);
-            
             const AttachmentItem = ({ doc }) => {
                 const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${encodeURIComponent(glpiConfig.glpiUrl)}`;
                 const isImage = /\.(jpe?g|png|gif|webp)$/i.test(doc.filename);
@@ -514,13 +512,11 @@
                     </a>
                 );
             };
-            
             const StatusDropdown = () => {
                 const [isOpen, setIsOpen] = useState(false);
                 const statusOptions = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
                 return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2f4c] hover:text-gray-900 dark:hover:text-white">{name}</a>))}</div></div>)}</div>);
             };
-
             return (
                 <>
                     <DetailCard title="Informações Principais" icon={FileText}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><InfoItem label="Solicitante" value={ticket['12']} /><InfoItem label="Técnico Atribuído" value={ticket['5']} /><InfoItem label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} /></div></DetailCard>
@@ -559,7 +555,6 @@
             const [duration, setDuration] = useState('');
             const [content, setContent] = useState('');
             const [isSubmitting, setIsSubmitting] = useState(false);
-
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 if (!content.trim() || !duration) return;
@@ -579,7 +574,6 @@
                     setIsSubmitting(false);
                 }
             };
-
             return (
                 <div>
                     {items.length > 0 ? (
