@@ -304,10 +304,10 @@
             };
             
             const categories = useMemo(() => {
+                const statusMap = { 1: "Novo", 2: "Em Atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
                 if (!tickets) return [];
-                // GLPI API can be customized. Assuming category name is in 'itilcategories_name'.
-                const categoryNames = tickets.map(t => t.itilcategories_name).filter(Boolean);
-                return [...new Set(categoryNames)];
+                const statusNames = [...new Set(tickets.map(t => statusMap[t.status]).filter(Boolean))];
+                return statusNames;
             }, [tickets]);
 
             const filteredTickets = useMemo(() => {
@@ -322,8 +322,11 @@
                 }
 
                 if (selectedCategory) {
-                    // Assuming the category name is in 'itilcategories_name'. This may need adjustment.
-                    filtered = filtered.filter(ticket => ticket.itilcategories_name === selectedCategory);
+                    const statusMap = { 1: "Novo", 2: "Em Atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
+                    const selectedStatusId = Object.keys(statusMap).find(key => statusMap[key] === selectedCategory);
+                    if (selectedStatusId) {
+                        filtered = filtered.filter(ticket => String(ticket.status) === selectedStatusId);
+                    }
                 }
 
                 return filtered;
@@ -357,7 +360,7 @@
                         </div>
                         <div className="flex-shrink-0">
                             <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full h-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]">
-                                <option value="">Todas as Categorias</option>
+                                <option value="">Todos os Status</option>
                                 {categories.map(category => (
                                     <option key={category} value={category}>{category}</option>
                                 ))}
