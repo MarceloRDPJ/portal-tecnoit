@@ -28,7 +28,7 @@
         .light ::-webkit-scrollbar-thumb:hover { background: #0033A0; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 dark:bg-[#060818] dark:text-gray-200">
+<body>
     <div id="root"></div>
 
     <script>
@@ -62,6 +62,9 @@
                 root.classList.remove('light', 'dark');
                 root.classList.add(theme);
                 localStorage.setItem('theme', theme);
+                
+                document.body.className = `font-poppins antialiased transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-[#060818] text-gray-200'}`;
+
             }, [theme]);
 
             const toggleTheme = () => {
