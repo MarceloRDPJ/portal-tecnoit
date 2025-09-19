@@ -131,7 +131,10 @@
                 <nav className="w-16 md:w-64 bg-[#04050d] p-2 md:p-4 flex flex-col border-r border-[#2a2f4c]">
                     <div className="flex items-center mb-10"><img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" /><h1 className="text-2xl font-bold ml-3 hidden md:block text-white">TecnoiT</h1></div>
                     <ul className="space-y-2">
-                        {navItems.map(item => <li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#ff5a00] text-white' : 'hover:bg-[#12162d] text-gray-400 hover:text-white'}`}><item.icon className="w-6 h-6" /><span className="ml-4 hidden md:block">{item.label}</span></button></li>)}
+                        {navItems.map(item => {
+                            const Icon = item.icon;
+                            return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#ff5a00] text-white' : 'hover:bg-[#12162d] text-gray-400 hover:text-white'}`}>{Icon && <Icon className="w-6 h-6" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
+                        })}
                     </ul>
                 </nav>
             );
@@ -157,7 +160,7 @@
             const ProfileItem = ({ label, value }) => (<div className="py-2"><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
             return (
                  <div className="animate-fade-in max-w-2xl mx-auto">
-                    <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3"><User className="w-8 h-8" /> Meu Perfil</h2>
+                    <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3">{User && <User className="w-8 h-8" />} Meu Perfil</h2>
                     <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6 divide-y divide-[#2a2f4c]">
                         <ProfileItem label="Nome Completo" value={`${currentUserData.glpifirstname} ${currentUserData.glpirealname}`} />
                         <ProfileItem label="E-mail" value={currentUserData.glpi_current_entity_email} />
@@ -272,8 +275,8 @@
             return (
                 <div className="animate-fade-in">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-3xl font-bold text-white flex items-center gap-3"><Ticket className="w-8 h-8" /> Seus Chamados</h2>
-                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-[#12162d] hover:bg-[#2a2f4c] text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors"><Unplug className="w-4 h-4" />Desconectar</button>
+                        <h2 className="text-3xl font-bold text-white flex items-center gap-3">{Ticket && <Ticket className="w-8 h-8" />} Seus Chamados</h2>
+                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-[#12162d] hover:bg-[#2a2f4c] text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
                     </div>
                     <div className="relative mb-4">
                         <input 
@@ -283,7 +286,7 @@
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-[#12162d] border border-[#2a2f4c] rounded-lg p-3 pl-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"
                         />
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                        {Search && <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
                     </div>
                     
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
@@ -348,10 +351,10 @@
 
             return (
                 <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl animate-fade-in">
-                    <div className="text-center mb-6"><Ticket className="w-12 h-12 mx-auto text-[#ff5a00]" /><h2 className="text-2xl font-bold mt-4 text-white">Conectar ao GLPI</h2></div>
+                    <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#ff5a00]" />}<h2 className="text-2xl font-bold mt-4 text-white">Conectar ao GLPI</h2></div>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div><label className="text-sm font-medium text-gray-300">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
-                        <div className="relative"><label className="text-sm font-medium text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-white">{showPassword ? <EyeOff className="h-5 w-5"/> : <Eye className="h-5 w-5"/>}</button></div>
+                        <div className="relative"><label className="text-sm font-medium text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-white">{showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}</button></div>
                         <div className="flex items-center"><input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-gray-600 bg-[#060818] text-[#ff5a00] focus:ring-[#ff5a00] focus:ring-offset-0" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">Lembrar-me</label></div>
                         {error && <p className="text-sm text-red-400 text-center">{error}</p>}
                         <button type="submit" disabled={isLoading} className="w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Conectar'}</button>
@@ -435,15 +438,15 @@
             if (error) return <div className="text-center text-red-400 p-4">{error}</div>;
             if (!ticket) return null;
             
-            const TabButton = ({ id, label, icon: Icon }) => (
+            const TabButton = ({ id, label, icon: IconComponent }) => (
                 <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-[#12162d]'}`}>
-                    <Icon className="w-4 h-4 md:w-5 md:h-5" /> <span className="hidden sm:inline">{label}</span>
+                    {IconComponent && <IconComponent className="w-4 h-4 md:w-5 md:h-5" />} <span className="hidden sm:inline">{label}</span>
                 </button>
             );
 
             return (
                 <div className="animate-fade-in">
-                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#ff5a00] hover:text-orange-400 mb-4"><ArrowLeft className="w-4 h-4" />Voltar</button>
+                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#ff5a00] hover:text-orange-400 mb-4">{ArrowLeft && <ArrowLeft className="w-4 h-4" />}Voltar</button>
                     <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-4 md:p-6">
                         <h2 className="text-xl md:text-2xl font-bold text-white mb-4">#{ticket.id} - {ticket.name}</h2>
                         <div className="flex border-b border-[#2a2f4c] mb-4">
@@ -461,7 +464,7 @@
         }
 
         function TicketDetailsView({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) {
-            const DetailCard = ({ title, icon: Icon, children }) => (<div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2"><Icon className="w-5 h-5 text-[#ff5a00]" /> {title}</h3>{children}</div>);
+            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#ff5a00]" />} {title}</h3>{children}</div>);
             const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
             
             const AttachmentItem = ({ doc }) => {
@@ -473,7 +476,7 @@
                             <img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
                         ) : (
                             <div className="w-12 h-12 flex-shrink-0 bg-[#04050d] rounded-md flex items-center justify-center">
-                                <Paperclip className="w-6 h-6 text-gray-400" />
+                                {Paperclip && <Paperclip className="w-6 h-6 text-gray-400" />}
                             </div>
                         )}
                         <div className="overflow-hidden">
@@ -487,7 +490,7 @@
             const StatusDropdown = () => {
                 const [isOpen, setIsOpen] = useState(false);
                 const statusOptions = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2a2f4c] hover:text-white">{name}</a>))}</div></div>)}</div>);
+                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none">{Check && <Check className="w-5 h-5 mr-2" />} Alterar Status {ChevronDown && <ChevronDown className="-mr-1 ml-2 h-5 w-5" />}</button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2a2f4c] hover:text-white">{name}</a>))}</div></div>)}</div>);
             };
 
             return (
@@ -495,7 +498,7 @@
                     <DetailCard title="Informações Principais" icon={FileText}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><InfoItem label="Solicitante" value={ticket['12']} /><InfoItem label="Técnico Atribuído" value={ticket['5']} /><InfoItem label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} /></div></DetailCard>
                     <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
                     {ticket._documents && ticket._documents.length > 0 && (<DetailCard title="Anexos" icon={Paperclip}><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{ticket._documents.map(doc => <AttachmentItem key={doc.id} doc={doc} />)}</div></DetailCard>)}
-                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button><StatusDropdown /></div>
+                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm">{UserCheck && <UserCheck className="w-5 h-5" />} Atribuir a mim</button><StatusDropdown /></div>
                 </>
             );
         };
@@ -518,7 +521,7 @@
                     {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-400 py-4">Nenhum item encontrado.</p>)}
                     <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-[#2a2f4c]">
                         <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"></textarea>
-                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#ff5a00] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-orange-800 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5"/> Adicionar</>}</button>
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#ff5a00] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-orange-800 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar</>}</button>
                     </form>
                 </div>
             );
