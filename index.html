@@ -42,7 +42,7 @@
         const { useState, useEffect, useMemo, useCallback } = React;
 
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search;
+        let User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search, CheckSquare;
 
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -53,7 +53,7 @@
             useEffect(() => {
                 Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
                     .then(([lucide, app, auth, firestore]) => {
-                        ({ User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search } = lucide);
+                        ({ User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquarePlus, Send, Search, CheckSquare } = lucide);
                         window.firebase = { app, auth, firestore };
                         setLibsLoaded(true);
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -327,7 +327,7 @@
         }
 
         function ConnectionForm({ onConnect, isLoading, error }) {
-             const [username, setUsername] = useState('');
+            const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
             const [rememberMe, setRememberMe] = useState(false);
