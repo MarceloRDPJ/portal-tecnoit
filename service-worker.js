@@ -1,16 +1,16 @@
-const CACHE_NAME = 'tecnoit-portal-v2'; // Bump version to ensure update
+const CACHE_NAME = 'tecnoit-portal-v3'; // Bump version again
 const urlsToCache = [
-  '/',
-  'index.html',
-  'manifest.json', // Add manifest
-  'assets/logo.png', // Add logo
+  './',
+  './index.html',
+  './manifest.json',
+  './assets/logo.png',
   'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
   'https://unpkg.com/react@18/umd/react.development.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
   'https://unpkg.com/@babel/standalone/babel.min.js',
   'https://cdn.skypack.dev/lucide-react',
-  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js', // Pre-cache firebase libs
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
 ];
@@ -19,7 +19,6 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('Opened cache');
       return cache.addAll(urlsToCache);
     })
   );
@@ -43,46 +42,35 @@ self.addEventListener('activate', event => {
 
 // Fetch event: serve from cache first, then network
 self.addEventListener('fetch', event => {
-  // We only want to cache GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then(response => {
-      // Cache hit - return response
       if (response) {
-        return response;
+        return response; // Cache hit
       }
 
-      // Not in cache - fetch from network
-      return fetch(event.request).then(
-        (networkResponse) => {
-          // Check if we received a valid response
-          if(!networkResponse || (networkResponse.status !== 200 && networkResponse.status !== 0) ) {
-            return networkResponse;
+      // Not in cache, fetch from network
+      return fetch(event.request).then(networkResponse => {
+          if (!networkResponse || networkResponse.status !== 200) {
+              if(networkResponse.type === 'opaque') {
+                  // Opaque responses are for cross-origin requests. We can't see the status.
+                  // We'll cache them to allow offline access to CDN scripts.
+              } else {
+                  return networkResponse;
+              }
           }
 
-          // IMPORTANT: Clone the response. A response is a stream
-          // and because we want the browser to consume the response
-          // as well as the cache consuming the response, we need
-          // to clone it so we have two streams.
           const responseToCache = networkResponse.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => {
+          caches.open(CACHE_NAME).then(cache => {
               // We don't cache API calls to the GLPI proxy
-              if(event.request.url.indexOf('/api/proxy/') === -1) {
-                 cache.put(event.request, responseToCache);
+              if (event.request.url.indexOf('/api/proxy/') === -1) {
+                  cache.put(event.request, responseToCache);
               }
-            });
-
+          });
           return networkResponse;
-        }
-      ).catch(err => {
-        // Network request failed, try to get it from the cache.
-        // This part is redundant if we always check cache first, but good for safety.
-        return caches.match(event.request);
       });
     })
   );
