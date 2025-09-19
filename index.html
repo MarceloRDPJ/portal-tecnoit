@@ -14,21 +14,17 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transition: background-color 0.3s ease, color 0.3s ease; }
-        .tab-button-active { background-color: #ff5a00; color: white; }
-        .dark .tab-button-active { background-color: #ff5a00; }
-        .light .tab-button-active { background-color: #0033A0; }
+        body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .tab-button-active { background-color: #0033A0; color: white; }
+        .tab-button { color: #4b5563; }
 
         ::-webkit-scrollbar { width: 8px; }
-        .dark ::-webkit-scrollbar-track { background: #04050d; }
-        .dark ::-webkit-scrollbar-thumb { background: #2a2f4c; }
-        .dark ::-webkit-scrollbar-thumb:hover { background: #ff5a00; }
-        .light ::-webkit-scrollbar-track { background: #e0e0e0; }
-        .light ::-webkit-scrollbar-thumb { background: #a0a0a0; }
-        .light ::-webkit-scrollbar-thumb:hover { background: #0033A0; }
+        ::-webkit-scrollbar-track { background: #e0e0e0; }
+        ::-webkit-scrollbar-thumb { background: #a0a0a0; }
+        ::-webkit-scrollbar-thumb:hover { background: #0033A0; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-800">
     <div id="root"></div>
 
     <script>
@@ -53,28 +49,6 @@
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         const firestoreUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
-        const ThemeContext = createContext();
-        const ThemeProvider = ({ children }) => {
-            const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
-
-            useEffect(() => {
-                const root = window.document.documentElement;
-                root.classList.remove('light', 'dark');
-                root.classList.add(theme);
-                localStorage.setItem('theme', theme);
-                
-                document.body.className = `font-poppins antialiased transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-[#060818] text-gray-200'}`;
-
-            }, [theme]);
-
-            const toggleTheme = () => {
-                setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
-            };
-
-            return (<ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>);
-        };
-        const useTheme = () => useContext(ThemeContext);
-
         function AppWrapper() {
             const [libsLoaded, setLibsLoaded] = useState(false);
             useEffect(() => {
@@ -86,11 +60,8 @@
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
             }, []);
 
-            return (
-                <ThemeProvider>
-                    {libsLoaded ? <App /> : <LoadingScreen message="Carregando bibliotecas..." />}
-                </ThemeProvider>
-            );
+            if (!libsLoaded) return <LoadingScreen message="Carregando bibliotecas..." />;
+            return <App />;
         }
         
         function App() {
@@ -144,39 +115,30 @@
         const LoadingScreen = ({ message }) => (
              <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
-                    <svg className="w-16 h-16 animate-spin mx-auto text-[#0033A0] dark:text-[#ff5a00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-16 h-16 animate-spin mx-auto text-[#0033A0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <p className="mt-4 text-xl">{message}</p>
+                    <p className="mt-4 text-xl text-gray-700">{message}</p>
                 </div>
             </div>
         );
 
         function Sidebar({ setPage, currentPage }) {
-            const { theme, toggleTheme } = useTheme();
             const navItems = [ { id: 'glpi', icon: Ticket, label: 'Chamados' }, { id: 'profile', icon: User, label: 'Meu Perfil' } ];
             return (
-                <nav className="w-16 md:w-64 bg-gray-100 dark:bg-[#04050d] p-2 md:p-4 flex flex-col justify-between border-r border-gray-200 dark:border-[#2a2f4c]">
+                <nav className="w-16 md:w-64 bg-gray-100 p-2 md:p-4 flex flex-col justify-between border-r border-gray-200">
                     <div>
                         <div className="flex items-center mb-10">
                             <img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg flex-shrink-0" />
-                            <h1 className="text-2xl font-bold ml-3 hidden md:block text-gray-900 dark:text-white">TecnoiT</h1>
+                            <h1 className="text-2xl font-bold ml-3 hidden md:block text-gray-900">TecnoiT</h1>
                         </div>
                         <ul className="space-y-2">
                             {navItems.map(item => {
                                 const Icon = item.icon;
-                                return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#0033A0] dark:bg-[#ff5a00] text-white' : 'hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>{Icon && <Icon className="w-6 h-6 flex-shrink-0" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
+                                return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#0033A0] text-white' : 'hover:bg-gray-200 text-gray-500 hover:text-gray-900'}`}>{Icon && <Icon className="w-6 h-6 flex-shrink-0" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
                             })}
                         </ul>
-                    </div>
-                    <div className="pb-4">
-                         <button onClick={toggleTheme} className="flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                            {theme === 'light' ? (Moon && <Moon className="w-6 h-6 flex-shrink-0"/>) : (Sun && <Sun className="w-6 h-6 flex-shrink-0" />)}
-                            <span className="ml-4 hidden md:block">
-                                {theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
-                            </span>
-                        </button>
                     </div>
                 </nav>
             );
@@ -184,7 +146,7 @@
 
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
-            return (<header className="bg-white/80 dark:bg-[#04050d]/50 backdrop-blur-sm border-b border-gray-200 dark:border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-gray-900 dark:text-white">{welcomeMessage}</h2></header>);
+            return (<header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4"><h2 className="text-xl font-semibold text-gray-900">{welcomeMessage}</h2></header>);
         };
 
         function ContentArea({ page, user, app }) {
@@ -197,13 +159,13 @@
         
         function UserProfile() {
             const { currentUserData, sessionToken } = useGlpi();
-            if (!sessionToken) return <div className="p-4 text-center text-gray-500 dark:text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
+            if (!sessionToken) return <div className="p-4 text-center text-gray-500">Você precisa estar conectado para ver seu perfil.</div>;
             if (!currentUserData) return <LoadingScreen message="Carregando perfil..." />;
-            const ProfileItem = ({ label, value }) => (<div className="py-3"><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{label}</p><p className="text-lg text-gray-900 dark:text-white">{value || 'Não informado'}</p></div>);
+            const ProfileItem = ({ label, value }) => (<div className="py-3"><p className="text-sm font-semibold text-gray-500">{label}</p><p className="text-lg text-gray-900">{value || 'Não informado'}</p></div>);
             return (
                  <div className="animate-fade-in max-w-2xl mx-auto">
-                    <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">{User && <User className="w-8 h-8 text-[#0033A0] dark:text-[#ff5a00]" />} Meu Perfil</h2>
-                    <div className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-6 divide-y divide-gray-200 dark:divide-[#2a2f4c]">
+                    <h2 className="text-3xl font-bold mb-6 text-gray-900 flex items-center gap-3">{User && <User className="w-8 h-8 text-[#0033A0]" />} Meu Perfil</h2>
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 divide-y divide-gray-200">
                         <ProfileItem label="Nome Completo" value={`${currentUserData.glpifirstname} ${currentUserData.glpirealname}`} />
                         <ProfileItem label="E-mail" value={currentUserData.glpi_current_entity_email} />
                         <ProfileItem label="Perfil Ativo" value={currentUserData.glpiactiveprofile?.name} />
@@ -304,11 +266,11 @@
             return (
                 <div className="animate-fade-in">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">{Ticket && <Ticket className="w-8 h-8 text-[#0033A0] dark:text-[#ff5a00]" />} Seus Chamados</h2>
-                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
+                        <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">{Ticket && <Ticket className="w-8 h-8 text-[#0033A0]" />} Seus Chamados</h2>
+                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
                     </div>
                     <div className="relative mb-4">
-                        <input type="text" placeholder="Pesquisar por ID ou título nos chamados carregados..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"/>
+                        <input type="text" placeholder="Pesquisar por ID ou título nos chamados carregados..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border border-gray-300 rounded-lg p-3 pl-10 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0033A0]"/>
                         {Search && <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
                     </div>
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
@@ -323,14 +285,14 @@
         function PerPageSelector({ value, onChange }) {
             return (
                 <div className="flex items-center gap-2">
-                    <label htmlFor="items-per-page" className="text-sm text-gray-500 dark:text-gray-400">Mostrar:</label>
+                    <label htmlFor="items-per-page" className="text-sm text-gray-500">Mostrar:</label>
                     <select id="items-per-page" value={value} onChange={(e) => onChange(e.target.value)}
-                        className="bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]">
+                        className="bg-white border border-gray-300 rounded-lg p-2 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-[#0033A0]">
                         <option value="50">50</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
                     </select>
-                     <span className="text-sm text-gray-500 dark:text-gray-400">por página</span>
+                     <span className="text-sm text-gray-500">por página</span>
                 </div>
             );
         }
@@ -340,9 +302,9 @@
             if (totalPages <= 1) return null;
             return (
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Página {currentPage} de {totalPages}</span>
-                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
+                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
+                    <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>
+                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
                 </div>
             );
         }
@@ -365,14 +327,14 @@
             }, []);
             const handleSubmit = (e) => { e.preventDefault(); onConnect({ glpiUrl: 'https://suporte.tecnoit.com.br', username, password, rememberMe }); };
             return (
-                <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-gray-50 dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl animate-fade-in">
-                    <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#0033A0] dark:text-[#ff5a00]" />}<h2 className="text-2xl font-bold mt-4 text-gray-900 dark:text-white">Conectar ao GLPI</h2></div>
+                <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-gray-50 border border-gray-200 rounded-xl animate-fade-in">
+                    <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#0033A0]" />}<h2 className="text-2xl font-bold mt-4 text-gray-900">Conectar ao GLPI</h2></div>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div><label className="text-sm font-medium text-gray-700 dark:text-gray-300">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" /></div>
-                        <div className="relative"><label className="text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-gray-900 dark:hover:text-white">{showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}</button></div>
-                        <div className="flex items-center"><input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-gray-400 dark:border-gray-600 bg-gray-200 dark:bg-[#060818] text-[#0033A0] dark:text-[#ff5a00] focus:ring-[#0033A0] dark:focus:ring-[#ff5a00] focus:ring-offset-0" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">Lembrar-me</label></div>
+                        <div><label className="text-sm font-medium text-gray-700">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]" /></div>
+                        <div className="relative"><label className="text-sm font-medium text-gray-700">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-gray-900">{showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}</button></div>
+                        <div className="flex items-center"><input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-gray-400 bg-gray-200 text-[#0033A0] focus:ring-[#0033A0] focus:ring-offset-0" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">Lembrar-me</label></div>
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                        <button type="submit" disabled={isLoading} className="w-full bg-[#0033A0] dark:bg-[#ff5a00] hover:bg-blue-800 dark:hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Conectar'}</button>
+                        <button type="submit" disabled={isLoading} className="w-full bg-[#0033A0] hover:bg-blue-800 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Conectar'}</button>
                     </form>
                 </div>
             );
@@ -381,25 +343,21 @@
         function TicketList({ tickets, onSelectTicket }) {
             const StatusBadge = ({ status }) => {
                 const statusMap = { 1: "Novo", 2: "Em Atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-                const colorMap = {
-                    dark: { 1: 'bg-blue-500/20 text-blue-400', 2: 'bg-yellow-500/20 text-yellow-400', 3: 'bg-orange-500/20 text-orange-400', 4: 'bg-purple-500/20 text-purple-400', 5: 'bg-green-500/20 text-green-400', 6: 'bg-gray-500/20 text-gray-400' },
-                    light: { 1: 'bg-blue-100 text-blue-800', 2: 'bg-yellow-100 text-yellow-800', 3: 'bg-orange-100 text-orange-800', 4: 'bg-purple-100 text-purple-800', 5: 'bg-green-100 text-green-800', 6: 'bg-gray-200 text-gray-800' }
-                };
-                const { theme } = useTheme();
-                return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorMap[theme][status] || colorMap[theme][6]}`}>{statusMap[status] || "Desconhecido"}</span>;
+                const colorMap = { 1: 'bg-blue-100 text-blue-800', 2: 'bg-yellow-100 text-yellow-800', 3: 'bg-orange-100 text-orange-800', 4: 'bg-purple-100 text-purple-800', 5: 'bg-green-100 text-green-800', 6: 'bg-gray-200 text-gray-800' };
+                return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorMap[status] || colorMap[6]}`}>{statusMap[status] || "Desconhecido"}</span>;
             };
         
-            if (!Array.isArray(tickets) || tickets.length === 0) { return <div className="text-center py-10 text-gray-500 dark:text-gray-400">Nenhum chamado para o filtro atual.</div>; }
+            if (!Array.isArray(tickets) || tickets.length === 0) { return <div className="text-center py-10 text-gray-500">Nenhum chamado para o filtro atual.</div>; }
             
             return (
                 <div className="space-y-4">
                     {tickets.map(ticket => (
-                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-all cursor-pointer">
+                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#0033A0] transition-all cursor-pointer">
                             <div className="flex justify-between items-start gap-4">
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-2 pr-2 flex-1">{`#${ticket.id} - ${ticket.name}`}</h3>
+                                <h3 className="font-bold text-gray-900 mb-2 pr-2 flex-1">{`#${ticket.id} - ${ticket.name}`}</h3>
                                 <div className="flex-shrink-0"><StatusBadge status={ticket.status} /></div>
                             </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2 border-t border-gray-100 dark:border-gray-700 pt-2">
+                            <div className="text-sm text-gray-600 flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2 border-t border-gray-100 pt-2">
                                 <span><strong className="font-semibold">Criado em:</strong> {new Date(ticket.date).toLocaleDateString('pt-BR')}</span>
                                 <span><strong className="font-semibold">Prioridade:</strong> {ticket.priority}</span>
                             </div>
@@ -460,17 +418,17 @@
             if (!ticket) return null;
             
             const TabButton = ({ id, label, icon: IconComponent }) => (
-                <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-gray-200 dark:hover:bg-[#12162d]'}`}>
+                <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-gray-200'}`}>
                     {IconComponent && <IconComponent className="w-4 h-4 md:w-5 md:h-5" />} <span className="hidden sm:inline">{label}</span>
                 </button>
             );
 
             return (
                 <div className="animate-fade-in">
-                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#0033A0] dark:text-[#ff5a00] hover:opacity-75 mb-4">{ArrowLeft && <ArrowLeft className="w-4 h-4" />}Voltar</button>
-                    <div className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 md:p-6">
-                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4">#{ticket.id} - {ticket.name}</h2>
-                        <div className="flex border-b border-gray-200 dark:border-[#2a2f4c] mb-4">
+                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#0033A0] hover:opacity-75 mb-4">{ArrowLeft && <ArrowLeft className="w-4 h-4" />}Voltar</button>
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">#{ticket.id} - {ticket.name}</h2>
+                        <div className="flex border-b border-gray-200 mb-4">
                            <TabButton id="details" label="Detalhes" icon={FileText} />
                            <TabButton id="followups" label="Acompanhamentos" icon={MessageSquarePlus} />
                            <TabButton id="solutions" label="Soluções" icon={CheckSquare} />
@@ -487,23 +445,23 @@
         }
 
         function TicketDetailsView({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) {
-            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#0033A0] dark:text-[#ff5a00]" />} {title}</h3>{children}</div>);
-            const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-600 dark:text-gray-400">{label}</p><p className="text-gray-900 dark:text-white">{value || 'Não informado'}</p></div>);
+            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-gray-50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-gray-900 flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#0033A0]" />} {title}</h3>{children}</div>);
+            const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-600">{label}</p><p className="text-gray-900">{value || 'Não informado'}</p></div>);
             const AttachmentItem = ({ doc }) => {
                 const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${encodeURIComponent(glpiConfig.glpiUrl)}`;
                 const isImage = /\.(jpe?g|png|gif|webp)$/i.test(doc.filename);
                 return (
-                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-gray-100 dark:bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-colors">
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-gray-100 p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#0033A0] transition-colors">
                         {isImage ? (
                             <img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
                         ) : (
-                            <div className="w-12 h-12 flex-shrink-0 bg-gray-200 dark:bg-[#04050d] rounded-md flex items-center justify-center">
-                                {Paperclip && <Paperclip className="w-6 h-6 text-gray-500 dark:text-gray-400" />}
+                            <div className="w-12 h-12 flex-shrink-0 bg-gray-200 rounded-md flex items-center justify-center">
+                                {Paperclip && <Paperclip className="w-6 h-6 text-gray-500" />}
                             </div>
                         )}
                         <div className="overflow-hidden">
-                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{doc.filename}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{doc.comment || 'Anexo'}</p>
+                            <p className="text-sm text-gray-900 font-medium truncate">{doc.filename}</p>
+                            <p className="text-xs text-gray-500">{doc.comment || 'Anexo'}</p>
                         </div>
                     </a>
                 );
@@ -511,14 +469,14 @@
             const StatusDropdown = () => {
                 const [isOpen, setIsOpen] = useState(false);
                 const statusOptions = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2f4c] hover:text-gray-900 dark:hover:text-white">{name}</a>))}</div></div>)}</div>);
+                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">{name}</a>))}</div></div>)}</div>);
             };
             return (
                 <>
                     <DetailCard title="Informações Principais" icon={FileText}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><InfoItem label="Solicitante" value={ticket['12']} /><InfoItem label="Técnico Atribuído" value={ticket['5']} /><InfoItem label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} /></div></DetailCard>
-                    <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
+                    <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-700 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
                     {ticket._documents && ticket._documents.length > 0 && (<DetailCard title="Anexos" icon={Paperclip}><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{ticket._documents.map(doc => <AttachmentItem key={doc.id} doc={doc} />)}</div></DetailCard>)}
-                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-gray-200 dark:border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button><StatusDropdown /></div>
+                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-gray-200"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button><StatusDropdown /></div>
                 </>
             );
         };
@@ -538,10 +496,10 @@
             const placeholder = type === 'ITILFollowup' ? 'Escreva um novo acompanhamento...' : 'Descreva a solução...';
             return (
                 <div>
-                    {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-500 dark:text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-gray-900 dark:text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum item encontrado.</p>)}
-                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200 dark:border-[#2a2f4c]">
-                        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"></textarea>
-                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] dark:bg-[#ff5a00] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar</>}</button>
+                    {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-gray-50 p-4 rounded-lg"><p className="text-sm text-gray-500">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-gray-900 mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-500 py-4">Nenhum item encontrado.</p>)}
+                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200">
+                        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]"></textarea>
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar</>}</button>
                     </form>
                 </div>
             );
@@ -575,36 +533,35 @@
                     {items.length > 0 ? (
                         <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
                             {items.map(item => (
-                                <div key={item.id} className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg">
-                                    <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                                <div key={item.id} className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="flex justify-between items-center text-sm text-gray-500">
                                         <span>{new Date(item.date).toLocaleString('pt-BR')}</span>
                                         <span className="font-semibold">{Math.round(item.actiontime / 60)} min</span>
                                     </div>
-                                    <p className="text-gray-900 dark:text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p>
+                                    <p className="text-gray-900 mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p>
                                 </div>
                             ))}
                         </div>
-                    ) : (<p className="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum apontamento de tempo encontrado.</p>)}
+                    ) : (<p className="text-center text-gray-500 py-4">Nenhum apontamento de tempo encontrado.</p>)}
                     
-                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200 dark:border-[#2a2f4c]">
+                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div className="md:col-span-1">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Duração (minutos)</label>
-                                <input type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="Ex: 60" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" />
+                                <label className="text-sm font-medium text-gray-700">Duração (minutos)</label>
+                                <input type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="Ex: 60" className="w-full mt-1 bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
-                                <input value={content} onChange={e => setContent(e.target.value)} placeholder="Descreva o trabalho realizado" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" />
+                                <label className="text-sm font-medium text-gray-700">Descrição</label>
+                                <input value={content} onChange={e => setContent(e.target.value)} placeholder="Descreva o trabalho realizado" className="w-full mt-1 bg-white border border-gray-300 rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0033A0]" />
                             </div>
                         </div>
-                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] dark:bg-[#ff5a00] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">
                             {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar Apontamento</>}
                         </button>
                     </form>
                 </div>
             );
         };
-
 
         const style = document.createElement('style');
         style.textContent = `@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }`;
