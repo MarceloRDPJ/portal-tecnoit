@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transition: background-color 0.3s ease, color 0.3s ease; }
         .tab-button-active { background-color: #ff5a00; color: white; }
         .dark .tab-button-active { background-color: #ff5a00; }
         .light .tab-button-active { background-color: #0033A0; }
@@ -62,17 +62,21 @@
                 root.classList.remove('light', 'dark');
                 root.classList.add(theme);
                 localStorage.setItem('theme', theme);
+                
+                // Aplica as classes de tema diretamente no body
+                document.body.className = '';
+                if (theme === 'light') {
+                    document.body.classList.add('bg-gray-50', 'text-gray-800');
+                } else {
+                    document.body.classList.add('bg-[#060818]', 'text-gray-200');
+                }
             }, [theme]);
 
             const toggleTheme = () => {
                 setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
             };
 
-            return (
-                <ThemeContext.Provider value={{ theme, toggleTheme }}>
-                    {children}
-                </ThemeContext.Provider>
-            );
+            return (<ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>);
         };
         const useTheme = () => useContext(ThemeContext);
 
@@ -87,11 +91,9 @@
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
             }, []);
 
-            if (!libsLoaded) return <LoadingScreen message="Carregando bibliotecas..." />;
-            
             return (
                 <ThemeProvider>
-                    <App />
+                    {libsLoaded ? <App /> : <LoadingScreen message="Carregando bibliotecas..." />}
                 </ThemeProvider>
             );
         }
@@ -104,7 +106,6 @@
             const [page, setPage] = useState('glpi');
             const [user, setUser] = useState(null);
             const [glpiSessionData, setGlpiSessionData] = useState(null);
-            const { theme } = useTheme();
 
             useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -113,10 +114,10 @@
                 return () => unsubscribe();
             }, [auth]);
 
-            if (!user) return <div className={`bg-white dark:bg-[#060818]`}><LoadingScreen message="Autenticando..." /></div>;
+            if (!user) return <LoadingScreen message="Autenticando..." />;
             
             return (
-                <div className={`flex h-screen bg-gray-50 dark:bg-[#060818] text-gray-800 dark:text-gray-200`}>
+                <div className="flex h-screen">
                     <Sidebar setPage={setPage} currentPage={page} />
                     <main className="flex-1 flex flex-col overflow-hidden">
                         <Header sessionData={glpiSessionData} />
@@ -146,7 +147,7 @@
         const useGlpi = () => React.useContext(GlpiContext);
 
         const LoadingScreen = ({ message }) => (
-             <div className="flex items-center justify-center h-screen bg-white dark:bg-[#060818] text-gray-800 dark:text-gray-200">
+             <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
                     <svg className="w-16 h-16 animate-spin mx-auto text-[#0033A0] dark:text-[#ff5a00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -221,14 +222,11 @@
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
             const { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, totalTickets, setTotalTickets, currentUserData, setCurrentUserData } = useGlpi();
-            
             const [selectedTicketId, setSelectedTicketId] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [currentPage, setCurrentPage] = useState(1);
             const [itemsPerPage, setItemsPerPage] = useState(50);
-            
             const configDocRef = useMemo(() => doc(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/glpiConfig/config`), [db, user.uid]);
-
             const fetchFullSession = useCallback(async (token, url) => {
                 try {
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token }) });
@@ -236,12 +234,10 @@
                     setCurrentUserData((await res.json()).session);
                 } catch (err) { console.error("Falha ao buscar dados da sessão:", err); }
             }, [setCurrentUserData]);
-
             const fetchTickets = useCallback(async (token, url, page = 1, limit = 50) => {
                 setIsLoading(true);
                 const rangeStart = (page - 1) * limit;
-                const rangeEnd = rangeStart + limit - 1;
-                const range = `${rangeStart}-${rangeEnd}`;
+                const range = `${rangeStart}-${rangeStart + limit - 1}`;
                 try {
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token, range }) });
                     if (!res.ok) throw new Error('Erro ao buscar chamados');
@@ -253,7 +249,6 @@
                 } catch (err) { setError(`Sessão expirada ou inválida.`); setSessionToken(null); } 
                 finally { setIsLoading(false); }
             }, [fetchFullSession, setIsLoading, setTickets, setSessionToken, setError, setTotalTickets, currentUserData]);
-
             useEffect(() => {
                 const loadSession = async () => {
                     setIsLoading(true);
@@ -269,17 +264,14 @@
                 };
                 if(user) loadSession();
             }, [configDocRef, setGlpiConfig, setIsLoading, setError, user]);
-            
             const handleConnect = async (authDetails) => {
                 setError(''); setIsLoading(true);
                 try {
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authDetails) });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || 'Erro de autenticação');
-                    
                     if (authDetails.rememberMe) localStorage.setItem('glpiCredentials', JSON.stringify({ username: authDetails.username, password: authDetails.password }));
                     else localStorage.removeItem('glpiCredentials');
-
                     const newConfig = { glpiUrl: authDetails.glpiUrl, sessionToken: data.session_token };
                     await setDoc(configDocRef, newConfig, { merge: true });
                     setGlpiConfig(newConfig);
@@ -287,24 +279,20 @@
                 } catch (err) { setError(err.message); } 
                 finally { setIsLoading(false); }
             };
-
             const handleDisconnect = async () => { 
                 await setDoc(configDocRef, { sessionToken: null }, { merge: true });
                 setSessionToken(null); setTickets([]); setSelectedTicketId(null); setCurrentUserData(null);
             };
-
             const handlePageChange = (newPage) => {
                 setCurrentPage(newPage);
                 fetchTickets(sessionToken, glpiConfig.glpiUrl, newPage, itemsPerPage);
             };
-
             const handleItemsPerPageChange = (newLimit) => {
                 const newLimitNumber = parseInt(newLimit, 10);
                 setItemsPerPage(newLimitNumber);
                 setCurrentPage(1);
                 fetchTickets(sessionToken, glpiConfig.glpiUrl, 1, newLimitNumber);
             };
-
             const filteredTickets = useMemo(() => {
                 if (!tickets) return [];
                 if (!searchTerm) return tickets;
@@ -325,21 +313,13 @@
                         <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
                     </div>
                     <div className="relative mb-4">
-                        <input 
-                            type="text"
-                            placeholder="Pesquisar por ID ou título nos chamados carregados..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"
-                        />
+                        <input type="text" placeholder="Pesquisar por ID ou título nos chamados carregados..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"/>
                         {Search && <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
                     </div>
-                    
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                         <PerPageSelector value={itemsPerPage} onChange={handleItemsPerPageChange} />
                         <Pagination currentPage={currentPage} totalItems={totalTickets} itemsPerPage={itemsPerPage} onPageChange={handlePageChange} />
                     </div>
-
                     {isLoading ? <LoadingScreen message="Buscando chamados..." /> : <TicketList tickets={filteredTickets} onSelectTicket={setSelectedTicketId} />}
                 </div>
             );
@@ -363,14 +343,11 @@
         function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             if (totalPages <= 1) return null;
-
             return (
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}
-                        className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
+                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
                     <span className="text-sm text-gray-500 dark:text-gray-400">Página {currentPage} de {totalPages}</span>
-                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}
-                        className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
+                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
                 </div>
             );
         }
@@ -380,7 +357,6 @@
             const [password, setPassword] = useState('');
             const [showPassword, setShowPassword] = useState(false);
             const [rememberMe, setRememberMe] = useState(false);
-
             useEffect(() => {
                 const savedCreds = localStorage.getItem('glpiCredentials');
                 if (savedCreds) {
@@ -392,9 +368,7 @@
                     } catch (e) { localStorage.removeItem('glpiCredentials'); }
                 }
             }, []);
-
             const handleSubmit = (e) => { e.preventDefault(); onConnect({ glpiUrl: 'https://suporte.tecnoit.com.br', username, password, rememberMe }); };
-
             return (
                 <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-gray-50 dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl animate-fade-in">
                     <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#0033A0] dark:text-[#ff5a00]" />}<h2 className="text-2xl font-bold mt-4 text-gray-900 dark:text-white">Conectar ao GLPI</h2></div>
@@ -444,6 +418,7 @@
             const [ticket, setTicket] = useState(null);
             const [followups, setFollowups] = useState([]);
             const [solutions, setSolutions] = useState([]);
+            const [tasks, setTasks] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState('');
             const [activeTab, setActiveTab] = useState('details');
@@ -454,15 +429,17 @@
                     const proxyUrl = 'https://tecnoit-glpi-proxy.onrender.com/api/proxy';
                     const body = JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken });
                     const headers = { 'Content-Type': 'application/json' };
-                    const [detailsRes, followupsRes, solutionsRes] = await Promise.all([
+                    const [detailsRes, followupsRes, solutionsRes, tasksRes] = await Promise.all([
                         fetch(`${proxyUrl}/getTicketDetails/${ticketId}`, { method: 'POST', body, headers }),
                         fetch(`${proxyUrl}/getTicketFollowups/${ticketId}`, { method: 'POST', body, headers }),
-                        fetch(`${proxyUrl}/getTicketSolutions/${ticketId}`, { method: 'POST', body, headers })
+                        fetch(`${proxyUrl}/getTicketSolutions/${ticketId}`, { method: 'POST', body, headers }),
+                        fetch(`${proxyUrl}/getTicketTasks/${ticketId}`, { method: 'POST', body, headers })
                     ]);
                     if (!detailsRes.ok) throw new Error('Falha ao buscar detalhes do chamado');
                     setTicket(await detailsRes.json());
                     setFollowups(followupsRes.ok ? await followupsRes.json() : []);
                     setSolutions(solutionsRes.ok ? await solutionsRes.json() : []);
+                    setTasks(tasksRes.ok ? await tasksRes.json() : []);
                 } catch (err) { setError(err.message);
                 } finally { setIsLoading(false); }
             }, [ticketId, sessionToken, glpiConfig]);
@@ -503,11 +480,13 @@
                            <TabButton id="details" label="Detalhes" icon={FileText} />
                            <TabButton id="followups" label="Acompanhamentos" icon={MessageSquarePlus} />
                            <TabButton id="solutions" label="Soluções" icon={CheckSquare} />
+                           <TabButton id="tasks" label="Apontamentos" icon={Clock} />
                         </div>
                         
                         {activeTab === 'details' && <TicketDetailsView ticket={ticket} onAssignToMe={handleAssignToMe} onUpdate={handleUpdate} glpiConfig={glpiConfig} sessionToken={sessionToken}/>}
                         {activeTab === 'followups' && <SubItemView items={followups} type="ITILFollowup" ticketId={ticketId} glpiConfig={glpiConfig} sessionToken={sessionToken} onUpdate={fetchAllTicketData} />}
                         {activeTab === 'solutions' && <SubItemView items={solutions} type="ITILSolution" ticketId={ticketId} glpiConfig={glpiConfig} sessionToken={sessionToken} onUpdate={fetchAllTicketData} />}
+                        {activeTab === 'tasks' && <TimeEntryView items={tasks} ticketId={ticketId} glpiConfig={glpiConfig} sessionToken={sessionToken} onUpdate={fetchAllTicketData} />}
                     </div>
                 </div>
             );
@@ -576,6 +555,67 @@
                 </div>
             );
         };
+        
+        function TimeEntryView({ items, ticketId, glpiConfig, sessionToken, onUpdate }) {
+            const [duration, setDuration] = useState('');
+            const [content, setContent] = useState('');
+            const [isSubmitting, setIsSubmitting] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!content.trim() || !duration) return;
+                setIsSubmitting(true);
+                try {
+                    const res = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/addTicketTask`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, ticketId, content, actiontime: parseInt(duration, 10) })
+                    });
+                    if (!res.ok) throw new Error(`Falha ao adicionar apontamento.`);
+                    setContent('');
+                    setDuration('');
+                    onUpdate();
+                } catch (err) {
+                    alert(`Erro: ${err.message}`);
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            return (
+                <div>
+                    {items.length > 0 ? (
+                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                            {items.map(item => (
+                                <div key={item.id} className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg">
+                                    <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                                        <span>{new Date(item.date).toLocaleString('pt-BR')}</span>
+                                        <span className="font-semibold">{Math.round(item.actiontime / 60)} min</span>
+                                    </div>
+                                    <p className="text-gray-900 dark:text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (<p className="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum apontamento de tempo encontrado.</p>)}
+                    
+                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200 dark:border-[#2a2f4c]">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="md:col-span-1">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Duração (minutos)</label>
+                                <input type="number" value={duration} onChange={e => setDuration(e.target.value)} placeholder="Ex: 60" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Descrição</label>
+                                <input value={content} onChange={e => setContent(e.target.value)} placeholder="Descreva o trabalho realizado" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" />
+                            </div>
+                        </div>
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] dark:bg-[#ff5a00] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">
+                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar Apontamento</>}
+                        </button>
+                    </form>
+                </div>
+            );
+        };
+
 
         const style = document.createElement('style');
         style.textContent = `@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }`;
