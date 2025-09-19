@@ -1,7 +1,7 @@
 {
   "name": "TecnoiT - Portal de Chamados",
   "short_name": "TecnoiT",
-  "start_url": "./",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#0033A0",
@@ -10,6 +10,11 @@
     {
       "src": "assets/logo.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
