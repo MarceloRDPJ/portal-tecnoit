@@ -71,28 +71,16 @@
             const auth = useMemo(() => getAuth(app), [app]);
             const [page, setPage] = useState('glpi');
             const [user, setUser] = useState(null);
-            const [authReady, setAuthReady] = useState(false);
             const [glpiSessionData, setGlpiSessionData] = useState(null);
 
             useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-                    if (currentUser) {
-                        setUser(currentUser);
-                    } else {
-                        // Se não houver usuário, tenta login anônimo.
-                        try {
-                            const userCredential = await signInAnonymously(auth);
-                            setUser(userCredential.user);
-                        } catch (error) {
-                            console.error("Erro no login anônimo:", error);
-                        }
-                    }
-                    setAuthReady(true);
+                    setUser(currentUser || (await signInAnonymously(auth)).user);
                 });
                 return () => unsubscribe();
             }, [auth]);
 
-            if (!authReady) return <LoadingScreen message="Autenticando..." />;
+            if (!user) return <LoadingScreen message="Autenticando..." />;
             
             return (
                 <div className="flex h-screen bg-[#060818] text-gray-200">
@@ -109,9 +97,7 @@
             );
         }
         
-        // Context Provider for GLPI Data
         const GlpiContext = React.createContext();
-
         function GlpiProvider({ children, onSessionUpdate }) {
             const [glpiConfig, setGlpiConfig] = useState(null);
             const [sessionToken, setSessionToken] = useState(null);
@@ -120,24 +106,12 @@
             const [tickets, setTickets] = useState([]);
             const [currentUserData, setCurrentUserData] = useState(null);
             
-            useEffect(() => {
-                onSessionUpdate(currentUserData);
-            }, [currentUserData, onSessionUpdate]);
+            useEffect(() => { onSessionUpdate(currentUserData); }, [currentUserData, onSessionUpdate]);
 
-            const value = {
-                glpiConfig, setGlpiConfig,
-                sessionToken, setSessionToken,
-                isLoading, setIsLoading,
-                error, setError,
-                tickets, setTickets,
-                currentUserData, setCurrentUserData
-            };
-
+            const value = { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, currentUserData, setCurrentUserData };
             return <GlpiContext.Provider value={value}>{children}</GlpiContext.Provider>;
         }
-        
         const useGlpi = () => React.useContext(GlpiContext);
-
 
         const LoadingScreen = ({ message }) => (
              <div className="flex items-center justify-center h-screen bg-[#060818] text-white">
@@ -169,9 +143,7 @@
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
             return (
-                <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4">
-                    <h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2>
-                </header>
+                <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2></header>
             );
         };
 
@@ -185,22 +157,9 @@
         
         function UserProfile() {
             const { currentUserData, sessionToken } = useGlpi();
-
-            if (!sessionToken) {
-                return <div className="p-4 text-center text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
-            }
-            
-            if (!currentUserData) {
-                return <LoadingScreen message="Carregando perfil..." />;
-            }
-
-            const ProfileItem = ({ label, value }) => (
-                <div className="py-2">
-                    <p className="text-sm font-semibold text-gray-400">{label}</p>
-                    <p className="text-white">{value || 'Não informado'}</p>
-                </div>
-            );
-
+            if (!sessionToken) return <div className="p-4 text-center text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
+            if (!currentUserData) return <LoadingScreen message="Carregando perfil..." />;
+            const ProfileItem = ({ label, value }) => (<div className="py-2"><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
             return (
                  <div className="animate-fade-in max-w-2xl mx-auto">
                     <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3"><User className="w-8 h-8" /> Meu Perfil</h2>
@@ -214,47 +173,36 @@
             );
         }
 
-        // GLPI Main Component
         function GlpiTickets({ user, app }) {
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
             const { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, currentUserData, setCurrentUserData } = useGlpi();
-            
             const [selectedTicketId, setSelectedTicketId] = useState(null);
             const configDocRef = useMemo(() => doc(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/glpiConfig/config`), [db, user.uid]);
 
             const fetchFullSession = useCallback(async (token, url) => {
                 try {
-                    const response = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl: url, sessionToken: token })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erro ao buscar sessão');
-                    setCurrentUserData(data.session);
+                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token }) });
+                    if (!res.ok) throw new Error('Erro ao buscar sessão');
+                    setCurrentUserData((await res.json()).session);
                 } catch (err) { console.error("Falha ao buscar dados da sessão:", err); }
             }, [setCurrentUserData]);
 
             const fetchTickets = useCallback(async (token, url) => {
                 setIsLoading(true);
                 try {
-                    const response = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl: url, sessionToken: token })
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erro ao buscar chamados');
-                    setTickets(data);
+                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getTickets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: url, sessionToken: token }) });
+                    if (!res.ok) throw new Error('Erro ao buscar chamados');
+                    setTickets(await res.json());
                     setSessionToken(token);
                     await fetchFullSession(token, url);
-                } catch (err) { 
-                    setError(`Sessão expirada ou inválida. Por favor, conecte-se novamente.`); 
-                    setSessionToken(null); 
-                } finally { setIsLoading(false); }
+                } catch (err) { setError(`Sessão expirada ou inválida.`); setSessionToken(null); } 
+                finally { setIsLoading(false); }
             }, [fetchFullSession, setIsLoading, setTickets, setSessionToken, setError]);
 
             useEffect(() => {
                 const loadSession = async () => {
+                    setIsLoading(true);
                     try {
                         const docSnap = await getDoc(configDocRef);
                         if (docSnap.exists() && docSnap.data().sessionToken) {
@@ -262,38 +210,27 @@
                             setGlpiConfig(savedConfig);
                             await fetchTickets(savedConfig.sessionToken, savedConfig.glpiUrl);
                         }
-                    } catch (err) { setError("Não foi possível carregar sua sessão salva."); }
+                    } catch (err) { setError("Não foi possível carregar sua sessão salva."); } 
                     finally { setIsLoading(false); }
                 };
-                if(user) { // Only run if firebase user exists
-                    loadSession();
-                }
+                if(user) loadSession();
             }, [configDocRef, fetchTickets, setGlpiConfig, setIsLoading, setError, user]);
             
             const handleConnect = async (authDetails) => {
-                setError('');
-                setIsLoading(true);
+                setError(''); setIsLoading(true);
                 try {
-                    const response = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authDetails)
-                    });
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erro de autenticação');
+                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authDetails) });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Erro de autenticação');
                     
-                    if (authDetails.rememberMe) {
-                        localStorage.setItem('glpiCredentials', JSON.stringify({
-                            username: authDetails.username,
-                            password: authDetails.password 
-                        }));
-                    } else {
-                        localStorage.removeItem('glpiCredentials');
-                    }
+                    if (authDetails.rememberMe) localStorage.setItem('glpiCredentials', JSON.stringify({ username: authDetails.username, password: authDetails.password }));
+                    else localStorage.removeItem('glpiCredentials');
 
                     const newConfig = { glpiUrl: authDetails.glpiUrl, sessionToken: data.session_token };
                     await setDoc(configDocRef, newConfig, { merge: true });
                     setGlpiConfig(newConfig);
                     await fetchTickets(data.session_token, authDetails.glpiUrl);
-                } catch (err) { setError(err.message); }
+                } catch (err) { setError(err.message); } 
                 finally { setIsLoading(false); }
             };
 
@@ -331,17 +268,11 @@
                         if (username) setUsername(username);
                         if (password) setPassword(password);
                         setRememberMe(true);
-                    } catch (e) {
-                        console.error("Falha ao analisar credenciais salvas", e);
-                        localStorage.removeItem('glpiCredentials');
-                    }
+                    } catch (e) { localStorage.removeItem('glpiCredentials'); }
                 }
             }, []);
 
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onConnect({ glpiUrl: 'https://suporte.tecnoit.com.br', username, password, rememberMe });
-            };
+            const handleSubmit = (e) => { e.preventDefault(); onConnect({ glpiUrl: 'https://suporte.tecnoit.com.br', username, password, rememberMe }); };
 
             return (
                 <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl animate-fade-in">
@@ -384,8 +315,6 @@
             );
         }
         
-
-        // --- Ticket Detail and Actions Component ---
         function TicketDetail({ ticketId, goBack, sessionToken, glpiConfig, currentUserData, refreshTicketsList }) {
             const [ticket, setTicket] = useState(null);
             const [followups, setFollowups] = useState([]);
@@ -417,19 +346,16 @@
 
             const handleUpdate = async (updateData, successMessage) => {
                 try {
-                    const response = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/updateTicket/${ticketId}`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, updateData })
-                    });
-                    if (!response.ok) throw new Error('Falha ao atualizar o chamado.');
+                    const res = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/updateTicket/${ticketId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, updateData }) });
+                    if (!res.ok) throw new Error('Falha ao atualizar o chamado.');
                     await fetchAllTicketData();
                     refreshTicketsList(); 
-                    alert(successMessage || "Chamado atualizado com sucesso!");
+                    alert(successMessage || "Chamado atualizado!");
                 } catch (err) { alert(`Erro: ${err.message}`); }
             };
 
              const handleAssignToMe = () => {
-                if (!currentUserData || !currentUserData.glpiID) { alert("Não foi possível identificar seu ID de usuário. Tente relogar."); return; }
+                if (!currentUserData || !currentUserData.glpiID) { alert("ID de usuário não encontrado."); return; }
                 handleUpdate({ 'users_id_tech': currentUserData.glpiID }, "Chamado atribuído a você!");
             };
 
@@ -463,41 +389,26 @@
         }
 
         const TicketDetailsView = ({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) => {
-            const DetailItem = ({ icon: Icon, label, value }) => (
-                <div><p className="text-sm font-semibold text-gray-400 flex items-center gap-2"><Icon className="w-4 h-4" />{label}</p><p className="text-white pl-6">{value || 'Não informado'}</p></div>
-            );
-
+            const DetailCard = ({ title, icon: Icon, children }) => (<div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2"><Icon className="w-5 h-5 text-[#ff5a00]" /> {title}</h3>{children}</div>);
+            const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
+            const AttachmentItem = ({ doc }) => {
+                const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${glpiConfig.glpiUrl}`;
+                const isImage = /\.(jpe?g|png|gif|webp)$/i.test(doc.filename);
+                return (<a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#ff5a00] transition-colors">{isImage ? (<img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />) : (<div className="w-12 h-12 flex-shrink-0 bg-[#04050d] rounded-md flex items-center justify-center"><Paperclip className="w-6 h-6 text-gray-400" /></div>)}<div className="overflow-hidden"><p className="text-sm text-white font-medium truncate">{doc.filename}</p><p className="text-xs text-gray-400">{doc.comment || 'Anexo'}</p></div></a>);
+            };
+            
             const StatusDropdown = () => {
                 const [isOpen, setIsOpen] = useState(false);
                 const statusOptions = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-
-                return (
-                    <div className="relative inline-block text-left">
-                        <div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>
-                        {isOpen && (
-                            <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10">
-                                <div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2a2f4c] hover:text-white">{name}</a>))}</div>
-                            </div>
-                        )}
-                    </div>
-                );
+                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2a2f4c] hover:text-white">{name}</a>))}</div></div>)}</div>);
             };
 
             return (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <DetailItem icon={User} label="Solicitante" value={ticket['12']} />
-                        <DetailItem icon={UserCheck} label="Técnico Atribuído" value={ticket['5']} />
-                        <DetailItem icon={Calendar} label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} />
-                    </div>
-                    <div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold mb-2 text-white">Descrição</h3><div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></div>
-                    {ticket._documents && ticket._documents.length > 0 && (
-                        <div className="mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2"><Paperclip className="w-5 h-5" /> Anexos</h3><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{ticket._documents.map(doc => (<a key={doc.id} href={`https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${glpiConfig.glpiUrl}`} target="_blank" rel="noopener noreferrer" className="block border-2 border-[#2a2f4c] rounded-lg overflow-hidden hover:border-[#ff5a00] transition-colors"><img src={`https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${glpiConfig.glpiUrl}`} alt={doc.filename} className="w-full h-32 object-cover" /><p className="text-xs text-center p-2 bg-[#04050d] text-gray-300 truncate">{doc.filename}</p></a>))}</div></div>
-                    )}
-                    <div className="flex flex-wrap gap-4 pt-4 border-t border-[#2a2f4c]">
-                        <button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button>
-                        <StatusDropdown />
-                    </div>
+                    <DetailCard title="Informações Principais" icon={FileText}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><InfoItem label="Solicitante" value={ticket['12']} /><InfoItem label="Técnico Atribuído" value={ticket['5']} /><InfoItem label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} /></div></DetailCard>
+                    <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
+                    {ticket._documents && ticket._documents.length > 0 && (<DetailCard title="Anexos" icon={Paperclip}><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{ticket._documents.map(doc => <AttachmentItem key={doc.id} doc={doc} />)}</div></DetailCard>)}
+                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button><StatusDropdown /></div>
                 </>
             );
         };
@@ -509,28 +420,18 @@
                 e.preventDefault(); if (!content.trim()) return; setIsSubmitting(true);
                 const endpoint = type === 'ITILFollowup' ? 'addFollowup' : 'addSolution';
                 try {
-                    const response = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/${endpoint}`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, ticketId, content })
-                    });
-                    if (!response.ok) throw new Error(`Falha ao adicionar ${type}`);
+                    const res = await fetch(`https://tecnoit-glpi-proxy.onrender.com/api/proxy/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ glpiUrl: glpiConfig.glpiUrl, sessionToken, ticketId, content }) });
+                    if (!res.ok) throw new Error(`Falha ao adicionar ${type}`);
                     setContent(''); onUpdate();
                 } catch (err) { alert(`Erro: ${err.message}`); } finally { setIsSubmitting(false); }
             };
             const placeholder = type === 'ITILFollowup' ? 'Escreva um novo acompanhamento...' : 'Descreva a solução...';
-
             return (
                 <div>
-                    {items.length > 0 ? (
-                        <div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (
-                               <div key={item.id} className="bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>
-                        ))}</div>
-                    ) : (<p className="text-center text-gray-400 py-4">Nenhum item encontrado.</p>)}
+                    {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-400 py-4">Nenhum item encontrado.</p>)}
                     <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-[#2a2f4c]">
                         <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"></textarea>
-                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#ff5a00] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-orange-800 text-sm">
-                            {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5"/> Adicionar</>}
-                        </button>
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#ff5a00] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-orange-800 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5"/> Adicionar</>}</button>
                     </form>
                 </div>
             );
