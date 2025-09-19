@@ -14,7 +14,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        /* A fonte e transições agora são controladas pelas classes do Tailwind no body */
+        body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transition: background-color 0.3s ease, color 0.3s ease; }
         .tab-button-active { background-color: #ff5a00; color: white; }
         .dark .tab-button-active { background-color: #ff5a00; }
         .light .tab-button-active { background-color: #0033A0; }
@@ -28,7 +28,7 @@
         .light ::-webkit-scrollbar-thumb:hover { background: #0033A0; }
     </style>
 </head>
-<body class="font-poppins antialiased transition-colors duration-300">
+<body class="bg-gray-50 text-gray-800 dark:bg-[#060818] dark:text-gray-200">
     <div id="root"></div>
 
     <script>
@@ -62,10 +62,6 @@
                 root.classList.remove('light', 'dark');
                 root.classList.add(theme);
                 localStorage.setItem('theme', theme);
-
-                // Aplica classes diretamente no body para garantir o fundo global
-                document.body.className = `font-poppins antialiased transition-colors duration-300 ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-[#060818] text-gray-200'}`;
-
             }, [theme]);
 
             const toggleTheme = () => {
