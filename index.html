@@ -16,14 +16,19 @@
     <style>
         body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         .tab-button-active { background-color: #ff5a00; color: white; }
-        .tab-button { color: #d1d5db; }
+        .dark .tab-button-active { background-color: #ff5a00; }
+        .light .tab-button-active { background-color: #0033A0; }
+
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #04050d; }
-        ::-webkit-scrollbar-thumb { background: #2a2f4c; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #ff5a00; }
+        .dark ::-webkit-scrollbar-track { background: #04050d; }
+        .dark ::-webkit-scrollbar-thumb { background: #2a2f4c; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #ff5a00; }
+        .light ::-webkit-scrollbar-track { background: #e0e0e0; }
+        .light ::-webkit-scrollbar-thumb { background: #a0a0a0; }
+        .light ::-webkit-scrollbar-thumb:hover { background: #0033A0; }
     </style>
 </head>
-<body class="bg-[#060818]">
+<body>
     <div id="root"></div>
 
     <script>
@@ -39,28 +44,57 @@
     </script>
 
     <script type="text/babel" data-presets="react">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, createContext, useContext } = React;
 
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquare, MessageSquarePlus, Send, Search, CheckSquare;
+        let User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquare, MessageSquarePlus, Send, Search, CheckSquare, Sun, Moon;
 
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         const firestoreUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        const ThemeContext = createContext();
+        const ThemeProvider = ({ children }) => {
+            const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+
+            useEffect(() => {
+                const root = window.document.documentElement;
+                root.classList.remove('light', 'dark');
+                root.classList.add(theme);
+                localStorage.setItem('theme', theme);
+            }, [theme]);
+
+            const toggleTheme = () => {
+                setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
+            };
+
+            return (
+                <ThemeContext.Provider value={{ theme, toggleTheme }}>
+                    {children}
+                </ThemeContext.Provider>
+            );
+        };
+        const useTheme = () => useContext(ThemeContext);
+
 
         function AppWrapper() {
             const [libsLoaded, setLibsLoaded] = useState(false);
             useEffect(() => {
                 Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
                     .then(([lucide, app, auth, firestore]) => {
-                        ({ User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquare, MessageSquarePlus, Send, Search, CheckSquare } = lucide);
+                        ({ User, Ticket, Unplug, ArrowLeft, Loader2, Server, Eye, EyeOff, Calendar, UserCheck, Paperclip, Check, ChevronDown, FileText, MessageSquare, MessageSquarePlus, Send, Search, CheckSquare, Sun, Moon } = lucide);
                         window.firebase = { app, auth, firestore };
                         setLibsLoaded(true);
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
             }, []);
 
             if (!libsLoaded) return <LoadingScreen message="Carregando bibliotecas..." />;
-            return <App />;
+            
+            return (
+                <ThemeProvider>
+                    <App />
+                </ThemeProvider>
+            );
         }
         
         function App() {
@@ -71,6 +105,7 @@
             const [page, setPage] = useState('glpi');
             const [user, setUser] = useState(null);
             const [glpiSessionData, setGlpiSessionData] = useState(null);
+            const { theme } = useTheme();
 
             useEffect(() => {
                 const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -79,10 +114,10 @@
                 return () => unsubscribe();
             }, [auth]);
 
-            if (!user) return <LoadingScreen message="Autenticando..." />;
+            if (!user) return <div className={`bg-[#060818] ${theme}`}><LoadingScreen message="Autenticando..." /></div>;
             
             return (
-                <div className="flex h-screen bg-[#060818] text-gray-200">
+                <div className={`flex h-screen bg-white dark:bg-[#060818] text-gray-800 dark:text-gray-200 ${theme}`}>
                     <Sidebar setPage={setPage} currentPage={page} />
                     <main className="flex-1 flex flex-col overflow-hidden">
                         <Header sessionData={glpiSessionData} />
@@ -105,18 +140,16 @@
             const [tickets, setTickets] = useState([]);
             const [totalTickets, setTotalTickets] = useState(0);
             const [currentUserData, setCurrentUserData] = useState(null);
-            
             useEffect(() => { onSessionUpdate(currentUserData); }, [currentUserData, onSessionUpdate]);
-
             const value = { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, totalTickets, setTotalTickets, currentUserData, setCurrentUserData };
             return <GlpiContext.Provider value={value}>{children}</GlpiContext.Provider>;
         }
         const useGlpi = () => React.useContext(GlpiContext);
 
         const LoadingScreen = ({ message }) => (
-             <div className="flex items-center justify-center h-screen bg-[#060818] text-white">
+             <div className="flex items-center justify-center h-screen bg-white dark:bg-[#060818] text-gray-800 dark:text-gray-200">
                 <div className="text-center">
-                    <svg className="w-16 h-16 animate-spin mx-auto text-[#ff5a00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="w-16 h-16 animate-spin mx-auto text-[#0033A0] dark:text-[#ff5a00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -126,23 +159,37 @@
         );
 
         function Sidebar({ setPage, currentPage }) {
+            const { theme, toggleTheme } = useTheme();
             const navItems = [ { id: 'glpi', icon: Ticket, label: 'Chamados' }, { id: 'profile', icon: User, label: 'Meu Perfil' } ];
             return (
-                <nav className="w-16 md:w-64 bg-[#04050d] p-2 md:p-4 flex flex-col border-r border-[#2a2f4c]">
-                    <div className="flex items-center mb-10"><img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" /><h1 className="text-2xl font-bold ml-3 hidden md:block text-white">TecnoiT</h1></div>
-                    <ul className="space-y-2">
-                        {navItems.map(item => {
-                            const Icon = item.icon;
-                            return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#ff5a00] text-white' : 'hover:bg-[#12162d] text-gray-400 hover:text-white'}`}>{Icon && <Icon className="w-6 h-6" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
-                        })}
-                    </ul>
+                <nav className="w-16 md:w-64 bg-gray-100 dark:bg-[#04050d] p-2 md:p-4 flex flex-col justify-between border-r border-gray-200 dark:border-[#2a2f4c]">
+                    <div>
+                        <div className="flex items-center mb-10">
+                            <img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" />
+                            <h1 className="text-2xl font-bold ml-3 hidden md:block text-gray-900 dark:text-white">TecnoiT</h1>
+                        </div>
+                        <ul className="space-y-2">
+                            {navItems.map(item => {
+                                const Icon = item.icon;
+                                return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#0033A0] dark:bg-[#ff5a00] text-white' : 'hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>{Icon && <Icon className="w-6 h-6" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
+                            })}
+                        </ul>
+                    </div>
+                    <div className="pb-4">
+                         <button onClick={toggleTheme} className="flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                            {theme === 'light' ? (Moon && <Moon className="w-6 h-6"/>) : (Sun && <Sun className="w-6 h-6" />)}
+                            <span className="ml-4 hidden md:block">
+                                {theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
+                            </span>
+                        </button>
+                    </div>
                 </nav>
             );
         }
 
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
-            return (<header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2></header>);
+            return (<header className="bg-white/50 dark:bg-[#04050d]/50 backdrop-blur-sm border-b border-gray-200 dark:border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-gray-900 dark:text-white">{welcomeMessage}</h2></header>);
         };
 
         function ContentArea({ page, user, app }) {
@@ -275,8 +322,8 @@
             return (
                 <div className="animate-fade-in">
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                        <h2 className="text-3xl font-bold text-white flex items-center gap-3">{Ticket && <Ticket className="w-8 h-8" />} Seus Chamados</h2>
-                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-[#12162d] hover:bg-[#2a2f4c] text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">{Ticket && <Ticket className="w-8 h-8" />} Seus Chamados</h2>
+                        <button onClick={handleDisconnect} className="w-full md:w-auto flex items-center justify-center gap-2 text-sm bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg transition-colors">{Unplug && <Unplug className="w-4 h-4" />}Desconectar</button>
                     </div>
                     <div className="relative mb-4">
                         <input 
@@ -284,7 +331,7 @@
                             placeholder="Pesquisar por ID ou título nos chamados carregados..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-[#12162d] border border-[#2a2f4c] rounded-lg p-3 pl-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"
+                            className="w-full bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 pl-10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"
                         />
                         {Search && <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />}
                     </div>
@@ -302,14 +349,14 @@
         function PerPageSelector({ value, onChange }) {
             return (
                 <div className="flex items-center gap-2">
-                    <label htmlFor="items-per-page" className="text-sm text-gray-400">Mostrar:</label>
+                    <label htmlFor="items-per-page" className="text-sm text-gray-500 dark:text-gray-400">Mostrar:</label>
                     <select id="items-per-page" value={value} onChange={(e) => onChange(e.target.value)}
-                        className="bg-[#12162d] border border-[#2a2f4c] rounded-lg p-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#ff5a00]">
+                        className="bg-white dark:bg-[#12162d] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]">
                         <option value="50">50</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
                     </select>
-                     <span className="text-sm text-gray-400">por página</span>
+                     <span className="text-sm text-gray-500 dark:text-gray-400">por página</span>
                 </div>
             );
         }
@@ -321,10 +368,10 @@
             return (
                 <div className="flex items-center gap-2">
                     <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}
-                        className="px-3 py-1 rounded-lg bg-[#12162d] hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
-                    <span className="text-sm text-gray-400">Página {currentPage} de {totalPages}</span>
+                        className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Anterior</button>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Página {currentPage} de {totalPages}</span>
                     <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}
-                        className="px-3 py-1 rounded-lg bg-[#12162d] hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
+                        className="px-3 py-1 rounded-lg bg-gray-200 dark:bg-[#12162d] hover:bg-gray-300 dark:hover:bg-[#2a2f4c] disabled:opacity-50 disabled:cursor-not-allowed text-sm">Próxima</button>
                 </div>
             );
         }
@@ -350,14 +397,14 @@
             const handleSubmit = (e) => { e.preventDefault(); onConnect({ glpiUrl: 'https://suporte.tecnoit.com.br', username, password, rememberMe }); };
 
             return (
-                <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl animate-fade-in">
-                    <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#ff5a00]" />}<h2 className="text-2xl font-bold mt-4 text-white">Conectar ao GLPI</h2></div>
+                <div className="max-w-md mx-auto mt-10 p-6 md:p-8 bg-gray-50 dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl animate-fade-in">
+                    <div className="text-center mb-6">{Ticket && <Ticket className="w-12 h-12 mx-auto text-[#0033A0] dark:text-[#ff5a00]" />}<h2 className="text-2xl font-bold mt-4 text-gray-900 dark:text-white">Conectar ao GLPI</h2></div>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div><label className="text-sm font-medium text-gray-300">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /></div>
-                        <div className="relative"><label className="text-sm font-medium text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-white">{showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}</button></div>
-                        <div className="flex items-center"><input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-gray-600 bg-[#060818] text-[#ff5a00] focus:ring-[#ff5a00] focus:ring-offset-0" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">Lembrar-me</label></div>
-                        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-                        <button type="submit" disabled={isLoading} className="w-full bg-[#ff5a00] hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:bg-orange-800 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Conectar'}</button>
+                        <div><label className="text-sm font-medium text-gray-700 dark:text-gray-300">Usuário GLPI</label><input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Seu nome de usuário" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" /></div>
+                        <div className="relative"><label className="text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Sua senha" className="w-full mt-1 bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]" /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center text-gray-400 hover:text-gray-900 dark:hover:text-white">{showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}</button></div>
+                        <div className="flex items-center"><input id="remember-me" name="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-gray-400 dark:border-gray-600 bg-gray-200 dark:bg-[#060818] text-[#0033A0] dark:text-[#ff5a00] focus:ring-[#0033A0] dark:focus:ring-[#ff5a00] focus:ring-offset-0" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">Lembrar-me</label></div>
+                        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                        <button type="submit" disabled={isLoading} className="w-full bg-[#0033A0] dark:bg-[#ff5a00] hover:bg-blue-800 dark:hover:bg-orange-600 text-white font-bold p-3 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Conectar'}</button>
                     </form>
                 </div>
             );
@@ -370,17 +417,17 @@
                 return <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${colorMap[status] || colorMap[6]}`}>{statusMap[status] || "Desconhecido"}</span>;
             };
         
-            if (!Array.isArray(tickets) || tickets.length === 0) { return <div className="text-center py-10 text-gray-400">Nenhum chamado para o filtro atual.</div>; }
+            if (!Array.isArray(tickets) || tickets.length === 0) { return <div className="text-center py-10 text-gray-500 dark:text-gray-400">Nenhum chamado para o filtro atual.</div>; }
             
             return (
                 <div className="space-y-4">
                     {tickets.map(ticket => (
-                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-4 hover:bg-[#12162d] hover:border-[#ff5a00] transition-all cursor-pointer">
+                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-gray-50 dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 hover:bg-gray-100 dark:hover:bg-[#12162d] hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-all cursor-pointer">
                             <div className="flex justify-between items-start">
-                                <h3 className="font-bold text-white mb-2 pr-4">{`#${ticket.id} - ${ticket.name}`}</h3>
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2 pr-4">{`#${ticket.id} - ${ticket.name}`}</h3>
                                 <StatusBadge status={ticket.status} />
                             </div>
-                            <div className="text-sm text-gray-400 flex items-center gap-4 mt-2">
+                            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-4 mt-2">
                                 <span><strong className="font-semibold">Criado em:</strong> {new Date(ticket.date).toLocaleDateString('pt-BR')}</span>
                                 <span><strong className="font-semibold">Prioridade:</strong> {ticket.priority}</span>
                             </div>
@@ -435,21 +482,21 @@
             };
 
             if (isLoading) return <LoadingScreen message="Carregando detalhes do chamado..." />;
-            if (error) return <div className="text-center text-red-400 p-4">{error}</div>;
+            if (error) return <div className="text-center text-red-500 p-4">{error}</div>;
             if (!ticket) return null;
             
             const TabButton = ({ id, label, icon: IconComponent }) => (
-                <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-[#12162d]'}`}>
+                <button onClick={() => setActiveTab(id)} className={`flex-1 p-2 md:p-3 text-xs md:text-sm font-semibold flex items-center justify-center gap-2 rounded-t-lg transition-colors ${activeTab === id ? 'tab-button-active' : 'tab-button hover:bg-gray-200 dark:hover:bg-[#12162d]'}`}>
                     {IconComponent && <IconComponent className="w-4 h-4 md:w-5 md:h-5" />} <span className="hidden sm:inline">{label}</span>
                 </button>
             );
 
             return (
                 <div className="animate-fade-in">
-                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#ff5a00] hover:text-orange-400 mb-4">{ArrowLeft && <ArrowLeft className="w-4 h-4" />}Voltar</button>
-                    <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-4 md:p-6">
-                        <h2 className="text-xl md:text-2xl font-bold text-white mb-4">#{ticket.id} - {ticket.name}</h2>
-                        <div className="flex border-b border-[#2a2f4c] mb-4">
+                    <button onClick={goBack} className="flex items-center gap-2 text-sm text-[#0033A0] dark:text-[#ff5a00] hover:opacity-75 mb-4">{ArrowLeft && <ArrowLeft className="w-4 h-4" />}Voltar</button>
+                    <div className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 md:p-6">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4">#{ticket.id} - {ticket.name}</h2>
+                        <div className="flex border-b border-gray-200 dark:border-[#2a2f4c] mb-4">
                            <TabButton id="details" label="Detalhes" icon={FileText} />
                            <TabButton id="followups" label="Acompanhamentos" icon={MessageSquarePlus} />
                            <TabButton id="solutions" label="Soluções" icon={CheckSquare} />
@@ -464,24 +511,24 @@
         }
 
         function TicketDetailsView({ ticket, onAssignToMe, onUpdate, glpiConfig, sessionToken }) {
-            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-white flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#ff5a00]" />} {title}</h3>{children}</div>);
-            const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
+            const DetailCard = ({ title, icon: IconComponent, children }) => (<div className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg mb-6"><h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white flex items-center gap-2">{IconComponent && <IconComponent className="w-5 h-5 text-[#0033A0] dark:text-[#ff5a00]" />} {title}</h3>{children}</div>);
+            const InfoItem = ({ label, value }) => (<div><p className="text-sm font-semibold text-gray-600 dark:text-gray-400">{label}</p><p className="text-gray-900 dark:text-white">{value || 'Não informado'}</p></div>);
             
             const AttachmentItem = ({ doc }) => {
                 const fileUrl = `https://tecnoit-glpi-proxy.onrender.com/api/proxy/getDocument/${doc.id}?sessionToken=${sessionToken}&glpiUrl=${encodeURIComponent(glpiConfig.glpiUrl)}`;
                 const isImage = /\.(jpe?g|png|gif|webp)$/i.test(doc.filename);
                 return (
-                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#ff5a00] transition-colors">
+                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="bg-gray-100 dark:bg-[#12162d] p-3 rounded-lg flex items-center gap-3 border border-transparent hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-colors">
                         {isImage ? (
                             <img src={fileUrl} alt={doc.filename} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
                         ) : (
-                            <div className="w-12 h-12 flex-shrink-0 bg-[#04050d] rounded-md flex items-center justify-center">
-                                {Paperclip && <Paperclip className="w-6 h-6 text-gray-400" />}
+                            <div className="w-12 h-12 flex-shrink-0 bg-gray-200 dark:bg-[#04050d] rounded-md flex items-center justify-center">
+                                {Paperclip && <Paperclip className="w-6 h-6 text-gray-500 dark:text-gray-400" />}
                             </div>
                         )}
                         <div className="overflow-hidden">
-                            <p className="text-sm text-white font-medium truncate">{doc.filename}</p>
-                            <p className="text-xs text-gray-400">{doc.comment || 'Anexo'}</p>
+                            <p className="text-sm text-gray-900 dark:text-white font-medium truncate">{doc.filename}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{doc.comment || 'Anexo'}</p>
                         </div>
                     </a>
                 );
@@ -490,15 +537,15 @@
             const StatusDropdown = () => {
                 const [isOpen, setIsOpen] = useState(false);
                 const statusOptions = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none">{Check && <Check className="w-5 h-5 mr-2" />} Alterar Status {ChevronDown && <ChevronDown className="-mr-1 ml-2 h-5 w-5" />}</button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2a2f4c] hover:text-white">{name}</a>))}</div></div>)}</div>);
+                return (<div className="relative inline-block text-left"><div><button type="button" onClick={() => setIsOpen(!isOpen)} className="inline-flex justify-center w-full rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-blue-600 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"><Check className="w-5 h-5 mr-2" /> Alterar Status <ChevronDown className="-mr-1 ml-2 h-5 w-5" /></button></div>{isOpen && (<div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-[#12162d] ring-1 ring-black ring-opacity-5 z-10"><div className="py-1">{Object.entries(statusOptions).map(([id, name]) => (<a href="#" key={id} onClick={(e) => { e.preventDefault(); onUpdate({ status: parseInt(id, 10) }, "Status atualizado!"); setIsOpen(false); }} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#2a2f4c] hover:text-gray-900 dark:hover:text-white">{name}</a>))}</div></div>)}</div>);
             };
 
             return (
                 <>
                     <DetailCard title="Informações Principais" icon={FileText}><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><InfoItem label="Solicitante" value={ticket['12']} /><InfoItem label="Técnico Atribuído" value={ticket['5']} /><InfoItem label="Data de Abertura" value={new Date(ticket.date).toLocaleString('pt-BR')} /></div></DetailCard>
-                    <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
+                    <DetailCard title="Descrição" icon={MessageSquare}><div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ticket.content }}></div></DetailCard>
                     {ticket._documents && ticket._documents.length > 0 && (<DetailCard title="Anexos" icon={Paperclip}><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{ticket._documents.map(doc => <AttachmentItem key={doc.id} doc={doc} />)}</div></DetailCard>)}
-                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm">{UserCheck && <UserCheck className="w-5 h-5" />} Atribuir a mim</button><StatusDropdown /></div>
+                    <div className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-gray-200 dark:border-[#2a2f4c]"><button onClick={onAssignToMe} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors text-sm"><UserCheck className="w-5 h-5" /> Atribuir a mim</button><StatusDropdown /></div>
                 </>
             );
         };
@@ -518,10 +565,10 @@
             const placeholder = type === 'ITILFollowup' ? 'Escreva um novo acompanhamento...' : 'Descreva a solução...';
             return (
                 <div>
-                    {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-400 py-4">Nenhum item encontrado.</p>)}
-                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-[#2a2f4c]">
-                        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-[#060818] border border-[#2a2f4c] rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-[#ff5a00]"></textarea>
-                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#ff5a00] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:bg-orange-800 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar</>}</button>
+                    {items.length > 0 ? (<div className="space-y-4 max-h-60 overflow-y-auto pr-2">{items.map(item => (<div key={item.id} className="bg-gray-50 dark:bg-[#060818]/50 p-4 rounded-lg"><p className="text-sm text-gray-500 dark:text-gray-400">em {new Date(item.date_creation).toLocaleString('pt-BR')} por {item.users_id}</p><p className="text-gray-900 dark:text-white mt-1" dangerouslySetInnerHTML={{ __html: item.content }}></p></div>))}</div>) : (<p className="text-center text-gray-500 dark:text-gray-400 py-4">Nenhum item encontrado.</p>)}
+                    <form onSubmit={handleSubmit} className="mt-6 pt-4 border-t border-gray-200 dark:border-[#2a2f4c]">
+                        <textarea value={content} onChange={e => setContent(e.target.value)} placeholder={placeholder} rows="4" className="w-full bg-white dark:bg-[#060818] border border-gray-300 dark:border-[#2a2f4c] rounded-lg p-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0033A0] dark:focus:ring-[#ff5a00]"></textarea>
+                        <button type="submit" disabled={isSubmitting} className="mt-2 bg-[#0033A0] dark:bg-[#ff5a00] hover:opacity-80 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm">{isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>{Send && <Send className="w-5 h-5"/>} Adicionar</>}</button>
                     </form>
                 </div>
             );
