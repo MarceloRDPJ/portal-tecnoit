@@ -74,7 +74,25 @@
             const [authReady, setAuthReady] = useState(false);
             const [glpiSessionData, setGlpiSessionData] = useState(null);
 
-            if (!authReady || !user) return <LoadingScreen message="Autenticando..." />;
+            useEffect(() => {
+                const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+                    if (currentUser) {
+                        setUser(currentUser);
+                    } else {
+                        // Se não houver usuário, tenta login anônimo.
+                        try {
+                            const userCredential = await signInAnonymously(auth);
+                            setUser(userCredential.user);
+                        } catch (error) {
+                            console.error("Erro no login anônimo:", error);
+                        }
+                    }
+                    setAuthReady(true);
+                });
+                return () => unsubscribe();
+            }, [auth]);
+
+            if (!authReady) return <LoadingScreen message="Autenticando..." />;
             
             return (
                 <div className="flex h-screen bg-[#060818] text-gray-200">
@@ -247,8 +265,10 @@
                     } catch (err) { setError("Não foi possível carregar sua sessão salva."); }
                     finally { setIsLoading(false); }
                 };
-                loadSession();
-            }, [configDocRef, fetchTickets, setGlpiConfig, setIsLoading, setError]);
+                if(user) { // Only run if firebase user exists
+                    loadSession();
+                }
+            }, [configDocRef, fetchTickets, setGlpiConfig, setIsLoading, setError, user]);
             
             const handleConnect = async (authDetails) => {
                 setError('');
