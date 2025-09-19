@@ -76,7 +76,6 @@
         };
         const useTheme = () => useContext(ThemeContext);
 
-
         function AppWrapper() {
             const [libsLoaded, setLibsLoaded] = useState(false);
             useEffect(() => {
@@ -114,10 +113,10 @@
                 return () => unsubscribe();
             }, [auth]);
 
-            if (!user) return <div className={`bg-[#060818] ${theme}`}><LoadingScreen message="Autenticando..." /></div>;
+            if (!user) return <div className={`bg-white dark:bg-[#060818] ${theme}`}><LoadingScreen message="Autenticando..." /></div>;
             
             return (
-                <div className={`flex h-screen bg-white dark:bg-[#060818] text-gray-800 dark:text-gray-200 ${theme}`}>
+                <div className={`flex h-screen bg-gray-50 dark:bg-[#060818] text-gray-800 dark:text-gray-200 ${theme}`}>
                     <Sidebar setPage={setPage} currentPage={page} />
                     <main className="flex-1 flex flex-col overflow-hidden">
                         <Header sessionData={glpiSessionData} />
@@ -165,19 +164,19 @@
                 <nav className="w-16 md:w-64 bg-gray-100 dark:bg-[#04050d] p-2 md:p-4 flex flex-col justify-between border-r border-gray-200 dark:border-[#2a2f4c]">
                     <div>
                         <div className="flex items-center mb-10">
-                            <img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg" />
+                            <img src="https://placehold.co/40x40/ff5a00/FFFFFF?text=T" alt="TecnoiT Logo" className="rounded-lg flex-shrink-0" />
                             <h1 className="text-2xl font-bold ml-3 hidden md:block text-gray-900 dark:text-white">TecnoiT</h1>
                         </div>
                         <ul className="space-y-2">
                             {navItems.map(item => {
                                 const Icon = item.icon;
-                                return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#0033A0] dark:bg-[#ff5a00] text-white' : 'hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>{Icon && <Icon className="w-6 h-6" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
+                                return (<li key={item.id}><button onClick={() => setPage(item.id)} className={`flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors ${ currentPage === item.id ? 'bg-[#0033A0] dark:bg-[#ff5a00] text-white' : 'hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>{Icon && <Icon className="w-6 h-6 flex-shrink-0" />}<span className="ml-4 hidden md:block">{item.label}</span></button></li>)
                             })}
                         </ul>
                     </div>
                     <div className="pb-4">
                          <button onClick={toggleTheme} className="flex items-center justify-center md:justify-start w-full p-3 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-[#12162d] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                            {theme === 'light' ? (Moon && <Moon className="w-6 h-6"/>) : (Sun && <Sun className="w-6 h-6" />)}
+                            {theme === 'light' ? (Moon && <Moon className="w-6 h-6 flex-shrink-0"/>) : (Sun && <Sun className="w-6 h-6 flex-shrink-0" />)}
                             <span className="ml-4 hidden md:block">
                                 {theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
                             </span>
@@ -189,7 +188,7 @@
 
         const Header = ({ sessionData }) => {
             const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
-            return (<header className="bg-white/50 dark:bg-[#04050d]/50 backdrop-blur-sm border-b border-gray-200 dark:border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-gray-900 dark:text-white">{welcomeMessage}</h2></header>);
+            return (<header className="bg-white/80 dark:bg-[#04050d]/50 backdrop-blur-sm border-b border-gray-200 dark:border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-gray-900 dark:text-white">{welcomeMessage}</h2></header>);
         };
 
         function ContentArea({ page, user, app }) {
@@ -202,13 +201,13 @@
         
         function UserProfile() {
             const { currentUserData, sessionToken } = useGlpi();
-            if (!sessionToken) return <div className="p-4 text-center text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
+            if (!sessionToken) return <div className="p-4 text-center text-gray-500 dark:text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
             if (!currentUserData) return <LoadingScreen message="Carregando perfil..." />;
-            const ProfileItem = ({ label, value }) => (<div className="py-2"><p className="text-sm font-semibold text-gray-400">{label}</p><p className="text-white">{value || 'Não informado'}</p></div>);
+            const ProfileItem = ({ label, value }) => (<div className="py-3"><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{label}</p><p className="text-lg text-gray-900 dark:text-white">{value || 'Não informado'}</p></div>);
             return (
                  <div className="animate-fade-in max-w-2xl mx-auto">
-                    <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3">{User && <User className="w-8 h-8" />} Meu Perfil</h2>
-                    <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6 divide-y divide-[#2a2f4c]">
+                    <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-3">{User && <User className="w-8 h-8 text-[#0033A0] dark:text-[#ff5a00]" />} Meu Perfil</h2>
+                    <div className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-6 divide-y divide-gray-200 dark:divide-[#2a2f4c]">
                         <ProfileItem label="Nome Completo" value={`${currentUserData.glpifirstname} ${currentUserData.glpirealname}`} />
                         <ProfileItem label="E-mail" value={currentUserData.glpi_current_entity_email} />
                         <ProfileItem label="Perfil Ativo" value={currentUserData.glpiactiveprofile?.name} />
@@ -412,9 +411,13 @@
 
         function TicketList({ tickets, onSelectTicket }) {
             const StatusBadge = ({ status }) => {
-                const statusMap = { 1: "Novo", 2: "Em atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
-                const colorMap = { 1: 'bg-blue-500/20 text-blue-400', 2: 'bg-yellow-500/20 text-yellow-400', 3: 'bg-orange-500/20 text-orange-400', 4: 'bg-purple-500/20 text-purple-400', 5: 'bg-green-500/20 text-green-400', 6: 'bg-gray-500/20 text-gray-400' };
-                return <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${colorMap[status] || colorMap[6]}`}>{statusMap[status] || "Desconhecido"}</span>;
+                const statusMap = { 1: "Novo", 2: "Em Atendimento", 3: "Planejado", 4: "Pendente", 5: "Solucionado", 6: "Fechado" };
+                const colorMap = {
+                    dark: { 1: 'bg-blue-500/20 text-blue-400', 2: 'bg-yellow-500/20 text-yellow-400', 3: 'bg-orange-500/20 text-orange-400', 4: 'bg-purple-500/20 text-purple-400', 5: 'bg-green-500/20 text-green-400', 6: 'bg-gray-500/20 text-gray-400' },
+                    light: { 1: 'bg-blue-100 text-blue-800', 2: 'bg-yellow-100 text-yellow-800', 3: 'bg-orange-100 text-orange-800', 4: 'bg-purple-100 text-purple-800', 5: 'bg-green-100 text-green-800', 6: 'bg-gray-200 text-gray-800' }
+                };
+                const { theme } = useTheme();
+                return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorMap[theme][status] || colorMap[theme][6]}`}>{statusMap[status] || "Desconhecido"}</span>;
             };
         
             if (!Array.isArray(tickets) || tickets.length === 0) { return <div className="text-center py-10 text-gray-500 dark:text-gray-400">Nenhum chamado para o filtro atual.</div>; }
@@ -422,12 +425,12 @@
             return (
                 <div className="space-y-4">
                     {tickets.map(ticket => (
-                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-gray-50 dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 hover:bg-gray-100 dark:hover:bg-[#12162d] hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-all cursor-pointer">
-                            <div className="flex justify-between items-start">
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-2 pr-4">{`#${ticket.id} - ${ticket.name}`}</h3>
-                                <StatusBadge status={ticket.status} />
+                        <div key={ticket.id} onClick={() => onSelectTicket(ticket.id)} className="bg-white dark:bg-[#12162d]/50 border border-gray-200 dark:border-[#2a2f4c] rounded-xl p-4 shadow-sm hover:shadow-md hover:border-[#0033A0] dark:hover:border-[#ff5a00] transition-all cursor-pointer">
+                            <div className="flex justify-between items-start gap-4">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2 pr-2 flex-1">{`#${ticket.id} - ${ticket.name}`}</h3>
+                                <div className="flex-shrink-0"><StatusBadge status={ticket.status} /></div>
                             </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-4 mt-2">
+                            <div className="text-sm text-gray-600 dark:text-gray-400 flex flex-col sm:flex-row sm:items-center sm:gap-4 mt-2 border-t border-gray-100 dark:border-gray-700 pt-2">
                                 <span><strong className="font-semibold">Criado em:</strong> {new Date(ticket.date).toLocaleDateString('pt-BR')}</span>
                                 <span><strong className="font-semibold">Prioridade:</strong> {ticket.priority}</span>
                             </div>
