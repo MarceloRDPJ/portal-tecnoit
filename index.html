@@ -72,28 +72,54 @@
             const [page, setPage] = useState('glpi');
             const [user, setUser] = useState(null);
             const [authReady, setAuthReady] = useState(false);
+            const [glpiSessionData, setGlpiSessionData] = useState(null);
 
-            useEffect(() => {
-                const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-                    if (!currentUser) {
-                        try { await signInAnonymously(auth); } catch (error) { console.error("Erro na autenticação anônima:", error); }
-                    } else { setUser(currentUser); }
-                    setAuthReady(true);
-                });
-                return () => unsubscribe();
-            }, [auth]);
-            
             if (!authReady || !user) return <LoadingScreen message="Autenticando..." />;
+            
             return (
                 <div className="flex h-screen bg-[#060818] text-gray-200">
                     <Sidebar setPage={setPage} currentPage={page} />
                     <main className="flex-1 flex flex-col overflow-hidden">
-                        <Header />
-                        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto"><ContentArea page={page} user={user} app={app} /></div>
+                        <Header sessionData={glpiSessionData} />
+                        <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                           <GlpiProvider onSessionUpdate={setGlpiSessionData}>
+                             <ContentArea page={page} user={user} app={app} />
+                           </GlpiProvider>
+                        </div>
                     </main>
                 </div>
             );
         }
+        
+        // Context Provider for GLPI Data
+        const GlpiContext = React.createContext();
+
+        function GlpiProvider({ children, onSessionUpdate }) {
+            const [glpiConfig, setGlpiConfig] = useState(null);
+            const [sessionToken, setSessionToken] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [error, setError] = useState('');
+            const [tickets, setTickets] = useState([]);
+            const [currentUserData, setCurrentUserData] = useState(null);
+            
+            useEffect(() => {
+                onSessionUpdate(currentUserData);
+            }, [currentUserData, onSessionUpdate]);
+
+            const value = {
+                glpiConfig, setGlpiConfig,
+                sessionToken, setSessionToken,
+                isLoading, setIsLoading,
+                error, setError,
+                tickets, setTickets,
+                currentUserData, setCurrentUserData
+            };
+
+            return <GlpiContext.Provider value={value}>{children}</GlpiContext.Provider>;
+        }
+        
+        const useGlpi = () => React.useContext(GlpiContext);
+
 
         const LoadingScreen = ({ message }) => (
              <div className="flex items-center justify-center h-screen bg-[#060818] text-white">
@@ -110,7 +136,6 @@
         function Sidebar({ setPage, currentPage }) {
             const navItems = [
                 { id: 'glpi', icon: Ticket, label: 'Chamados' },
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Painel' },
                 { id: 'profile', icon: User, label: 'Meu Perfil' }
             ];
             return (
@@ -123,32 +148,61 @@
             );
         }
 
-        const Header = () => (
-            <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4"><h2 className="text-xl font-semibold text-white">Bem-vindo(a) de volta!</h2></header>
-        );
+        const Header = ({ sessionData }) => {
+            const welcomeMessage = sessionData ? `Bem-vindo(a), ${sessionData.glpifirstname}!` : "Bem-vindo(a) de volta!";
+            return (
+                <header className="bg-[#04050d]/50 backdrop-blur-sm border-b border-[#2a2f4c] p-4">
+                    <h2 className="text-xl font-semibold text-white">{welcomeMessage}</h2>
+                </header>
+            );
+        };
 
         function ContentArea({ page, user, app }) {
             switch (page) {
-                case 'dashboard': return <Dashboard />;
-                case 'profile': return <div className="p-4 text-center">Em desenvolvimento</div>;
+                case 'profile': return <UserProfile />;
                 case 'glpi': return <GlpiTickets user={user} app={app} />;
-                default: return <Dashboard />;
+                default: return <GlpiTickets user={user} app={app} />;
             }
         }
+        
+        function UserProfile() {
+            const { currentUserData, sessionToken } = useGlpi();
 
-        const Dashboard = () => <div className="animate-fade-in"><h2 className="text-3xl font-bold mb-6 text-white">Painel Principal</h2><p>Funcionalidades em desenvolvimento.</p></div>;
+            if (!sessionToken) {
+                return <div className="p-4 text-center text-gray-400">Você precisa estar conectado para ver seu perfil.</div>;
+            }
+            
+            if (!currentUserData) {
+                return <LoadingScreen message="Carregando perfil..." />;
+            }
+
+            const ProfileItem = ({ label, value }) => (
+                <div className="py-2">
+                    <p className="text-sm font-semibold text-gray-400">{label}</p>
+                    <p className="text-white">{value || 'Não informado'}</p>
+                </div>
+            );
+
+            return (
+                 <div className="animate-fade-in max-w-2xl mx-auto">
+                    <h2 className="text-3xl font-bold mb-6 text-white flex items-center gap-3"><User className="w-8 h-8" /> Meu Perfil</h2>
+                    <div className="bg-[#12162d]/50 border border-[#2a2f4c] rounded-xl p-6 divide-y divide-[#2a2f4c]">
+                        <ProfileItem label="Nome Completo" value={`${currentUserData.glpifirstname} ${currentUserData.glpirealname}`} />
+                        <ProfileItem label="E-mail" value={currentUserData.glpi_current_entity_email} />
+                        <ProfileItem label="Perfil Ativo" value={currentUserData.glpiactiveprofile?.name} />
+                        <ProfileItem label="Entidade Ativa" value={currentUserData.glpiactive_entity_name} />
+                    </div>
+                 </div>
+            );
+        }
 
         // GLPI Main Component
         function GlpiTickets({ user, app }) {
             const { getFirestore, doc, setDoc, getDoc } = window.firebase.firestore;
             const db = useMemo(() => getFirestore(app), [app]);
-            const [glpiConfig, setGlpiConfig] = useState(null);
-            const [sessionToken, setSessionToken] = useState(null);
-            const [isLoading, setIsLoading] = useState(true);
-            const [error, setError] = useState('');
-            const [tickets, setTickets] = useState([]);
+            const { glpiConfig, setGlpiConfig, sessionToken, setSessionToken, isLoading, setIsLoading, error, setError, tickets, setTickets, currentUserData, setCurrentUserData } = useGlpi();
+            
             const [selectedTicketId, setSelectedTicketId] = useState(null);
-            const [currentUserData, setCurrentUserData] = useState(null);
             const configDocRef = useMemo(() => doc(db, `/artifacts/${firebaseConfig.appId}/users/${user.uid}/glpiConfig/config`), [db, user.uid]);
 
             const fetchFullSession = useCallback(async (token, url) => {
@@ -161,7 +215,7 @@
                     if (!response.ok) throw new Error(data.message || 'Erro ao buscar sessão');
                     setCurrentUserData(data.session);
                 } catch (err) { console.error("Falha ao buscar dados da sessão:", err); }
-            }, []);
+            }, [setCurrentUserData]);
 
             const fetchTickets = useCallback(async (token, url) => {
                 setIsLoading(true);
@@ -179,7 +233,7 @@
                     setError(`Sessão expirada ou inválida. Por favor, conecte-se novamente.`); 
                     setSessionToken(null); 
                 } finally { setIsLoading(false); }
-            }, [fetchFullSession]);
+            }, [fetchFullSession, setIsLoading, setTickets, setSessionToken, setError]);
 
             useEffect(() => {
                 const loadSession = async () => {
@@ -194,7 +248,7 @@
                     finally { setIsLoading(false); }
                 };
                 loadSession();
-            }, [configDocRef, fetchTickets]);
+            }, [configDocRef, fetchTickets, setGlpiConfig, setIsLoading, setError]);
             
             const handleConnect = async (authDetails) => {
                 setError('');
