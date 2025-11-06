@@ -8,21 +8,21 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
 
-    private fun getHttpClient(context: Context): OkHttpClient {
+    private fun getHttpClient(context: Context, appToken: String): OkHttpClient {
         val logging = HttpLoggingInterceptor()
         logging.setLevel(HttpLoggingInterceptor.Level.BODY) // Use Level.NONE for release builds
         return OkHttpClient.Builder()
             .addInterceptor(logging)
-            .addInterceptor(AuthInterceptor(context))
+            .addInterceptor(AuthInterceptor(context, appToken))
             .build()
     }
 
-    fun getApiService(context: Context, baseUrl: String): GlpiApiService {
+    fun getApiService(context: Context, baseUrl: String, appToken: String): GlpiApiService {
         // Ensure the base URL ends with a slash
         val wellFormedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
         val retrofit = Retrofit.Builder()
-            .baseUrl(wellFormedBaseUrl + "api.php/") // Base URL for all API calls
-            .client(getHttpClient(context))
+            .baseUrl(wellFormedBaseUrl + "apirest.php/") // The endpoint for GLPI 10 is typically apirest.php
+            .client(getHttpClient(context, appToken))
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 

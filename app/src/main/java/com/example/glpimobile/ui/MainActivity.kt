@@ -10,7 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.glpimobile.R
-import com.example.glpimobile.auth.TokenManager
+import com.example.glpimobile.auth.SessionManager
 import com.example.glpimobile.network.ApiClient
 import kotlinx.coroutines.launch
 
@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (TokenManager.getAccessToken(this) == null) {
+        if (SessionManager.getSessionToken(this) == null) {
             navigateToLogin()
             return
         }
@@ -44,15 +44,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchTickets() {
         showLoading(true)
-        val serverUrl = getSharedPreferences("glpi_prefs", MODE_PRIVATE).getString("server_url", null)
-        if (serverUrl == null) {
-            Toast.makeText(this, "Server URL not found. Please log in again.", Toast.LENGTH_LONG).show()
-            TokenManager.clearTokens(this)
+        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
+        val serverUrl = prefs.getString("server_url", null)
+        val appToken = prefs.getString("app_token", null)
+
+        if (serverUrl == null || appToken == null) {
+            Toast.makeText(this, "Configuration missing. Please log in again.", Toast.LENGTH_LONG).show()
+            SessionManager.clearSession(this)
             navigateToLogin()
             return
         }
 
-        val apiService = ApiClient.getApiService(this, serverUrl)
+        val apiService = ApiClient.getApiService(this, serverUrl, appToken)
 
         lifecycleScope.launch {
             try {
@@ -63,9 +66,9 @@ class MainActivity : AppCompatActivity() {
                         ticketAdapter.updateTickets(tickets)
                     }
                 } else {
-                    Toast.makeText(this@MainActivity, "Error: ${response.code()}", Toast.LENGTH_SHORT).show()
-                    if (response.code() == 401) { // Unauthorized
-                        TokenManager.clearTokens(this@MainActivity)
+                    Toast.makeText(this@MainActivity, "Error fetching tickets: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    if (response.code() == 401) { // Unauthorized, session might be expired
+                        SessionManager.clearSession(this@MainActivity)
                         navigateToLogin()
                     }
                 }
