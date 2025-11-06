@@ -14,6 +14,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GlpiMobile"
         tools:targetApi="31">
+
+        <!-- MainActivity is now the primary entry point. It will redirect to LoginActivity if needed. -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">
@@ -25,16 +27,7 @@
 
         <activity
             android:name=".ui.LoginActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="callback"
-                    android:scheme="glpimobile" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
 
     </application>
 

@@ -17,8 +17,10 @@ import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
+    // This is the App-Token for your GLPI instance.
+    private val APP_TOKEN = "wqiKYM7TOVHVgj1cW9lmzmvn8jwZQY59xSKSXLkx"
+
     private lateinit var serverUrlEditText: EditText
-    private lateinit var appTokenEditText: EditText
     private lateinit var usernameEditText: EditText
     private lateinit var passwordEditText: EditText
     private lateinit var loginButton: Button
@@ -29,7 +31,6 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         serverUrlEditText = findViewById(R.id.etGlpiServerUrl)
-        appTokenEditText = findViewById(R.id.etAppToken)
         usernameEditText = findViewById(R.id.etUsername)
         passwordEditText = findViewById(R.id.etPassword)
         loginButton = findViewById(R.id.btnLogin)
@@ -42,30 +43,23 @@ class LoginActivity : AppCompatActivity() {
 
     private fun performLogin() {
         val serverUrl = serverUrlEditText.text.toString().trim()
-        val appToken = appTokenEditText.text.toString().trim()
         val username = usernameEditText.text.toString().trim()
         val password = passwordEditText.text.toString().trim()
 
-        if (serverUrl.isEmpty() || appToken.isEmpty() || username.isEmpty() || password.isEmpty()) {
+        if (serverUrl.isEmpty() || username.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Save server URL and App-Token for later use
-        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
-        prefs.edit()
-            .putString("server_url", serverUrl)
-            .putString("app_token", appToken)
-            .apply()
-
+        getSharedPreferences("glpi_prefs", MODE_PRIVATE).edit().putString("server_url", serverUrl).apply()
         showLoading(true)
 
-        val apiService = ApiClient.getApiService(this, serverUrl, appToken)
+        val apiService = ApiClient.getApiService(this, serverUrl, APP_TOKEN)
         val basicAuth = "Basic " + Base64.encodeToString("$username:$password".toByteArray(), Base64.NO_WRAP)
 
         lifecycleScope.launch {
             try {
-                val response = apiService.initSession(basicAuth, appToken)
+                val response = apiService.initSession(basicAuth, APP_TOKEN)
                 if (response.isSuccessful && response.body() != null) {
                     val sessionToken = response.body()!!.sessionToken
                     SessionManager.saveSessionToken(this@LoginActivity, sessionToken)
@@ -94,7 +88,6 @@ class LoginActivity : AppCompatActivity() {
         progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         loginButton.isEnabled = !isLoading
         serverUrlEditText.isEnabled = !isLoading
-        appTokenEditText.isEnabled = !isLoading
         usernameEditText.isEnabled = !isLoading
         passwordEditText.isEnabled = !isLoading
     }
