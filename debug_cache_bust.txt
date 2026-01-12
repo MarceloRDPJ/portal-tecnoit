@@ -1,0 +1,22 @@
+        const APP_VERSION = '1.1.0';
+
+        function App() {
+            // ... (rest of the code)
+
+            // Check for saved GLPI Session on startup & Cache Busting
+            useEffect(() => {
+                const checkSession = async () => {
+                   // Check Version to force refresh if needed
+                   const savedVersion = localStorage.getItem('appVersion');
+                   // BUG: If I set glpiSessionData below manually in the test,
+                   // this effect runs and clears it because version is missing in the test storage!
+                   if (savedVersion !== APP_VERSION) {
+                       console.log("New version detected. Clearing old session.");
+                       localStorage.removeItem('glpiSessionData');
+                       localStorage.setItem('appVersion', APP_VERSION);
+                       // We should probably return here if we want to force login?
+                       // Or let it proceed but glpiSessionData is gone.
+                   }
+
+                   const savedCreds = localStorage.getItem('glpiSessionData');
+                   // ...
