@@ -1,0 +1,38 @@
+    # ...
+    # 2. Verify Mobile Polish (Inputs)
+    print("Checking Input Attributes...")
+
+    # We are simulating a session with ONE entity in the mock above: "1": { ... }
+    # So the entity dropdown might NOT be rendered (it renders a div if length <= 1).
+    # Check what is rendered.
+
+    # We need >1 entities to see the select.
+    mock_session = {
+        "sessionToken": "test-token",
+        "glpiUrl": "https://suporte.tecnoit.com.br",
+        "fullSessionData": {
+            "glpifirstname": "Jules",
+            "glpiactive_entity_name": "TecnoiT Matriz",
+            "glpiactive_entity": "1",
+            "glpimy_entities": {
+                "1": { "id": "1", "name": "TecnoiT Matriz" },
+                "2": { "id": "2", "name": "Outra" }
+            }
+        }
+    }
+    json_session = json.dumps(mock_session)
+    page.evaluate(f"""
+        localStorage.setItem('glpiSessionData', '{json_session}');
+        localStorage.setItem('appVersion', '1.1.0');
+        location.reload();
+    """)
+    page.wait_for_selector('text=NOVO ATENDIMENTO')
+    page.click('text=NOVO ATENDIMENTO')
+
+    # Now select should be visible
+    page.select_option('section select', '2')
+
+    # Check inputMode
+    page.select_option('select >> nth=1', "Troca de Fibra")
+    page.wait_for_selector('input[inputmode="decimal"]')
+    # ...
