@@ -42,7 +42,7 @@
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw;
+        let User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff;
 
         // Firebase is kept for potential future use or auth if needed, but the main logic is now Proxy-based
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -54,7 +54,7 @@
             useEffect(() => {
                 Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
                     .then(([lucide, app, auth, firestore]) => {
-                        ({ User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw } = lucide);
+                        ({ User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff } = lucide);
                         window.firebase = { app, auth, firestore };
                         setLibsLoaded(true);
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -150,7 +150,8 @@
         function LoginScreen({ onLogin }) {
             const [username, setUsername] = useState('');
             const [password, setPassword] = useState('');
-            const [rememberMe, setRememberMe] = useState(true); // Default true per request "Lembrar-me" priority
+            const [showPassword, setShowPassword] = useState(false);
+            const [rememberMe, setRememberMe] = useState(true);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
 
@@ -166,11 +167,6 @@
                 try {
                     const glpiUrl = 'https://suporte.tecnoit.com.br';
 
-                    // Optimistic: Try to init session AND get full session in one go if Proxy/GLPI supports it
-                    // NOTE: Standard GLPI API allows `initSession?get_full_session=true`.
-                    // The proxy `initSession` endpoint might pass extra body params to GLPI.
-                    // We will try to fetch full session immediately to save time.
-
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -180,17 +176,17 @@
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || 'Falha na autenticação');
 
-                    // Save username if remember me
                     if (rememberMe) localStorage.setItem('glpiUsername', username);
                     else localStorage.removeItem('glpiUsername');
 
                     let fullSession = null;
 
-                    // Check if the proxy/GLPI returned the session data in the first response (Fast Login)
-                    if (data.session && (data.session.glpifirstname || data.session.glpiID)) {
+                    // STRICT CHECK: Ensure glpimy_entities is present.
+                    // If the "Fast Login" returns session but NO entities, we MUST fetch full session.
+                    if (data.session && data.session.glpimy_entities) {
                         fullSession = data.session;
                     } else {
-                        // Fallback: Lazy load if not returned (Standard Login)
+                        // Fallback to Full Fetch if entities are missing
                         const sessionRes = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
                             method: 'POST',
                              headers: { 'Content-Type': 'application/json' },
@@ -231,7 +227,7 @@
                                 </div>
                                 <input type="text" value={username} onChange={e => setUsername(e.target.value)}
                                     className="pl-10 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                    placeholder="Seu usuário de rede" required />
+                                    placeholder="Seu usuário de rede" autoCapitalize="none" autoComplete="username" inputMode="text" required />
                             </div>
                         </div>
 
@@ -241,9 +237,13 @@
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     {Lock && <Lock className="h-5 w-5 text-slate-400" />}
                                 </div>
-                                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                                    className="pl-10 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                    placeholder="Sua senha" required />
+                                <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                                    className="pl-10 pr-12 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                                    placeholder="Sua senha" autoComplete="current-password" required />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                                    {showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}
+                                </button>
                             </div>
                         </div>
 
@@ -558,11 +558,11 @@
                                 <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fade-in">
                                     <div>
                                         <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Inicial</label>
-                                        <input type="number" value={fiberStart} onChange={e => setFiberStart(e.target.value)} placeholder="0.00" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
+                                        <input type="number" value={fiberStart} onChange={e => setFiberStart(e.target.value)} placeholder="0.00" inputMode="decimal" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Final</label>
-                                        <input type="number" value={fiberEnd} onChange={e => setFiberEnd(e.target.value)} placeholder="0.00" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
+                                        <input type="number" value={fiberEnd} onChange={e => setFiberEnd(e.target.value)} placeholder="0.00" inputMode="decimal" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
                                     </div>
                                     <div className="col-span-2 text-center text-sm font-bold text-blue-800">
                                         Total: {((parseFloat(fiberEnd)||0) - (parseFloat(fiberStart)||0)).toFixed(2)}m
@@ -581,25 +581,29 @@
                             {/* Problem */}
                             <div className="relative">
                                 <label className="block text-sm font-semibold text-slate-500 mb-1">Problema Encontrado</label>
-                                <textarea value={problemDescription} onChange={e => setProblemDescription(e.target.value)}
-                                    rows="3" placeholder="Ex: Fibra rompida na caixa de emenda..."
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
-                                <button onClick={() => toggleDictation('problem')} type="button"
-                                    className={`absolute right-3 bottom-3 p-2 rounded-full transition-colors ${activeDictationField === 'problem' ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}>
-                                    <Mic className="w-5 h-5" />
-                                </button>
+                                <div className="relative">
+                                    <textarea value={problemDescription} onChange={e => setProblemDescription(e.target.value)}
+                                        rows="3" placeholder="Ex: Fibra rompida na caixa de emenda..."
+                                        className="w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none appearance-none" />
+                                    <button onClick={() => toggleDictation('problem')} type="button"
+                                        className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all active:scale-95 ${activeDictationField === 'problem' ? 'bg-red-500 text-white shadow-md animate-pulse' : 'bg-white text-slate-400 border border-slate-200 shadow-sm hover:text-blue-600'}`}>
+                                        <Mic className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Solution */}
                             <div className="relative">
                                 <label className="block text-sm font-semibold text-slate-500 mb-1">Solução Realizada</label>
-                                <textarea value={solutionDescription} onChange={e => setSolutionDescription(e.target.value)}
-                                    rows="3" placeholder="Ex: Realizada fusão e acomodação dos cabos..."
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
-                                <button onClick={() => toggleDictation('solution')} type="button"
-                                    className={`absolute right-3 bottom-3 p-2 rounded-full transition-colors ${activeDictationField === 'solution' ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}>
-                                    <Mic className="w-5 h-5" />
-                                </button>
+                                <div className="relative">
+                                    <textarea value={solutionDescription} onChange={e => setSolutionDescription(e.target.value)}
+                                        rows="3" placeholder="Ex: Realizada fusão e acomodação dos cabos..."
+                                        className="w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none appearance-none" />
+                                    <button onClick={() => toggleDictation('solution')} type="button"
+                                        className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all active:scale-95 ${activeDictationField === 'solution' ? 'bg-red-500 text-white shadow-md animate-pulse' : 'bg-white text-slate-400 border border-slate-200 shadow-sm hover:text-blue-600'}`}>
+                                        <Mic className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Evidence */}
@@ -662,14 +666,16 @@
 
                     {/* Modal Insumos */}
                     {isModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay p-4 animate-fade-in">
-                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up">
-                                <h3 className="text-lg font-bold text-slate-800">Adicionar Material</h3>
+                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm bg-black/40 transition-opacity">
+                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up ring-1 ring-black/5">
+                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <Box className="w-5 h-5 text-blue-600" /> Adicionar Material
+                                </h3>
 
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-500 mb-1">Item</label>
                                     <select value={selectedStockId} onChange={e => setSelectedStockId(e.target.value)}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-no-repeat bg-right pr-8">
                                         <option value="">Selecione um item...</option>
                                         {availableStock.map(s => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
@@ -690,12 +696,13 @@
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-500 mb-1">Quantidade</label>
                                     <input type="number" min="1" value={stockQty} onChange={e => setStockQty(parseInt(e.target.value))}
+                                        inputMode="numeric" pattern="[0-9]*"
                                         className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                                 </div>
 
-                                <div className="flex gap-3 pt-2">
-                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-500 font-bold">Cancelar</button>
-                                    <button onClick={handleAddStock} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200">Confirmar</button>
+                                <div className="flex gap-3 pt-4">
+                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-500 font-bold active:bg-slate-50 rounded-xl transition-colors">Cancelar</button>
+                                    <button onClick={handleAddStock} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform">Confirmar</button>
                                 </div>
                             </div>
                         </div>
