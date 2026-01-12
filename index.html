@@ -151,11 +151,16 @@
 
                 try {
                     const glpiUrl = 'https://suporte.tecnoit.com.br';
-                    // We use the Proxy to init session
+
+                    // Optimistic: Try to init session AND get full session in one go if Proxy/GLPI supports it
+                    // NOTE: Standard GLPI API allows `initSession?get_full_session=true`.
+                    // The proxy `initSession` endpoint might pass extra body params to GLPI.
+                    // We will try to fetch full session immediately to save time.
+
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, username, password })
+                        body: JSON.stringify({ glpiUrl, username, password, get_full_session: true })
                     });
 
                     const data = await res.json();
@@ -165,15 +170,22 @@
                     if (rememberMe) localStorage.setItem('glpiUsername', username);
                     else localStorage.removeItem('glpiUsername');
 
-                    // Need to fetch full session data to get Entities/Profile
-                    const sessionRes = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
-                        method: 'POST',
-                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, sessionToken: data.session_token })
-                    });
+                    let fullSession = null;
 
-                    if(!sessionRes.ok) throw new Error('Erro ao carregar perfil do usuário');
-                    const fullSession = (await sessionRes.json()).session;
+                    // Check if the proxy/GLPI returned the session data in the first response (Fast Login)
+                    if (data.session && (data.session.glpifirstname || data.session.glpiID)) {
+                        fullSession = data.session;
+                    } else {
+                        // Fallback: Lazy load if not returned (Standard Login)
+                        const sessionRes = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
+                            method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ glpiUrl, sessionToken: data.session_token })
+                        });
+
+                        if(!sessionRes.ok) throw new Error('Erro ao carregar perfil do usuário');
+                        fullSession = (await sessionRes.json()).session;
+                    }
 
                     onLogin({
                         sessionToken: data.session_token,
@@ -276,13 +288,35 @@
                     setEntityId(activeId);
                     setEntityName(activeName);
 
-                    // Parse available entities (GLPI structure usually: glpimy_entities is an array of objects)
-                    if (Array.isArray(fullSessionData.glpimy_entities)) {
-                        setAvailableEntities(fullSessionData.glpimy_entities);
-                    } else {
-                         // Fallback if structure differs
-                         setAvailableEntities([{ id: activeId, name: activeName }]);
+                    // Robust Entity Parsing
+                    // GLPI can return glpimy_entities as:
+                    // 1. Array of Objects: [{id: 1, name: "A"}, ...]
+                    // 2. Object of Objects: { "1": {id: 1, name: "A"}, ... } (Self-Tree)
+                    // 3. Object of Strings: { "1": "Name A", "2": "Name B" } (Simple Map)
+                    let parsedEntities = [];
+                    const rawEntities = fullSessionData.glpimy_entities;
+
+                    if (Array.isArray(rawEntities)) {
+                        parsedEntities = rawEntities;
+                    } else if (typeof rawEntities === 'object' && rawEntities !== null) {
+                        // Handle Object formats
+                        parsedEntities = Object.entries(rawEntities).map(([key, value]) => {
+                            if (typeof value === 'object' && value !== null) {
+                                // Case 2: { "1": {id: 1, name: "A"} }
+                                return { id: value.id || key, name: value.name || value.completename || 'Entidade ' + key };
+                            } else {
+                                // Case 3: { "1": "Name A" }
+                                return { id: key, name: value };
+                            }
+                        });
                     }
+
+                    // Fallback
+                    if (parsedEntities.length === 0) {
+                        parsedEntities = [{ id: activeId, name: activeName }];
+                    }
+
+                    setAvailableEntities(parsedEntities);
                 }
             }, [fullSessionData]);
 
