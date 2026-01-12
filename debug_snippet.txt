@@ -1,0 +1,9 @@
+        // --- 3. NEW TICKET FORM ---
+        function NewTicketForm({ session, onBack }) {
+            const { sessionToken, fullSessionData, glpiUrl } = session;
+
+            // State
+            const [entityId, setEntityId] = useState('');
+            const [entityName, setEntityName] = useState('');
+            const [availableEntities, setAvailableEntities] = useState([]);
+            // ...
