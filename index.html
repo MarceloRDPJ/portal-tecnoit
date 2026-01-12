@@ -23,7 +23,7 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
-    <div id="root" class="h-full flex flex-col"></div>
+    <div id="root" class="h-full flex flex-col max-w-2xl mx-auto shadow-2xl bg-white"></div>
 
     <script>
        const firebaseConfig = {
@@ -245,8 +245,14 @@
             // State
             const [entityId, setEntityId] = useState('');
             const [entityName, setEntityName] = useState('');
-            const [title, setTitle] = useState('');
-            const [description, setDescription] = useState('');
+            const [availableEntities, setAvailableEntities] = useState([]);
+
+            const [activityType, setActivityType] = useState('Manutenção Padrão');
+            const [fiberStart, setFiberStart] = useState('');
+            const [fiberEnd, setFiberEnd] = useState('');
+
+            const [problemDescription, setProblemDescription] = useState('');
+            const [solutionDescription, setSolutionDescription] = useState('');
             const [evidence, setEvidence] = useState(null);
 
             const [isModalOpen, setIsModalOpen] = useState(false);
@@ -255,32 +261,37 @@
 
             // Modal Inputs
             const [selectedStockId, setSelectedStockId] = useState('');
+            const [customItemName, setCustomItemName] = useState('');
             const [stockQty, setStockQty] = useState(1);
 
             const [isSubmitting, setIsSubmitting] = useState(false);
-            const [isListening, setIsListening] = useState(false);
+            const [activeDictationField, setActiveDictationField] = useState(null); // 'problem' or 'solution'
 
             // --- A. Entity Logic ---
             useEffect(() => {
                 if (fullSessionData) {
-                    // Check entities
-                    const myEntities = fullSessionData.glpimy_entities || []; // Array of {id, name} or similar
-                    // Assuming glpiactive_entity is the default.
-                    // To keep it simple based on requirements:
-                    // If user has > 1 entity -> Select. If 1 -> Readonly.
+                    const activeId = fullSessionData.glpiactive_entity || '';
+                    const activeName = fullSessionData.glpiactive_entity_name || 'Entidade Padrão';
 
-                    // NOTE: GLPI session data structure varies.
-                    // Usually: session['glpi_current_entity'] is ID.
-                    // session['glpiactive_entity_name'] is Name.
-                    // session['glpiprofiles'][profileId]['entities'] is the list.
+                    setEntityId(activeId);
+                    setEntityName(activeName);
 
-                    // Simplifying for the prompt "pull only the entity the profile has".
-                    // We will use the active entity from session as default.
-
-                    setEntityId(fullSessionData.glpiactive_entity || '');
-                    setEntityName(fullSessionData.glpiactive_entity_name || 'Entidade Padrão');
+                    // Parse available entities (GLPI structure usually: glpimy_entities is an array of objects)
+                    if (Array.isArray(fullSessionData.glpimy_entities)) {
+                        setAvailableEntities(fullSessionData.glpimy_entities);
+                    } else {
+                         // Fallback if structure differs
+                         setAvailableEntities([{ id: activeId, name: activeName }]);
+                    }
                 }
             }, [fullSessionData]);
+
+            const handleEntityChange = (e) => {
+                const newId = e.target.value;
+                setEntityId(newId);
+                const ent = availableEntities.find(en => String(en.id) === String(newId));
+                if (ent) setEntityName(ent.name);
+            };
 
             // --- B. Stock Fetch Logic ---
             useEffect(() => {
@@ -318,14 +329,14 @@
             }, [glpiUrl, sessionToken]);
 
             // --- Dictation Logic ---
-            const toggleDictation = () => {
+            const toggleDictation = (field) => {
                 if (!('webkitSpeechRecognition' in window)) {
                     alert("Seu navegador não suporta ditado.");
                     return;
                 }
 
-                if (isListening) {
-                    setIsListening(false);
+                if (activeDictationField === field) {
+                    setActiveDictationField(null); // Stop
                     return;
                 }
 
@@ -334,13 +345,14 @@
                 recognition.continuous = false;
                 recognition.interimResults = false;
 
-                recognition.onstart = () => setIsListening(true);
-                recognition.onend = () => setIsListening(false);
-                recognition.onerror = (event) => { console.error(event.error); setIsListening(false); };
+                recognition.onstart = () => setActiveDictationField(field);
+                recognition.onend = () => setActiveDictationField(null);
+                recognition.onerror = (event) => { console.error(event.error); setActiveDictationField(null); };
 
                 recognition.onresult = (event) => {
                     const transcript = event.results[0][0].transcript;
-                    setDescription(prev => (prev ? prev + ' ' + transcript : transcript));
+                    const setter = field === 'problem' ? setProblemDescription : setSolutionDescription;
+                    setter(prev => (prev ? prev + ' ' + transcript : transcript));
                 };
 
                 recognition.start();
@@ -349,11 +361,25 @@
             // --- Stock Helpers ---
             const handleAddStock = () => {
                 if (!selectedStockId || stockQty <= 0) return;
-                const item = availableStock.find(s => String(s.id) === String(selectedStockId));
-                if (item) {
-                    setStockItems(prev => [...prev, { id: item.id, name: item.name, qty: stockQty }]);
+
+                let itemName = '';
+                let itemId = selectedStockId;
+
+                if (selectedStockId === 'other') {
+                    if (!customItemName.trim()) return alert("Digite o nome do material.");
+                    itemName = customItemName;
+                    itemId = 'custom-' + Date.now();
+                } else {
+                    const item = availableStock.find(s => String(s.id) === String(selectedStockId));
+                    if (!item) return;
+                    itemName = item.name;
                 }
+
+                setStockItems(prev => [...prev, { id: itemId, name: itemName, qty: stockQty }]);
+
+                // Reset
                 setSelectedStockId('');
+                setCustomItemName('');
                 setStockQty(1);
                 setIsModalOpen(false);
             };
@@ -364,15 +390,37 @@
 
             // --- Submission ---
             const handleSubmit = async () => {
-                if (!title || !description) return alert("Preencha o título e a descrição.");
+                if (!problemDescription || !solutionDescription) return alert("Descreva o problema e a solução.");
+                if (activityType === 'Troca de Fibra' && (!fiberStart || !fiberEnd)) return alert("Informe a metragem da fibra.");
 
                 setIsSubmitting(true);
                 try {
-                    // Upload Image First if exists
-                    let documentId = null;
-                    if (evidence) {
-                        // Mock upload logic or implement real upload if endpoint exists
-                        // documentId = await uploadImage(evidence);
+                    // Construct Rich Content
+                    let finalContent = `
+                        <h2>Relatório de Campo</h2>
+                        <p><strong>Atividade:</strong> ${activityType}</p>
+                        <p><strong>Problema Encontrado:</strong> ${problemDescription}</p>
+                        <p><strong>Solução Realizada:</strong> ${solutionDescription}</p>
+                    `;
+
+                    if (activityType === 'Troca de Fibra') {
+                        const used = parseFloat(fiberEnd) - parseFloat(fiberStart);
+                        finalContent += `
+                            <h3>Troca de Fibra</h3>
+                            <ul>
+                                <li>Metragem Inicial: ${fiberStart}</li>
+                                <li>Metragem Final: ${fiberEnd}</li>
+                                <li><strong>Total Utilizado: ${used.toFixed(2)} metros</strong></li>
+                            </ul>
+                        `;
+                    }
+
+                    if (stockItems.length > 0) {
+                         finalContent += `<h3>Materiais Utilizados</h3><ul>`;
+                         stockItems.forEach(item => {
+                             finalContent += `<li>${item.qty}x ${item.name}</li>`;
+                         });
+                         finalContent += `</ul>`;
                     }
 
                     // Create Ticket Payload
@@ -380,16 +428,12 @@
                         glpiUrl,
                         sessionToken,
                         input: {
-                            name: title,
-                            content: description,
+                            name: `${activityType} - ${entityName}`, // Auto-title
+                            content: finalContent,
                             entities_id: entityId,
                             status: 2, // Em atendimento / Novo
-                            // Add logic for stock usage in content or separate generic object?
-                            // GLPI usually handles consumables via specific tab, but for simplified app,
-                            // we might append to description or use a plugin endpoint.
-                            // We will append to description for now as fail-safe.
                         },
-                        stockItems // Pass this for the proxy to handle if it can
+                        stockItems
                     };
 
                     const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/createTicket', {
@@ -423,63 +467,109 @@
                          <h2 className="text-xl font-bold text-slate-800">Novo Atendimento</h2>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-32">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32">
 
-                        {/* Bloco A: Identificação */}
+                        {/* Bloco A: Identificação & Atividade */}
                         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
                                 <Box className="w-5 h-5 text-blue-600" />
-                                <h3 className="font-bold text-slate-700">Identificação</h3>
+                                <h3 className="font-bold text-slate-700">Dados do Atendimento</h3>
                             </div>
+
+                            {/* Entity Selector */}
                             <div>
                                 <label className="block text-sm font-semibold text-slate-500 mb-1">Cliente / Entidade</label>
-                                <div className="p-3 bg-slate-100 rounded-xl text-slate-800 font-medium border border-slate-200">
-                                    {entityName}
-                                </div>
-                                {/* Future: Add Dropdown here if myEntities.length > 1 */}
+                                {availableEntities.length > 1 ? (
+                                    <select value={entityId} onChange={handleEntityChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800">
+                                        {availableEntities.map(ent => (
+                                            <option key={ent.id} value={ent.id}>{ent.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="p-3 bg-slate-100 rounded-xl text-slate-800 font-medium border border-slate-200">
+                                        {entityName}
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Activity Type */}
                             <div>
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Título Resumido</label>
-                                <input type="text" value={title} onChange={e => setTitle(e.target.value)}
-                                    placeholder="Ex: Troca de Roteador"
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <label className="block text-sm font-semibold text-slate-500 mb-1">Tipo de Atividade</label>
+                                <select value={activityType} onChange={e => setActivityType(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                                    <option value="Manutenção Padrão">Manutenção Padrão</option>
+                                    <option value="Instalação">Instalação</option>
+                                    <option value="Configuração">Configuração</option>
+                                    <option value="Troca de Fibra">Troca de Fibra</option>
+                                    <option value="Vistoria">Vistoria</option>
+                                </select>
                             </div>
+
+                            {/* Conditional Fiber Inputs */}
+                            {activityType === 'Troca de Fibra' && (
+                                <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fade-in">
+                                    <div>
+                                        <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Inicial</label>
+                                        <input type="number" value={fiberStart} onChange={e => setFiberStart(e.target.value)} placeholder="0.00" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Final</label>
+                                        <input type="number" value={fiberEnd} onChange={e => setFiberEnd(e.target.value)} placeholder="0.00" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div className="col-span-2 text-center text-sm font-bold text-blue-800">
+                                        Total: {((parseFloat(fiberEnd)||0) - (parseFloat(fiberStart)||0)).toFixed(2)}m
+                                    </div>
+                                </div>
+                            )}
                         </section>
 
-                        {/* Bloco B: Relato Técnico */}
+                        {/* Bloco B: Relato Inteligente */}
                         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                             <div className="flex items-center gap-2 mb-2">
+                             <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
                                 <RefreshCw className="w-5 h-5 text-blue-600" />
                                 <h3 className="font-bold text-slate-700">Relato Técnico</h3>
                             </div>
+
+                            {/* Problem */}
                             <div className="relative">
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Descrição do Serviço</label>
-                                <textarea value={description} onChange={e => setDescription(e.target.value)}
-                                    rows="5"
-                                    placeholder="Descreva o que foi feito..."
+                                <label className="block text-sm font-semibold text-slate-500 mb-1">Problema Encontrado</label>
+                                <textarea value={problemDescription} onChange={e => setProblemDescription(e.target.value)}
+                                    rows="3" placeholder="Ex: Fibra rompida na caixa de emenda..."
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
-                                <button onClick={toggleDictation} type="button"
-                                    className={`absolute right-3 bottom-3 p-3 rounded-full shadow-md transition-colors ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-slate-500 border border-slate-200'}`}>
+                                <button onClick={() => toggleDictation('problem')} type="button"
+                                    className={`absolute right-3 bottom-3 p-2 rounded-full transition-colors ${activeDictationField === 'problem' ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}>
                                     <Mic className="w-5 h-5" />
                                 </button>
                             </div>
 
+                            {/* Solution */}
+                            <div className="relative">
+                                <label className="block text-sm font-semibold text-slate-500 mb-1">Solução Realizada</label>
+                                <textarea value={solutionDescription} onChange={e => setSolutionDescription(e.target.value)}
+                                    rows="3" placeholder="Ex: Realizada fusão e acomodação dos cabos..."
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+                                <button onClick={() => toggleDictation('solution')} type="button"
+                                    className={`absolute right-3 bottom-3 p-2 rounded-full transition-colors ${activeDictationField === 'solution' ? 'bg-red-500 text-white animate-pulse' : 'text-slate-400 hover:text-slate-600'}`}>
+                                    <Mic className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Evidence */}
                             <div>
                                 <input type="file" id="evidence-upload" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-                                <label htmlFor="evidence-upload" className="flex items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-medium active:bg-slate-50 cursor-pointer">
+                                <label htmlFor="evidence-upload" className="flex items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-medium active:bg-slate-50 cursor-pointer hover:bg-slate-50 transition-colors">
                                     {evidence ? (
                                         <>
                                             <CheckCircle className="w-5 h-5 text-green-500" />
-                                            <span className="text-green-600 truncate">{evidence.name}</span>
+                                            <span className="text-green-600 truncate max-w-[200px]">{evidence.name}</span>
                                         </>
                                     ) : (
                                         <>
                                             <Camera className="w-5 h-5" />
-                                            Anexar Evidências
+                                            Anexar Foto / Evidência
                                         </>
                                     )}
                                 </label>
-                                {evidence && <button onClick={() => setEvidence(null)} className="mt-2 text-xs text-red-500 font-medium block text-center">Remover foto</button>}
+                                {evidence && <button onClick={() => setEvidence(null)} className="mt-2 text-xs text-red-500 font-medium block text-center w-full hover:underline">Remover foto</button>}
                             </div>
                         </section>
 
@@ -514,7 +604,7 @@
                         <button onClick={onBack} className="flex-1 bg-slate-100 text-slate-700 font-bold py-4 rounded-xl active:bg-slate-200 transition-colors">
                             CANCELAR
                         </button>
-                        <button onClick={handleSubmit} disabled={isSubmitting || !title || !description}
+                        <button onClick={handleSubmit} disabled={isSubmitting || !problemDescription || !solutionDescription}
                             className="flex-[2] bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-200 active:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
                             {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR CHAMADO'}
                             {!isSubmitting && <CheckCircle className="w-5 h-5" />}
@@ -535,8 +625,18 @@
                                         {availableStock.map(s => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
+                                        <option value="other" className="font-bold text-blue-600">+ Outro Material</option>
                                     </select>
                                 </div>
+
+                                {selectedStockId === 'other' && (
+                                    <div className="animate-fade-in">
+                                        <label className="block text-sm font-semibold text-slate-500 mb-1">Nome do Material</label>
+                                        <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)}
+                                            placeholder="Digite o nome do item"
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-500 mb-1">Quantidade</label>
