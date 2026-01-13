@@ -18,9 +18,11 @@ interface GlpiApiService {
 
     @GET("initSession")
     suspend fun initSession(
-        @Header("Authorization") authorization: String,
+        @Header("Authorization") authorization: String?,
         @Header("App-Token") appToken: String,
-        @Query("get_full_session") getFullSession: Boolean = true
+        @Query("get_full_session") getFullSession: Boolean = true,
+        @Query("login") login: String? = null,
+        @Query("password") password: String? = null
     ): Response<SessionResponse>
 
     @GET("Ticket")
