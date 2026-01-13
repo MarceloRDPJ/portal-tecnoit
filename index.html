@@ -73,10 +73,11 @@
             const auth = useMemo(() => getAuth(app), [app]);
 
             // App State
-            const [view, setView] = useState('login'); // login, dashboard, newTicket, success
+            const [view, setView] = useState('login'); // login, dashboard, ticketDetail
             const [user, setUser] = useState(null); // Firebase User
             const [glpiSession, setGlpiSession] = useState(null); // { sessionToken, fullSessionData, glpiUrl }
             const [isLoading, setIsLoading] = useState(true);
+            const [selectedTicketId, setSelectedTicketId] = useState(null);
 
             // Init Firebase Auth (Anonymous for simplicity as we use GLPI Auth)
             useEffect(() => {
@@ -133,8 +134,8 @@
             return (
                 <div className="flex flex-col h-full bg-slate-50">
                      {view === 'login' && <LoginScreen onLogin={handleLoginSuccess} />}
-                     {view === 'dashboard' && <Dashboard session={glpiSession} onNavigate={setView} onLogout={handleLogout} />}
-                     {view === 'newTicket' && <NewTicketForm session={glpiSession} onBack={() => setView('dashboard')} />}
+                     {view === 'dashboard' && <Dashboard session={glpiSession} onNavigate={(v, id) => { if(id) setSelectedTicketId(id); setView(v); }} onLogout={handleLogout} />}
+                     {view === 'ticketDetail' && <TicketDetail session={glpiSession} ticketId={selectedTicketId} onBack={() => setView('dashboard')} />}
                 </div>
             );
         }
@@ -264,452 +265,159 @@
             );
         }
 
-        // --- 3. NEW TICKET FORM ---
-        function NewTicketForm({ session, onBack }) {
-            const { sessionToken, fullSessionData, glpiUrl } = session;
-
-            // State
-            const [entityId, setEntityId] = useState('');
-            const [entityName, setEntityName] = useState('');
-            const [availableEntities, setAvailableEntities] = useState([]);
-
-            const [activityType, setActivityType] = useState('Manutenção Padrão');
-            const [fiberStart, setFiberStart] = useState('');
-            const [fiberEnd, setFiberEnd] = useState('');
-
-            const [problemDescription, setProblemDescription] = useState('');
-            const [solutionDescription, setSolutionDescription] = useState('');
+        // --- 3. TICKET DETAIL & RESPONSE ---
+        function TicketDetail({ session, ticketId, onBack }) {
+            const { sessionToken, glpiUrl } = session;
+            const [ticket, setTicket] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [responseContent, setResponseContent] = useState('');
             const [evidence, setEvidence] = useState(null);
 
+            // Stock Logic (Reused)
             const [isModalOpen, setIsModalOpen] = useState(false);
-            const [stockItems, setStockItems] = useState([]); // Array of { id, name, qty }
-            const [availableStock, setAvailableStock] = useState([]); // From API
-
-            // Modal Inputs
+            const [stockItems, setStockItems] = useState([]);
+            const [availableStock, setAvailableStock] = useState([]);
             const [selectedStockId, setSelectedStockId] = useState('');
             const [customItemName, setCustomItemName] = useState('');
             const [stockQty, setStockQty] = useState(1);
-
             const [isSubmitting, setIsSubmitting] = useState(false);
-            const [activeDictationField, setActiveDictationField] = useState(null); // 'problem' or 'solution'
+            const [activeDictationField, setActiveDictationField] = useState(null);
 
-            // --- A. Entity Logic ---
+            // Fetch Detail
             useEffect(() => {
-                if (fullSessionData) {
-                    const activeId = fullSessionData.glpiactive_entity || '';
-                    const activeName = fullSessionData.glpiactive_entity_name || 'Entidade Padrão';
-
-                    setEntityId(activeId);
-                    setEntityName(activeName);
-
-                    // Robust Entity Parsing
-                    // GLPI can return glpimy_entities as:
-                    // 1. Array of Objects: [{id: 1, name: "A"}, ...]
-                    // 2. Object of Objects: { "1": {id: 1, name: "A"}, ... } (Self-Tree)
-                    // 3. Object of Strings: { "1": "Name A", "2": "Name B" } (Simple Map)
-                    let parsedEntities = [];
-                    const rawEntities = fullSessionData.glpimy_entities;
-
+                const load = async () => {
                     try {
-                        if (Array.isArray(rawEntities)) {
-                            parsedEntities = rawEntities.map(e => ({
-                                id: e.id,
-                                name: e.completename || e.name || 'Entidade ' + e.id
-                            }));
-                        } else if (typeof rawEntities === 'object' && rawEntities !== null) {
-                            // Handle Object formats
-                            parsedEntities = Object.entries(rawEntities).map(([key, value]) => {
-                                if (typeof value === 'object' && value !== null) {
-                                    // Case 2: { "1": {id: 1, name: "A"} }
-                                    return { id: value.id || key, name: value.completename || value.name || 'Entidade ' + key };
-                                } else {
-                                    // Case 3: { "1": "Name A" }
-                                    return { id: key, name: value };
-                                }
-                            });
-                        }
-                    } catch (e) {
-                        console.error("Erro ao processar entidades", e);
-                    }
-
-                    // Fallback
-                    if (parsedEntities.length === 0) {
-                        parsedEntities = [{ id: activeId, name: activeName }];
-                    }
-
-                    // Sort by name for easier finding
-                    parsedEntities.sort((a, b) => a.name.localeCompare(b.name));
-
-                    setAvailableEntities(parsedEntities);
-                }
-            }, [fullSessionData]);
-
-            const handleEntityChange = (e) => {
-                const newId = e.target.value;
-                setEntityId(newId);
-                const ent = availableEntities.find(en => String(en.id) === String(newId));
-                if (ent) setEntityName(ent.name);
-            };
-
-            // --- B. Stock Fetch Logic ---
-            useEffect(() => {
-                const fetchStock = async () => {
-                    try {
-                        const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getConsumables', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ glpiUrl, sessionToken })
+                        const res = await fetch(`https://portal-tecnoit-glpi.onrender.com/api/proxy/getTicketDetails/${ticketId}`, {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify({ glpiUrl, sessionToken })
                         });
-                        if (res.ok) {
-                            const data = await res.json();
-                            setAvailableStock(data);
-                        } else {
-                            // Fallback for UI testing if API missing
-                            console.warn("API de estoque não encontrada. Usando dados fictícios.");
-                            setAvailableStock([
-                                { id: 1, name: 'Cabo UTP (metros)' },
-                                { id: 2, name: 'Conector RJ45' },
-                                { id: 3, name: 'Fita Isolante' },
-                                { id: 4, name: 'Roteador Wi-Fi' }
-                            ]);
-                        }
-                    } catch (e) {
-                        console.error("Erro ao buscar estoque", e);
-                         setAvailableStock([
-                                { id: 1, name: 'Cabo UTP (metros)' },
-                                { id: 2, name: 'Conector RJ45' },
-                                { id: 3, name: 'Fita Isolante' },
-                                { id: 4, name: 'Roteador Wi-Fi' }
-                        ]);
-                    }
+                        if(res.ok) setTicket(await res.json());
+                    } catch(e) { console.error(e); } finally { setLoading(false); }
                 };
-                fetchStock();
-            }, [glpiUrl, sessionToken]);
+                load();
 
-            // --- Dictation Logic ---
-            const toggleDictation = (field) => {
-                if (!('webkitSpeechRecognition' in window)) {
-                    alert("Seu navegador não suporta ditado.");
-                    return;
-                }
+                // Fetch Stock
+                fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getConsumables', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ glpiUrl, sessionToken })
+                }).then(r => r.json()).then(setAvailableStock).catch(console.error);
 
-                if (activeDictationField === field) {
-                    setActiveDictationField(null); // Stop
-                    return;
-                }
+            }, [ticketId]);
 
-                const recognition = new window.webkitSpeechRecognition();
-                recognition.lang = 'pt-BR';
-                recognition.continuous = false;
-                recognition.interimResults = false;
-
-                recognition.onstart = () => setActiveDictationField(field);
-                recognition.onend = () => setActiveDictationField(null);
-                recognition.onerror = (event) => { console.error(event.error); setActiveDictationField(null); };
-
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    const setter = field === 'problem' ? setProblemDescription : setSolutionDescription;
-                    setter(prev => (prev ? prev + ' ' + transcript : transcript));
-                };
-
-                recognition.start();
-            };
-
-            // --- Stock Helpers ---
+            // Handlers for Stock (Same as before)
             const handleAddStock = () => {
-                if (!selectedStockId || stockQty <= 0) return;
-
-                let itemName = '';
-                let itemId = selectedStockId;
-
-                if (selectedStockId === 'other') {
-                    if (!customItemName.trim()) return alert("Digite o nome do material.");
-                    itemName = customItemName;
-                    itemId = 'custom-' + Date.now();
-                } else {
-                    const item = availableStock.find(s => String(s.id) === String(selectedStockId));
-                    if (!item) return;
-                    itemName = item.name;
-                }
-
-                setStockItems(prev => [...prev, { id: itemId, name: itemName, qty: stockQty }]);
-
-                // Reset
-                setSelectedStockId('');
-                setCustomItemName('');
-                setStockQty(1);
-                setIsModalOpen(false);
+                 if (!selectedStockId || stockQty <= 0) return;
+                 let itemName = '', itemId = selectedStockId;
+                 if (selectedStockId === 'other') {
+                     if (!customItemName.trim()) return alert("Digite o nome.");
+                     itemName = customItemName; itemId = 'custom-' + Date.now();
+                 } else {
+                     const item = availableStock.find(s => String(s.id) === String(selectedStockId));
+                     if (!item) return; itemName = item.name;
+                 }
+                 setStockItems(prev => [...prev, { id: itemId, name: itemName, qty: stockQty }]);
+                 setSelectedStockId(''); setCustomItemName(''); setStockQty(1); setIsModalOpen(false);
             };
 
-            const removeStockItem = (index) => {
-                setStockItems(prev => prev.filter((_, i) => i !== index));
-            };
-
-            // --- Submission ---
-            const handleSubmit = async () => {
-                if (!problemDescription || !solutionDescription) return alert("Descreva o problema e a solução.");
-                if (activityType === 'Troca de Fibra' && (!fiberStart || !fiberEnd)) return alert("Informe a metragem da fibra.");
-
+            const handleSubmit = async (status) => {
+                if(!responseContent) return alert("Digite uma resposta.");
                 setIsSubmitting(true);
                 try {
-                    // Construct Rich Content
-                    let finalContent = `
-                        <h2>Relatório de Campo</h2>
-                        <p><strong>Atividade:</strong> ${activityType}</p>
-                        <p><strong>Problema Encontrado:</strong> ${problemDescription}</p>
-                        <p><strong>Solução Realizada:</strong> ${solutionDescription}</p>
-                    `;
+                    let content = responseContent;
 
-                    if (activityType === 'Troca de Fibra') {
-                        const used = parseFloat(fiberEnd) - parseFloat(fiberStart);
-                        finalContent += `
-                            <h3>Troca de Fibra</h3>
-                            <ul>
-                                <li>Metragem Inicial: ${fiberStart}</li>
-                                <li>Metragem Final: ${fiberEnd}</li>
-                                <li><strong>Total Utilizado: ${used.toFixed(2)} metros</strong></li>
-                            </ul>
-                        `;
-                    }
+                    // Add Evidence Text
+                    if(evidence) content += `<br>[Evidência Anexada]`; // Real upload would go here
 
-                    if (stockItems.length > 0) {
-                         finalContent += `<h3>Materiais Utilizados</h3><ul>`;
-                         stockItems.forEach(item => {
-                             finalContent += `<li>${item.qty}x ${item.name}</li>`;
-                         });
-                         finalContent += `</ul>`;
-                    }
-
-                    // Create Ticket Payload
                     const payload = {
-                        glpiUrl,
-                        sessionToken,
-                        input: {
-                            name: `${activityType} - ${entityName}`, // Auto-title
-                            content: finalContent,
-                            entities_id: entityId,
-                            status: 2, // Em atendimento / Novo
-                        },
-                        stockItems
+                        glpiUrl, sessionToken, ticketId,
+                        content, status,
+                        stockItems,
+                        entities_id: ticket.entities_id // Important for custom items
                     };
 
-                    const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/createTicket', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                    await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/respondTicket', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify(payload)
                     });
 
-                    if (!res.ok) throw new Error("Erro ao criar chamado.");
-
-                    alert("Chamado finalizado com sucesso!");
-                    onBack(); // Go back to dashboard
-                } catch (e) {
-                    alert("Erro ao finalizar: " + e.message);
-                } finally {
-                    setIsSubmitting(false);
-                }
+                    alert("Resposta enviada!");
+                    onBack();
+                } catch(e) { alert("Erro: " + e.message); } finally { setIsSubmitting(false); }
             };
 
-            const handleFileChange = (e) => {
-                if (e.target.files[0]) setEvidence(e.target.files[0]);
-            };
+            if(loading) return <LoadingScreen message="Carregando chamado..." />;
+            if(!ticket) return <div className="p-4">Erro ao carregar. <button onClick={onBack}>Voltar</button></div>;
 
             return (
                 <div className="flex flex-col h-full bg-slate-50">
                     {/* Header */}
-                    <div className="bg-white p-4 shadow-sm flex items-center gap-4 z-20 flex-shrink-0">
-                         <button onClick={onBack} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full">
-                            <ChevronDown className="w-6 h-6 rotate-90" />
-                         </button>
-                         <h2 className="text-xl font-bold text-slate-800">Novo Atendimento</h2>
+                    <div className="bg-white p-4 shadow-sm flex items-center gap-4 z-20">
+                         <button onClick={onBack} className="p-2 -ml-2 text-slate-500 rounded-full"><ChevronDown className="w-6 h-6 rotate-90" /></button>
+                         <div>
+                             <h2 className="text-lg font-bold text-slate-800 leading-tight">Chamado #{ticket.id}</h2>
+                             <p className="text-xs text-slate-500">{ticket.name}</p>
+                         </div>
                     </div>
 
-                    {/* Content - Flex Grow with Overflow */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {/* Info Card */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                             <div className="flex justify-between mb-2">
+                                <span className="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-md">Status: {ticket.status}</span>
+                                <span className="text-xs text-slate-400">{ticket.date}</span>
+                             </div>
+                             <div className="text-sm text-slate-600" dangerouslySetInnerHTML={{__html: ticket.content}} />
+                        </div>
 
-                        {/* Bloco A: Identificação & Atividade */}
-                        <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                            <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
-                                <Box className="w-5 h-5 text-blue-600" />
-                                <h3 className="font-bold text-slate-700">Dados do Atendimento</h3>
-                            </div>
+                        {/* Response Form */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+                            <h3 className="font-bold text-slate-700 flex items-center gap-2"><RefreshCw className="w-4 h-4"/> Minha Resposta</h3>
+                            <textarea value={responseContent} onChange={e => setResponseContent(e.target.value)}
+                                className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-32 outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Descreva a solução ou andamento..." />
 
-                            {/* Entity Selector */}
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Cliente / Entidade</label>
-                                <select
-                                    value={entityId}
-                                    onChange={handleEntityChange}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 disabled:bg-slate-100 disabled:text-slate-500">
-                                    {availableEntities.map(ent => (
-                                        <option key={ent.id} value={ent.id}>{ent.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                             {/* Evidence */}
+                             <input type="file" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        </div>
 
-                            {/* Activity Type */}
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Tipo de Atividade</label>
-                                <select value={activityType} onChange={e => setActivityType(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
-                                    <option value="Manutenção Padrão">Manutenção Padrão</option>
-                                    <option value="Instalação">Instalação</option>
-                                    <option value="Configuração">Configuração</option>
-                                    <option value="Troca de Fibra">Troca de Fibra</option>
-                                    <option value="Vistoria">Vistoria</option>
-                                </select>
-                            </div>
-
-                            {/* Conditional Fiber Inputs */}
-                            {activityType === 'Troca de Fibra' && (
-                                <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fade-in">
-                                    <div>
-                                        <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Inicial</label>
-                                        <input type="number" value={fiberStart} onChange={e => setFiberStart(e.target.value)} placeholder="0.00" inputMode="decimal" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-blue-700 mb-1">Metragem Final</label>
-                                        <input type="number" value={fiberEnd} onChange={e => setFiberEnd(e.target.value)} placeholder="0.00" inputMode="decimal" className="w-full p-2 rounded-lg border border-blue-200 outline-none focus:border-blue-500" />
-                                    </div>
-                                    <div className="col-span-2 text-center text-sm font-bold text-blue-800">
-                                        Total: {((parseFloat(fiberEnd)||0) - (parseFloat(fiberStart)||0)).toFixed(2)}m
-                                    </div>
-                                </div>
-                            )}
-                        </section>
-
-                        {/* Bloco B: Relato Inteligente */}
-                        <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                             <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-2">
-                                <RefreshCw className="w-5 h-5 text-blue-600" />
-                                <h3 className="font-bold text-slate-700">Relato Técnico</h3>
-                            </div>
-
-                            {/* Problem */}
-                            <div className="relative">
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Problema Encontrado</label>
-                                <div className="relative">
-                                    <textarea value={problemDescription} onChange={e => setProblemDescription(e.target.value)}
-                                        rows="3" placeholder="Ex: Fibra rompida na caixa de emenda..."
-                                        className="w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none appearance-none" />
-                                    <button onClick={() => toggleDictation('problem')} type="button"
-                                        className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all active:scale-95 ${activeDictationField === 'problem' ? 'bg-red-500 text-white shadow-md animate-pulse' : 'bg-white text-slate-400 border border-slate-200 shadow-sm hover:text-blue-600'}`}>
-                                        <Mic className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Solution */}
-                            <div className="relative">
-                                <label className="block text-sm font-semibold text-slate-500 mb-1">Solução Realizada</label>
-                                <div className="relative">
-                                    <textarea value={solutionDescription} onChange={e => setSolutionDescription(e.target.value)}
-                                        rows="3" placeholder="Ex: Realizada fusão e acomodação dos cabos..."
-                                        className="w-full p-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none appearance-none" />
-                                    <button onClick={() => toggleDictation('solution')} type="button"
-                                        className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all active:scale-95 ${activeDictationField === 'solution' ? 'bg-red-500 text-white shadow-md animate-pulse' : 'bg-white text-slate-400 border border-slate-200 shadow-sm hover:text-blue-600'}`}>
-                                        <Mic className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Evidence */}
-                            <div>
-                                <input type="file" id="evidence-upload" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-                                <label htmlFor="evidence-upload" className="flex items-center justify-center gap-3 w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-medium active:bg-slate-50 cursor-pointer hover:bg-slate-50 transition-colors">
-                                    {evidence ? (
-                                        <>
-                                            <CheckCircle className="w-5 h-5 text-green-500" />
-                                            <span className="text-green-600 truncate max-w-[200px]">{evidence.name}</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Camera className="w-5 h-5" />
-                                            Anexar Foto / Evidência
-                                        </>
-                                    )}
-                                </label>
-                                {evidence && <button onClick={() => setEvidence(null)} className="mt-2 text-xs text-red-500 font-medium block text-center w-full hover:underline">Remover foto</button>}
-                            </div>
-                        </section>
-
-                         {/* Bloco C: Controle de Insumos */}
-                        <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                             <div className="flex items-center gap-2 mb-2">
-                                <Box className="w-5 h-5 text-blue-600" />
-                                <h3 className="font-bold text-slate-700">Controle de Insumos</h3>
-                            </div>
-
-                            {stockItems.length > 0 ? (
-                                <ul className="space-y-2">
-                                    {stockItems.map((item, idx) => (
-                                        <li key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                            <span className="font-medium text-slate-700"><span className="font-bold text-blue-600">{item.qty}x</span> {item.name}</span>
-                                            <button onClick={() => removeStockItem(idx)} className="text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-center text-slate-400 text-sm py-2">Nenhum material utilizado.</p>
-                            )}
-
-                            <button onClick={() => setIsModalOpen(true)} className="w-full py-3 bg-blue-50 text-blue-700 font-bold rounded-xl border border-blue-100 flex items-center justify-center gap-2 active:bg-blue-100 transition-colors">
-                                <PlusCircle className="w-5 h-5" /> ADICIONAR MATERIAL
-                            </button>
-                        </section>
+                        {/* Stock */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+                             <div className="flex justify-between items-center">
+                                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Box className="w-4 h-4"/> Insumos</h3>
+                                 <button onClick={() => setIsModalOpen(true)} className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">+ Add</button>
+                             </div>
+                             {stockItems.map((item, i) => (
+                                 <div key={i} className="flex justify-between text-sm p-2 bg-slate-50 rounded border border-slate-100">
+                                     <span>{item.qty}x {item.name}</span>
+                                     <span className="text-red-500" onClick={() => setStockItems(p => p.filter((_, idx) => idx !== i))}>X</span>
+                                 </div>
+                             ))}
+                        </div>
                     </div>
 
-                    {/* Footer Actions - Standard Flex Child */}
-                    <div className="bg-white p-4 border-t border-slate-200 flex gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex-shrink-0 z-20">
-                        <button onClick={onBack} className="flex-1 bg-slate-100 text-slate-700 font-bold py-4 rounded-xl active:bg-slate-200 transition-colors">
-                            CANCELAR
-                        </button>
-                        <button onClick={handleSubmit} disabled={isSubmitting || !problemDescription || !solutionDescription}
-                            className="flex-[2] bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-200 active:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
-                            {isSubmitting ? 'ENVIANDO...' : 'FINALIZAR CHAMADO'}
-                            {!isSubmitting && <CheckCircle className="w-5 h-5" />}
-                        </button>
+                    {/* Footer Actions */}
+                    <div className="bg-white p-4 border-t border-slate-200 flex gap-2 shadow-lg z-20">
+                        <button onClick={() => handleSubmit(2)} disabled={isSubmitting} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">RESPONDER (AGUARDAR)</button>
+                        <button onClick={() => handleSubmit(5)} disabled={isSubmitting} className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-200">SOLUCIONAR</button>
                     </div>
 
-                    {/* Modal Insumos */}
+                    {/* Stock Modal (Simplified) */}
                     {isModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm bg-black/40 transition-opacity">
-                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl space-y-4 animate-slide-up ring-1 ring-black/5">
-                                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                    <Box className="w-5 h-5 text-blue-600" /> Adicionar Material
-                                </h3>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-500 mb-1">Item</label>
-                                    <select value={selectedStockId} onChange={e => setSelectedStockId(e.target.value)}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-no-repeat bg-right pr-8">
-                                        <option value="">Selecione um item...</option>
-                                        {availableStock.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                        ))}
-                                        <option value="other" className="font-bold text-blue-600">+ Outro Material</option>
-                                    </select>
-                                </div>
-
-                                {selectedStockId === 'other' && (
-                                    <div className="animate-fade-in">
-                                        <label className="block text-sm font-semibold text-slate-500 mb-1">Nome do Material</label>
-                                        <input type="text" value={customItemName} onChange={e => setCustomItemName(e.target.value)}
-                                            placeholder="Digite o nome do item"
-                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-500 mb-1">Quantidade</label>
-                                    <input type="number" min="1" value={stockQty} onChange={e => setStockQty(parseInt(e.target.value))}
-                                        inputMode="numeric" pattern="[0-9]*"
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-500 font-bold active:bg-slate-50 rounded-xl transition-colors">Cancelar</button>
-                                    <button onClick={handleAddStock} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 active:scale-95 transition-transform">Confirmar</button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4">
+                                <h3>Adicionar Insumo</h3>
+                                <select value={selectedStockId} onChange={e => setSelectedStockId(e.target.value)} className="w-full p-3 border rounded-xl">
+                                    <option value="">Selecione...</option>
+                                    {availableStock.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    <option value="other">Outro...</option>
+                                </select>
+                                {selectedStockId === 'other' && <input value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome" className="w-full p-3 border rounded-xl" />}
+                                <input type="number" value={stockQty} onChange={e => setStockQty(e.target.value)} className="w-full p-3 border rounded-xl" />
+                                <div className="flex gap-2">
+                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-slate-100 rounded-xl">Cancelar</button>
+                                    <button onClick={handleAddStock} className="flex-1 p-3 bg-blue-600 text-white rounded-xl">Salvar</button>
                                 </div>
                             </div>
                         </div>
@@ -718,49 +426,84 @@
             );
         }
 
-        // --- 2. DASHBOARD ---
+        // --- 2. DASHBOARD (Ticket List) ---
         function Dashboard({ session, onNavigate, onLogout }) {
-            const userName = session?.fullSessionData?.glpifirstname || 'Técnico';
+            const { sessionToken, fullSessionData, glpiUrl } = session;
+            const userName = fullSessionData?.glpifirstname || 'Técnico';
+
+            const [tickets, setTickets] = useState([]);
+            const [filter, setFilter] = useState('new'); // new (Processando), pending, solved
+            const [loading, setLoading] = useState(true);
+
+            // Fetch Tickets
+            useEffect(() => {
+                const load = async () => {
+                    setLoading(true);
+                    try {
+                        const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getTickets', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ glpiUrl, sessionToken, range: '0-50' })
+                        });
+                        const data = await res.json();
+                        setTickets(data.tickets || []);
+                    } catch(e) { console.error(e); } finally { setLoading(false); }
+                };
+                load();
+            }, [glpiUrl, sessionToken]);
+
+            // Simple Filter Logic (Client-side for prototype)
+            // GLPI Status: 1=New, 2=Assign, 3=Plan, 4=Wait, 5=Solved, 6=Closed
+            const filteredTickets = tickets.filter(t => {
+                const s = t.status;
+                if(filter === 'new') return (s === 1 || s === 2 || s === 3); // Em atendimento
+                if(filter === 'pending') return s === 4; // Pendente
+                if(filter === 'solved') return (s === 5 || s === 6); // Solucionado
+                return true;
+            });
 
             return (
-                <div className="flex-1 flex flex-col relative">
-                    {/* Header Minimalista */}
-                    <header className="bg-white p-4 flex justify-between items-center shadow-sm z-10">
+                <div className="flex-1 flex flex-col h-full bg-slate-50">
+                    <header className="bg-white p-4 shadow-sm z-10 flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">
-                                {userName.charAt(0)}
-                            </div>
-                            <span className="font-semibold text-slate-700 truncate max-w-[150px]">{userName}</span>
+                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">{userName.charAt(0)}</div>
+                             <span className="font-bold text-slate-700">{userName}</span>
                         </div>
-                        <button onClick={onLogout} className="text-sm text-slate-500 font-medium px-3 py-1 bg-slate-100 rounded-lg hover:bg-slate-200">
-                            Sair
-                        </button>
+                        <button onClick={onLogout} className="text-xs bg-slate-100 px-3 py-1 rounded-full">Sair</button>
                     </header>
 
-                    {/* Main Content - Center Focus */}
-                    <main className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
+                    {/* Filter Tabs */}
+                    <div className="flex p-2 gap-2 overflow-x-auto bg-white border-b border-slate-100">
+                        {[
+                            {id: 'new', label: 'Em Andamento'},
+                            {id: 'pending', label: 'Pendentes'},
+                            {id: 'solved', label: 'Finalizados'}
+                        ].map(tab => (
+                            <button key={tab.id} onClick={() => setFilter(tab.id)}
+                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${filter === tab.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
 
-                        <div className="text-center space-y-2">
-                             <h2 className="text-3xl font-black text-slate-800 tracking-tight">O que vamos fazer agora?</h2>
-                             <p className="text-slate-500">Selecione uma ação abaixo</p>
-                        </div>
-
-                        <button onClick={() => onNavigate('newTicket')}
-                            className="w-full max-w-sm aspect-square bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-3xl shadow-xl shadow-blue-200 flex flex-col items-center justify-center gap-4 transition-all transform touch-btn group">
-                            <div className="p-4 bg-white/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                {PlusCircle && <PlusCircle className="w-16 h-16 text-white" />}
-                            </div>
-                            <span className="text-2xl font-bold tracking-wide">NOVO ATENDIMENTO</span>
-                        </button>
-
-                         {/* Status Indicator (Fake for now, or check navigator.onLine) */}
-                         <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${navigator.onLine ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                                {navigator.onLine ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                                <span className="text-xs font-bold uppercase">{navigator.onLine ? 'Conectado ao Servidor' : 'Sem Conexão'}</span>
-                            </div>
-                         </div>
-                    </main>
+                    {/* List */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {loading ? <p className="text-center text-slate-400 mt-10">Carregando chamados...</p> : (
+                            filteredTickets.length === 0 ? <p className="text-center text-slate-400 mt-10">Nenhum chamado encontrado.</p> :
+                            filteredTickets.map(t => (
+                                <div key={t.id} onClick={() => onNavigate('ticketDetail', t.id)}
+                                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 active:scale-98 transition-transform cursor-pointer">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-bold text-slate-800 text-sm line-clamp-1">{t.name}</span>
+                                        <span className="text-xs font-mono text-slate-400">#{t.id}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mb-2 line-clamp-2" dangerouslySetInnerHTML={{__html: t.content}}></p>
+                                    <div className="flex gap-2 text-xs">
+                                        <span className="bg-slate-100 px-2 py-1 rounded text-slate-600">{t.date_mod || t.date}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             );
         }
