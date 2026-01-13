@@ -27,18 +27,14 @@ O aplicativo Android é desenvolvido em Kotlin e está localizado na pasta `app/
 
 ## 🌐 Web Backend Proxy (Legado)
 
-O backend proxy em Node.js foi utilizado para a versão web protótipo e está localizado na pasta `web_proxy/`. Ele serve para contornar problemas de CORS e facilitar a comunicação com a API do GLPI em ambientes web.
+O backend proxy em Node.js foi utilizado para a versão web protótipo e os arquivos estão localizados na raiz do repositório para compatibilidade com o deploy no Render.
 
 ### Como Executar
-1. Navegue até a pasta do proxy:
-   ```bash
-   cd web_proxy
-   ```
-2. Instale as dependências:
+1. Na raiz do projeto:
    ```bash
    npm install
    ```
-3. Inicie o servidor:
+2. Inicie o servidor:
    ```bash
    node server.js
    ```
