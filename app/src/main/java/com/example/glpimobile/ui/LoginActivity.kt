@@ -76,7 +76,8 @@ class LoginActivity : AppCompatActivity() {
 
                     // Parse Entities
                     val entities = parseEntities(body.session?.myEntities)
-                    saveEntities(entities)
+                    val activeEntityId = body.session?.activeEntityId
+                    saveEntities(entities, activeEntityId)
 
                     navigateToMainApp()
                 } else {
@@ -131,11 +132,15 @@ class LoginActivity : AppCompatActivity() {
         return entities
     }
 
-    private fun saveEntities(entities: List<Entity>) {
+    private fun saveEntities(entities: List<Entity>, activeEntityId: String?) {
         val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
         val gson = Gson()
         val json = gson.toJson(entities)
-        prefs.edit().putString("saved_entities", json).apply()
+        val editor = prefs.edit().putString("saved_entities", json)
+        if (activeEntityId != null) {
+            editor.putString("active_entity_id", activeEntityId)
+        }
+        editor.apply()
     }
 
     private fun navigateToMainApp() {

@@ -70,6 +70,19 @@ class CreateTicketActivity : AppCompatActivity() {
         )
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerEntities.adapter = adapter
+
+        // Pre-select active entity
+        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
+        val activeEntityIdStr = prefs.getString("active_entity_id", null)
+        if (activeEntityIdStr != null) {
+            val activeId = activeEntityIdStr.toIntOrNull()
+            if (activeId != null) {
+                val index = entities.indexOfFirst { it.id == activeId }
+                if (index != -1) {
+                    spinnerEntities.setSelection(index)
+                }
+            }
+        }
     }
 
     private fun submitTicket() {
