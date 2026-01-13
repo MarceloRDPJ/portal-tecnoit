@@ -310,25 +310,35 @@
                     let parsedEntities = [];
                     const rawEntities = fullSessionData.glpimy_entities;
 
-                    if (Array.isArray(rawEntities)) {
-                        parsedEntities = rawEntities;
-                    } else if (typeof rawEntities === 'object' && rawEntities !== null) {
-                        // Handle Object formats
-                        parsedEntities = Object.entries(rawEntities).map(([key, value]) => {
-                            if (typeof value === 'object' && value !== null) {
-                                // Case 2: { "1": {id: 1, name: "A"} }
-                                return { id: value.id || key, name: value.name || value.completename || 'Entidade ' + key };
-                            } else {
-                                // Case 3: { "1": "Name A" }
-                                return { id: key, name: value };
-                            }
-                        });
+                    try {
+                        if (Array.isArray(rawEntities)) {
+                            parsedEntities = rawEntities.map(e => ({
+                                id: e.id,
+                                name: e.completename || e.name || 'Entidade ' + e.id
+                            }));
+                        } else if (typeof rawEntities === 'object' && rawEntities !== null) {
+                            // Handle Object formats
+                            parsedEntities = Object.entries(rawEntities).map(([key, value]) => {
+                                if (typeof value === 'object' && value !== null) {
+                                    // Case 2: { "1": {id: 1, name: "A"} }
+                                    return { id: value.id || key, name: value.completename || value.name || 'Entidade ' + key };
+                                } else {
+                                    // Case 3: { "1": "Name A" }
+                                    return { id: key, name: value };
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error("Erro ao processar entidades", e);
                     }
 
                     // Fallback
                     if (parsedEntities.length === 0) {
                         parsedEntities = [{ id: activeId, name: activeName }];
                     }
+
+                    // Sort by name for easier finding
+                    parsedEntities.sort((a, b) => a.name.localeCompare(b.name));
 
                     setAvailableEntities(parsedEntities);
                 }
@@ -528,17 +538,15 @@
                             {/* Entity Selector */}
                             <div>
                                 <label className="block text-sm font-semibold text-slate-500 mb-1">Cliente / Entidade</label>
-                                {availableEntities.length > 1 ? (
-                                    <select value={entityId} onChange={handleEntityChange} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800">
-                                        {availableEntities.map(ent => (
-                                            <option key={ent.id} value={ent.id}>{ent.name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <div className="p-3 bg-slate-100 rounded-xl text-slate-800 font-medium border border-slate-200">
-                                        {entityName}
-                                    </div>
-                                )}
+                                <select
+                                    value={entityId}
+                                    onChange={handleEntityChange}
+                                    disabled={availableEntities.length <= 1}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 disabled:bg-slate-100 disabled:text-slate-500">
+                                    {availableEntities.map(ent => (
+                                        <option key={ent.id} value={ent.id}>{ent.name}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             {/* Activity Type */}

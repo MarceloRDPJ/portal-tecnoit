@@ -12,7 +12,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.glpimobile.R
 import com.example.glpimobile.auth.SessionManager
+import com.example.glpimobile.model.Entity
 import com.example.glpimobile.network.ApiClient
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -65,10 +68,16 @@ class LoginActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val response = apiService.initSession(basicAuth, appToken)
+                val response = apiService.initSession(basicAuth, appToken, true)
                 if (response.isSuccessful && response.body() != null) {
-                    val sessionToken = response.body()!!.sessionToken
+                    val body = response.body()!!
+                    val sessionToken = body.sessionToken
                     SessionManager.saveSessionToken(this@LoginActivity, sessionToken)
+
+                    // Parse Entities
+                    val entities = parseEntities(body.session?.myEntities)
+                    saveEntities(entities)
+
                     navigateToMainApp()
                 } else {
                     val errorBody = response.errorBody()?.string()
@@ -76,10 +85,57 @@ class LoginActivity : AppCompatActivity() {
                     showLoading(false)
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
                 showLoading(false)
             }
         }
+    }
+
+    private fun parseEntities(rawEntities: com.google.gson.JsonElement?): List<Entity> {
+        val entities = mutableListOf<Entity>()
+        if (rawEntities == null) return entities
+
+        try {
+            if (rawEntities.isJsonArray) {
+                rawEntities.asJsonArray.forEach { element ->
+                    if (element.isJsonObject) {
+                        val obj = element.asJsonObject
+                        val id = obj.get("id").asInt
+                        val name = if (obj.has("completename")) obj.get("completename").asString else obj.get("name").asString
+                        entities.add(Entity(id, name))
+                    }
+                }
+            } else if (rawEntities.isJsonObject) {
+                rawEntities.asJsonObject.entrySet().forEach { entry ->
+                    val value = entry.value
+                    val id = entry.key.toIntOrNull() ?: 0
+                    if (value.isJsonObject) {
+                        val obj = value.asJsonObject
+                        val parsedId = if (obj.has("id")) obj.get("id").asInt else id
+                        val name = if (obj.has("completename")) obj.get("completename").asString
+                                   else if (obj.has("name")) obj.get("name").asString
+                                   else "Entity $id"
+                        entities.add(Entity(parsedId, name))
+                    } else if (value.isJsonPrimitive && value.asJsonPrimitive.isString) {
+                        entities.add(Entity(id, value.asString))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // Sort alphabetically
+        entities.sortBy { it.name }
+        return entities
+    }
+
+    private fun saveEntities(entities: List<Entity>) {
+        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
+        val gson = Gson()
+        val json = gson.toJson(entities)
+        prefs.edit().putString("saved_entities", json).apply()
     }
 
     private fun navigateToMainApp() {

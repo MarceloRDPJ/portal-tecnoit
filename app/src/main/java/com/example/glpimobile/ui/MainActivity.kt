@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.glpimobile.R
 import com.example.glpimobile.auth.SessionManager
 import com.example.glpimobile.network.ApiClient
@@ -19,6 +20,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ticketsRecyclerView: RecyclerView
     private lateinit var ticketAdapter: TicketAdapter
     private lateinit var progressBar: ProgressBar
+    private lateinit var fabCreateTicket: FloatingActionButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +34,18 @@ class MainActivity : AppCompatActivity() {
 
         progressBar = findViewById(R.id.progressBarMain)
         ticketsRecyclerView = findViewById(R.id.rvTickets)
+        fabCreateTicket = findViewById(R.id.fabCreateTicket)
+
         setupRecyclerView()
+
+        fabCreateTicket.setOnClickListener {
+            startActivity(Intent(this, CreateTicketActivity::class.java))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh tickets when returning from creation
         fetchTickets()
     }
 
