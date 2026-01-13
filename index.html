@@ -167,7 +167,7 @@
                 try {
                     const glpiUrl = 'https://suporte.tecnoit.com.br';
 
-                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/initSession', {
+                    const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/initSession', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ glpiUrl, username, password, get_full_session: true })
@@ -187,7 +187,7 @@
                         fullSession = data.session;
                     } else {
                         // Fallback to Full Fetch if entities are missing
-                        const sessionRes = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
+                        const sessionRes = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getFullSession', {
                             method: 'POST',
                              headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ glpiUrl, sessionToken: data.session_token })
@@ -355,7 +355,7 @@
             useEffect(() => {
                 const fetchStock = async () => {
                     try {
-                        const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getConsumables', {
+                        const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getConsumables', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ glpiUrl, sessionToken })
@@ -494,7 +494,7 @@
                         stockItems
                     };
 
-                    const res = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/createTicket', {
+                    const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/createTicket', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
