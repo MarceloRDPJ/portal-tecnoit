@@ -229,10 +229,10 @@ app.post('/api/proxy/getConsumables', async (req, res) => {
     const appToken = process.env.GLPI_APP_TOKEN;
     // Note: GLPI API for Consumables might vary. Assuming generic Entity restriction or all.
     // Using simple getAll for now or search
-    const apiUrl = `${glpiUrl}/apirest.php/ConsumItem?range=0-100`;
+    const apiUrl = `${glpiUrl}/apirest.php/ConsumItem`;
 
     try {
-        const response = await axios.get(apiUrl, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+        const response = await axios.get(apiUrl, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken }, params: { range: '0-100' } });
         // Map to simpler format if needed, or pass through
         const stock = response.data.map(item => ({
             id: item.id,
