@@ -252,13 +252,15 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
 app.post('/api/proxy/getConsumables', async (req, res) => {
     const { glpiUrl, sessionToken } = req.body;
     const appToken = process.env.GLPI_APP_TOKEN;
-    // Note: GLPI API for Consumables might vary. Assuming generic Entity restriction or all.
-    // Using simple getAll for now or search
     const apiUrl = `${glpiUrl}/apirest.php/ConsumItem`;
 
     try {
-        const response = await axios.get(apiUrl, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken }, params: { range: '0-100' } });
-        // Map to simpler format if needed, or pass through
+        // Add is_recursive to get parent entity items too
+        const response = await axios.get(apiUrl, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range: '0-1000', is_recursive: 1 }
+        });
+
         const stock = response.data.map(item => ({
             id: item.id,
             name: item.name,
@@ -266,57 +268,78 @@ app.post('/api/proxy/getConsumables', async (req, res) => {
         }));
         res.json(stock);
     } catch (error) {
-         // Fallback to empty array to not break UI if API fails or no permissions
         console.error("Error fetching consumables:", error.message);
         res.json([]);
     }
 });
 
-// Rota para criar chamado (createTicket)
-app.post('/api/proxy/createTicket', async (req, res) => {
-    const { glpiUrl, sessionToken, input, stockItems } = req.body;
+// Rota Unificada: Responder Chamado e Consumir Itens
+app.post('/api/proxy/respondTicket', async (req, res) => {
+    const { glpiUrl, sessionToken, ticketId, content, status, stockItems, entities_id } = req.body;
     const appToken = process.env.GLPI_APP_TOKEN;
 
-    if (!input || !input.name || !input.content || !input.entities_id) {
-        return res.status(400).json({ message: 'Dados do chamado incompletos.' });
+    if (!ticketId || !content) {
+        return res.status(400).json({ message: 'Dados da resposta incompletos.' });
     }
 
-    const ticketUrl = `${glpiUrl}/apirest.php/Ticket`;
-
     try {
-        // 1. Create Ticket
-        const ticketResponse = await axios.post(ticketUrl, { input: input }, {
-            headers: { 'Session-Token': sessionToken, 'App-Token': appToken }
-        });
+        // 1. Add Solution or Followup based on status
+        // Status 5 = Solved (Solucionado), 6 = Closed.
+        // Using 5 for "Solucionado" and 2 (Assign) or 4 (Pending) for "Aguardar".
+        // Let's assume frontend sends specific intent.
 
-        const ticketId = ticketResponse.data.id;
+        const isSolution = (status === 5 || status === '5' || status === 'solucionado');
+        const itemType = isSolution ? 'ITILSolution' : 'ITILFollowup';
 
-        // 2. Handle Stock Items (Robust Control)
+        const addUrl = `${glpiUrl}/apirest.php/Ticket/${ticketId}/${itemType}`;
+        await axios.post(addUrl, {
+            input: {
+                content: content,
+                items_id: ticketId,
+                itemtype: 'Ticket'
+            }
+        }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+
+        // 2. Update Ticket Status
+        if (status) {
+             const updateUrl = `${glpiUrl}/apirest.php/Ticket/${ticketId}`;
+             await axios.put(updateUrl, {
+                 input: { status: status }
+             }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+        }
+
+        // 3. Handle Stock Items (Consumables)
         if (stockItems && stockItems.length > 0) {
             for (const item of stockItems) {
                 try {
                     let itemId = item.id;
-                    // If it's a custom item (not in GLPI yet), create it
+
+                    // A. Create Item if it's custom
                     if (String(itemId).startsWith('custom-')) {
                         const createItemUrl = `${glpiUrl}/apirest.php/ConsumItem`;
-                        const createRes = await axios.post(createItemUrl, {
+                        // Ensure we have an entities_id. If not passed, might default to session's active entity.
+                        // Best to pass the ticket's entity or the user's active one.
+                        const payload = {
                             input: {
                                 name: item.name,
-                                entities_id: input.entities_id, // Assign to the ticket's entity
-                                is_recursive: 1 // Make it available recursively if needed
+                                is_recursive: 1
                             }
-                        }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+                        };
+                        if (entities_id) payload.input.entities_id = entities_id;
+
+                        const createRes = await axios.post(createItemUrl, payload,
+                            { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } }
+                        );
 
                         if (createRes.data && createRes.data.id) {
                             itemId = createRes.data.id;
                         } else {
                             console.error("Failed to create ConsumItem:", item.name);
-                            continue; // Skip linking if creation failed
+                            continue;
                         }
                     }
 
-                    // Link Item to Ticket (Item_Ticket)
-                    // This registers the usage/consumption in the ticket's "Items" tab
+                    // B. Link to Ticket (Item_Ticket)
                     const linkUrl = `${glpiUrl}/apirest.php/Item_Ticket`;
                     await axios.post(linkUrl, {
                         input: {
@@ -329,17 +352,16 @@ app.post('/api/proxy/createTicket', async (req, res) => {
 
                 } catch (innerError) {
                     console.error(`Error processing stock item ${item.name}:`, innerError.response?.data || innerError.message);
-                    // We continue to the next item instead of failing the whole request
                 }
             }
         }
 
-        res.status(201).json({ id: ticketId, message: 'Chamado criado com sucesso.' });
+        res.status(200).json({ message: 'Resposta enviada com sucesso.' });
 
     } catch (error) {
-        console.error("Error creating ticket:", error.response?.data || error.message);
+        console.error("Error responding ticket:", error.response?.data || error.message);
         res.status(error.response?.status || 500).json({
-            message: 'Falha ao criar chamado.',
+            message: 'Falha ao responder chamado.',
             error: error.response?.data || error.message
         });
     }
