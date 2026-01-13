@@ -6,21 +6,31 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.example.glpimobile.R
 import com.example.glpimobile.auth.SessionManager
+import com.example.glpimobile.model.Ticket
 import com.example.glpimobile.network.ApiClient
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var ticketsRecyclerView: RecyclerView
     private lateinit var ticketAdapter: TicketAdapter
     private lateinit var progressBar: ProgressBar
-    private lateinit var fabCreateTicket: FloatingActionButton
+    private lateinit var chipGroupFilters: ChipGroup
+    private lateinit var etSearch: TextInputEditText
+
+    private var allTickets: List<Ticket> = emptyList()
+    private var currentFilterStatus: Int? = null // null means all
+    private var currentSearchQuery: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,18 +44,16 @@ class MainActivity : AppCompatActivity() {
 
         progressBar = findViewById(R.id.progressBarMain)
         ticketsRecyclerView = findViewById(R.id.rvTickets)
-        fabCreateTicket = findViewById(R.id.fabCreateTicket)
+        chipGroupFilters = findViewById(R.id.chipGroupFilters)
+        etSearch = findViewById(R.id.etSearch)
 
         setupRecyclerView()
-
-        fabCreateTicket.setOnClickListener {
-            startActivity(Intent(this, CreateTicketActivity::class.java))
-        }
+        setupFilters()
+        setupSearch()
     }
 
     override fun onResume() {
         super.onResume()
-        // Refresh tickets when returning from creation
         fetchTickets()
     }
 
@@ -53,6 +61,31 @@ class MainActivity : AppCompatActivity() {
         ticketAdapter = TicketAdapter(emptyList())
         ticketsRecyclerView.adapter = ticketAdapter
         ticketsRecyclerView.layoutManager = LinearLayoutManager(this)
+    }
+
+    private fun setupFilters() {
+        chipGroupFilters.setOnCheckedStateChangeListener { group, checkedIds ->
+            if (checkedIds.isEmpty()) {
+                currentFilterStatus = null
+            } else {
+                val chipId = checkedIds[0]
+                currentFilterStatus = when (chipId) {
+                    R.id.chipNew -> 1 // Assuming GLPI status 1 is New
+                    R.id.chipAssigned -> 2 // Assuming GLPI status 2 is Assigned
+                    R.id.chipPending -> 4 // Assuming GLPI status 4 is Pending
+                    R.id.chipSolved -> 5 // Assuming GLPI status 5 is Solved
+                    else -> null
+                }
+            }
+            applyFilters()
+        }
+    }
+
+    private fun setupSearch() {
+        etSearch.doOnTextChanged { text, _, _, _ ->
+            currentSearchQuery = text.toString()
+            applyFilters()
+        }
     }
 
     private fun fetchTickets() {
@@ -76,11 +109,12 @@ class MainActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val tickets = response.body()
                     if (tickets != null) {
-                        ticketAdapter.updateTickets(tickets)
+                        allTickets = tickets
+                        applyFilters()
                     }
                 } else {
                     Toast.makeText(this@MainActivity, "Error fetching tickets: ${response.code()}", Toast.LENGTH_SHORT).show()
-                    if (response.code() == 401) { // Unauthorized, session might be expired
+                    if (response.code() == 401) {
                         SessionManager.clearSession(this@MainActivity)
                         navigateToLogin()
                     }
@@ -91,6 +125,26 @@ class MainActivity : AppCompatActivity() {
                 showLoading(false)
             }
         }
+    }
+
+    private fun applyFilters() {
+        var filteredList = allTickets
+
+        // Status Filter
+        if (currentFilterStatus != null) {
+            filteredList = filteredList.filter { it.status == currentFilterStatus } // Need to make sure Ticket model has status
+        }
+
+        // Search Filter
+        if (currentSearchQuery.isNotEmpty()) {
+            val query = currentSearchQuery.lowercase(Locale.getDefault())
+            filteredList = filteredList.filter {
+                it.name.lowercase(Locale.getDefault()).contains(query) ||
+                it.id.toString().contains(query)
+            }
+        }
+
+        ticketAdapter.updateTickets(filteredList)
     }
 
     private fun navigateToLogin() {

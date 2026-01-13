@@ -1,42 +1,47 @@
-# TecnoiT - Central de Chamados
+# GLPI Mobile & Web Proxy
 
-This project consists of two main parts:
+Este repositório contém o código fonte para o aplicativo móvel nativo (Android) e o proxy backend (Node.js) para a versão web legado.
 
-1.  **Frontend:** A single-page application (`index.html`) that provides the user interface for viewing and managing GLPI tickets.
-2.  **Backend Proxy:** A simple Node.js server (`server.js`) that acts as a proxy to the GLPI API. This is necessary to handle authentication and bypass CORS issues.
+## 📱 Aplicativo Android
 
-## Frontend
+O aplicativo Android é desenvolvido em Kotlin e está localizado na pasta `app/`. Ele foi projetado para técnicos de campo e oferece funcionalidades offline, upload de fotos e integração com o GLPI.
 
-The frontend is contained entirely within `index.html`. It uses React and Tailwind CSS loaded from a CDN. To use it, simply open the `index.html` file in a web browser.
+### Pré-requisitos
+- Android Studio Iguana ou superior.
+- JDK 17.
+- Android SDK API 34.
 
-## Backend Proxy (`server.js`)
+### Como Executar
+1. Abra o Android Studio.
+2. Selecione "Open" e navegue até a raiz deste repositório (onde estão os arquivos `build.gradle.kts` e `settings.gradle.kts`).
+3. Aguarde o Gradle sincronizar as dependências.
+4. Conecte um dispositivo Android ou inicie um emulador.
+5. Clique em "Run" (Shift+F10).
 
-The `server.js` file is an Express application that provides the API endpoints the frontend consumes.
+### Estrutura
+- `app/src/main/java`: Código fonte Kotlin.
+- `app/src/main/res`: Recursos (layouts, strings, imagens).
+- `app/src/main/AndroidManifest.xml`: Manifesto do aplicativo.
 
-### Running the Proxy Server
+---
 
-To run the proxy server, you need to have Node.js and npm installed.
+## 🌐 Web Backend Proxy (Legado)
 
-1.  **Install Dependencies:**
-    Navigate to the project directory in your terminal and run:
-    ```bash
-    npm install
-    ```
+O backend proxy em Node.js foi utilizado para a versão web protótipo e está localizado na pasta `web_proxy/`. Ele serve para contornar problemas de CORS e facilitar a comunicação com a API do GLPI em ambientes web.
 
-2.  **Set Environment Variables:**
-    The server requires one environment variable to be set:
-    -   `GLPI_APP_TOKEN`: Your GLPI application token.
+### Como Executar
+1. Navegue até a pasta do proxy:
+   ```bash
+   cd web_proxy
+   ```
+2. Instale as dependências:
+   ```bash
+   npm install
+   ```
+3. Inicie o servidor:
+   ```bash
+   node server.js
+   ```
 
-    You can set this in your terminal before running the server, or use a `.env` file with a library like `dotenv`.
-
-3.  **Start the Server:**
-    Once the dependencies are installed and the environment variable is set, you can start the server with:
-    ```bash
-    npm start
-    ```
-
-    The server will start on port 3001 by default, or the port specified in the `PORT` environment variable.
-
-### Deployment
-
-When deploying this project, you must deploy both the frontend files (`index.html`, `assets/`, etc.) and the backend `server.js` application. The `server.js` application must be running in a Node.js environment (like on onrender.com, Heroku, etc.) and the frontend must be able to reach it.
+### Notas
+- Este backend é necessário apenas se você estiver executando a versão web (`index.html`). O aplicativo Android se conecta diretamente à API do GLPI.
