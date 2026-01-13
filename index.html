@@ -181,12 +181,18 @@
 
                     let fullSession = null;
 
-                    // STRICT CHECK: Ensure glpimy_entities is present.
-                    // If the "Fast Login" returns session but NO entities, we MUST fetch full session.
+                    // STRICT CHECK: Ensure glpimy_entities is present AND populated.
+                    // If the "Fast Login" returns session but entities seem empty (and user might be admin), fetch full.
+                    let hasEntities = false;
                     if (data.session && data.session.glpimy_entities) {
+                        if (Array.isArray(data.session.glpimy_entities) && data.session.glpimy_entities.length > 1) hasEntities = true;
+                        else if (typeof data.session.glpimy_entities === 'object' && Object.keys(data.session.glpimy_entities).length > 1) hasEntities = true;
+                    }
+
+                    if (hasEntities) {
                         fullSession = data.session;
                     } else {
-                        // Fallback to Full Fetch if entities are missing
+                        // Fallback to Full Fetch if entities are suspicious or missing
                         const sessionRes = await fetch('https://tecnoit-glpi-proxy.onrender.com/api/proxy/getFullSession', {
                             method: 'POST',
                              headers: { 'Content-Type': 'application/json' },
@@ -272,6 +278,7 @@
             const [entityId, setEntityId] = useState('');
             const [entityName, setEntityName] = useState('');
             const [availableEntities, setAvailableEntities] = useState([]);
+            const [isEntitySelectOpen, setIsEntitySelectOpen] = useState(false);
 
             const [activityType, setActivityType] = useState('Manutenção Padrão');
             const [fiberStart, setFiberStart] = useState('');
@@ -303,10 +310,6 @@
                     setEntityName(activeName);
 
                     // Robust Entity Parsing
-                    // GLPI can return glpimy_entities as:
-                    // 1. Array of Objects: [{id: 1, name: "A"}, ...]
-                    // 2. Object of Objects: { "1": {id: 1, name: "A"}, ... } (Self-Tree)
-                    // 3. Object of Strings: { "1": "Name A", "2": "Name B" } (Simple Map)
                     let parsedEntities = [];
                     const rawEntities = fullSessionData.glpimy_entities;
 
@@ -348,7 +351,10 @@
                 const newId = e.target.value;
                 setEntityId(newId);
                 const ent = availableEntities.find(en => String(en.id) === String(newId));
-                if (ent) setEntityName(ent.name);
+                if (ent) {
+                    setEntityName(ent.name);
+                    setIsEntitySelectOpen(false); // Close on select
+                }
             };
 
             // --- B. Stock Fetch Logic ---
