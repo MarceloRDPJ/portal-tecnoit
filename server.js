@@ -291,14 +291,48 @@ app.post('/api/proxy/createTicket', async (req, res) => {
 
         const ticketId = ticketResponse.data.id;
 
-        // 2. Handle Stock Items (if any logic needed on GLPI side, e.g. decreasing stock)
-        // Currently the frontend just passes them for the record in content,
-        // but if we needed to consume them in GLPI, we would loop here.
-        // For now, we assume the content string already contains the info.
+        // 2. Handle Stock Items (Robust Control)
+        if (stockItems && stockItems.length > 0) {
+            for (const item of stockItems) {
+                try {
+                    let itemId = item.id;
+                    // If it's a custom item (not in GLPI yet), create it
+                    if (String(itemId).startsWith('custom-')) {
+                        const createItemUrl = `${glpiUrl}/apirest.php/ConsumItem`;
+                        const createRes = await axios.post(createItemUrl, {
+                            input: {
+                                name: item.name,
+                                entities_id: input.entities_id, // Assign to the ticket's entity
+                                is_recursive: 1 // Make it available recursively if needed
+                            }
+                        }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
 
-        // However, the frontend might expect us to log this or just considers it done.
-        // If we need to add a "Consumable" to the ticket, we'd use /Ticket/{id}/Item_Ticket
-        // But the frontend already formatted the HTML content.
+                        if (createRes.data && createRes.data.id) {
+                            itemId = createRes.data.id;
+                        } else {
+                            console.error("Failed to create ConsumItem:", item.name);
+                            continue; // Skip linking if creation failed
+                        }
+                    }
+
+                    // Link Item to Ticket (Item_Ticket)
+                    // This registers the usage/consumption in the ticket's "Items" tab
+                    const linkUrl = `${glpiUrl}/apirest.php/Item_Ticket`;
+                    await axios.post(linkUrl, {
+                        input: {
+                            tickets_id: ticketId,
+                            itemtype: 'ConsumItem',
+                            items_id: itemId,
+                            amount: item.qty || 1
+                        }
+                    }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+
+                } catch (innerError) {
+                    console.error(`Error processing stock item ${item.name}:`, innerError.response?.data || innerError.message);
+                    // We continue to the next item instead of failing the whole request
+                }
+            }
+        }
 
         res.status(201).json({ id: ticketId, message: 'Chamado criado com sucesso.' });
 
