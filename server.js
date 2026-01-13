@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 
 // Rota para iniciar uma sessão no GLPI
 app.post('/api/proxy/initSession', async (req, res) => {
-    const { glpiUrl, username, password, apiToken } = req.body;
+    const { glpiUrl, username, password, apiToken, get_full_session } = req.body;
     const appToken = process.env.GLPI_APP_TOKEN;
 
     if (!glpiUrl || !appToken) {
@@ -32,17 +32,28 @@ app.post('/api/proxy/initSession', async (req, res) => {
     let headers = { 'App-Token': appToken };
 
     try {
+        const params = new URLSearchParams();
+        if (username && password) {
+            params.append('login', username);
+            params.append('password', password);
+        }
+        if (get_full_session) {
+            params.append('get_full_session', 'true');
+        }
+
         if (apiToken) {
             headers['Authorization'] = `user_token ${apiToken}`;
-        } else if (username && password) {
-            const params = new URLSearchParams({ login: username, password: password }).toString();
-            apiUrl = `${apiUrl}?${params}`;
-        } else {
+        } else if (!username && !password) {
             return res.status(400).json({ message: 'Credenciais são obrigatórias.' });
         }
 
+        if (Array.from(params).length > 0) {
+             apiUrl = `${apiUrl}?${params.toString()}`;
+        }
+
         const response = await axios.get(apiUrl, { headers });
-        res.json({ session_token: response.data.session_token });
+        // Return full data (session_token and session object)
+        res.json(response.data);
     } catch (error) {
         res.status(error.response?.status || 500).json({
             message: 'Falha ao autenticar no GLPI.',
@@ -127,15 +138,29 @@ createSubItemRoute('ITILFollowup', 'getTicketFollowups');
 createSubItemRoute('ITILSolution', 'getTicketSolutions');
 createSubItemRoute('TicketTask', 'getTicketTasks');
 
-// Rota para buscar sessão completa
+// Rota para buscar sessão completa (simulada via /Entity para garantir lista de entidades)
 app.post('/api/proxy/getFullSession', async (req, res) => {
     const { glpiUrl, sessionToken } = req.body;
     const appToken = process.env.GLPI_APP_TOKEN;
-    const apiUrl = `${glpiUrl}/apirest.php/getFullSession`;
+
+    // GLPI API doesn't have getFullSession. We use /Entity to get the tree.
+    const apiUrl = `${glpiUrl}/apirest.php/Entity`;
+
     try {
-        const response = await axios.get(apiUrl, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
-        res.json({ session: response.data.session });
-    } catch (error) { res.status(error.response?.status || 500).json({ message: 'Falha ao buscar sessão.' }); }
+        // Fetch entities (recursive implies we get the tree if permissions allow)
+        // We set a large range to ensure we get all relevant entities
+        const response = await axios.get(apiUrl, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range: '0-1000' }
+        });
+
+        // Wrap in the structure expected by index.html: { session: { glpimy_entities: [...] } }
+        // The /Entity endpoint returns an array of entity objects, which matches the expected format for glpimy_entities.
+        res.json({ session: { glpimy_entities: response.data } });
+    } catch (error) {
+        console.error("Error in getFullSession proxy:", error.message);
+        res.status(error.response?.status || 500).json({ message: 'Falha ao buscar entidades.' });
+    }
 });
 
 // Rotas para adicionar itens a um chamado
