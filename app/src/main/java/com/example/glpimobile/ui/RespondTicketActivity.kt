@@ -48,9 +48,14 @@ class RespondTicketActivity : AppCompatActivity() {
 
     private val galleryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            // Queue URI
-             queueEvidenceAction(uri.toString())
-             addEvidenceToView("Gallery Image")
+            // Copy URI content to local file
+            val path = copyUriToCache(uri)
+            if (path != null) {
+                queueEvidenceAction(path)
+                addEvidenceToView("Gallery Image")
+            } else {
+                Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -222,6 +227,24 @@ class RespondTicketActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Error saving image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun copyUriToCache(uri: android.net.Uri): String? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri)
+            val filename = "gallery_${System.currentTimeMillis()}.jpg"
+            val file = java.io.File(cacheDir, filename)
+            val outputStream = java.io.FileOutputStream(file)
+            inputStream?.use { input ->
+                outputStream.use { output ->
+                    input.copyTo(output)
+                }
+            }
+            file.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 
