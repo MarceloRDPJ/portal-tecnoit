@@ -78,12 +78,19 @@ class SyncWorker(
                         }
 
                         // Construct GLPI payload for Item_Ticket
-                        // {"tickets_id": ..., "items_id": ..., "itemtype": "ConsumableItem", "amount": ...}
+                        // {"input": {"tickets_id": ..., "items_id": ..., "itemtype": "ConsumableItem", "amount": ...}}
                         val glpiPayload = JsonObject()
-                        glpiPayload.addProperty("tickets_id", action.ticketId)
-                        glpiPayload.addProperty("items_id", itemId)
-                        glpiPayload.addProperty("itemtype", "ConsumableItem")
-                        // glpiPayload.addProperty("amount", payloadObj.get("qty").asInt) // If GLPI supports amount here
+                        val input = JsonObject()
+                        input.addProperty("tickets_id", action.ticketId)
+                        input.addProperty("items_id", itemId)
+                        input.addProperty("itemtype", "ConsumableItem")
+                        if (payloadObj.has("qty")) {
+                            input.addProperty("amount", payloadObj.get("qty").asInt)
+                        } else {
+                            input.addProperty("amount", 1)
+                        }
+
+                        glpiPayload.add("input", input)
 
                         val response = apiService.linkItemToTicket(sessionToken, appToken, glpiPayload)
                         if (response.isSuccessful) success = true

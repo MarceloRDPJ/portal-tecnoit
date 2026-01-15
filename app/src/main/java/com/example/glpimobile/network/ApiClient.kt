@@ -19,9 +19,21 @@ object ApiClient {
 
     fun getApiService(context: Context, baseUrl: String, appToken: String): GlpiApiService {
         // Ensure the base URL ends with a slash
-        val wellFormedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        var wellFormedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+
+        // If the URL already contains apirest.php, do not append it again.
+        // Some users might enter "http://glpi/apirest.php" or "http://glpi/apirest.php/"
+        if (!wellFormedBaseUrl.contains("apirest.php")) {
+             wellFormedBaseUrl += "apirest.php/"
+        } else {
+             // Ensure it ends with / so Retrofit treats it as a directory
+             if (!wellFormedBaseUrl.endsWith("/")) {
+                 wellFormedBaseUrl += "/"
+             }
+        }
+
         val retrofit = Retrofit.Builder()
-            .baseUrl(wellFormedBaseUrl + "apirest.php/") // The endpoint for GLPI 10 is typically apirest.php
+            .baseUrl(wellFormedBaseUrl)
             .client(getHttpClient(context, appToken))
             .addConverterFactory(GsonConverterFactory.create())
             .build()

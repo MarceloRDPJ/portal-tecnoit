@@ -5,6 +5,7 @@ import android.content.Context
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.Toast
 import com.example.glpimobile.auth.SessionManager
 import com.example.glpimobile.model.Consumable
@@ -30,20 +31,86 @@ class ConsumableDialog(private val context: Context, private val onConsumableSel
 
         val apiService = ApiClient.getApiService(context, serverUrl, appToken)
 
+        // Show a loading dialog
+        val loadingDialog = AlertDialog.Builder(context)
+            .setMessage("Loading consumables...")
+            .setCancelable(false)
+            .create()
+        loadingDialog.show()
+
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                // Mock fetching list for now as API response structure might vary
-                // Real implementation would parse apiService.getConsumables(sessionToken, appToken)
-                // For this task, I will create a simple manual entry dialog or a hardcoded list if API fails
+                // Fetch consumables from API
+                val fetchedConsumables = withContext(Dispatchers.IO) {
+                    try {
+                        val response = apiService.getConsumables(sessionToken, appToken, "0-200")
+                        if (response.isSuccessful && response.body() != null) {
+                             response.body()!!.map { obj ->
+                                 Consumable(
+                                     id = if (obj.has("id")) obj.get("id").asInt else 0,
+                                     name = if (obj.has("name")) obj.get("name").asString else "Unknown",
+                                     ref = if (obj.has("ref") && !obj.get("ref").isJsonNull) obj.get("ref").asString else null,
+                                     stock = 0 // Not provided in basic view
+                                 )
+                             }.sortedBy { it.name }
+                        } else {
+                            emptyList()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        emptyList()
+                    }
+                }
 
-                // Let's assume we fetch a list. Since I cannot run network, I will provide a manual input option as fallback.
-
-                showManualEntryDialog()
+                loadingDialog.dismiss()
+                showSelectionDialog(fetchedConsumables)
 
             } catch (e: Exception) {
+                loadingDialog.dismiss()
+                Toast.makeText(context, "Failed to load: ${e.message}", Toast.LENGTH_SHORT).show()
                 showManualEntryDialog()
             }
         }
+    }
+
+    private fun showSelectionDialog(consumables: List<Consumable>) {
+        val layout = LinearLayout(context)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.setPadding(50, 40, 50, 10)
+
+        val spinner = Spinner(context)
+        val items = consumables.toMutableList()
+        // Add "Other" option
+        items.add(Consumable(0, "Outro (Cadastrar Novo)", null, 0))
+
+        val adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, items.map { it.name })
+        spinner.adapter = adapter
+        layout.addView(spinner)
+
+        val qtyInput = EditText(context)
+        qtyInput.hint = "Quantity"
+        qtyInput.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        qtyInput.setText("1")
+        layout.addView(qtyInput)
+
+        AlertDialog.Builder(context)
+            .setTitle("Add Consumable")
+            .setView(layout)
+            .setPositiveButton("Add") { _, _ ->
+                val selectedIndex = spinner.selectedItemPosition
+                val qty = qtyInput.text.toString().toIntOrNull() ?: 1
+
+                if (selectedIndex >= 0 && selectedIndex < items.size) {
+                    val selected = items[selectedIndex]
+                    if (selected.id == 0 && selected.name.startsWith("Outro")) {
+                        showManualEntryDialog()
+                    } else {
+                        onConsumableSelected(selected, qty)
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showManualEntryDialog() {
