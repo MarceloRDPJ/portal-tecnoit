@@ -290,8 +290,8 @@ app.post('/api/proxy/getConsumables', async (req, res) => {
         }));
         res.json(stock);
     } catch (error) {
-        console.error("Error fetching consumables:", error.message);
-        res.json([]);
+        console.error("Error fetching consumables:", error.response?.data || error.message);
+        res.status(500).json({ message: "Falha ao buscar insumos", error: error.message });
     }
 });
 
@@ -332,6 +332,7 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
 
         // 3. Handle Stock Items (Consumables)
         if (stockItems && stockItems.length > 0) {
+            const errors = [];
             for (const item of stockItems) {
                 try {
                     let itemId = item.id;
@@ -356,8 +357,7 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
                         if (createRes.data && createRes.data.id) {
                             itemId = createRes.data.id;
                         } else {
-                            console.error("Failed to create ConsumItem:", item.name);
-                            continue;
+                            throw new Error("API did not return ID for created item.");
                         }
                     }
 
@@ -373,8 +373,17 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
                     }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
 
                 } catch (innerError) {
-                    console.error(`Error processing stock item ${item.name}:`, innerError.response?.data || innerError.message);
+                    const msg = innerError.response?.data ? JSON.stringify(innerError.response.data) : innerError.message;
+                    console.error(`Error processing stock item ${item.name}:`, msg);
+                    errors.push(`Falha no item '${item.name}': ${msg}`);
                 }
+            }
+
+            if (errors.length > 0) {
+                return res.status(207).json({
+                    message: 'Resposta enviada, mas houve erros nos insumos.',
+                    errors: errors
+                });
             }
         }
 
