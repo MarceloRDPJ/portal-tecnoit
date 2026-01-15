@@ -162,6 +162,7 @@
             const [showEntitySelect, setShowEntitySelect] = useState(false);
             const [entities, setEntities] = useState([]);
             const [pendingSession, setPendingSession] = useState(null);
+            const [selectedEntityId, setSelectedEntityId] = useState(null);
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('glpiUsername');
@@ -239,19 +240,20 @@
                 }
             };
 
-            const handleEntitySelect = async (entityId) => {
+            const confirmEntitySelection = async () => {
+                if (!selectedEntityId) return;
                 setLoading(true);
                 try {
                      const { sessionToken, glpiUrl } = pendingSession;
                      const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/changeActiveEntity', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, sessionToken, entities_id: entityId })
+                        body: JSON.stringify({ glpiUrl, sessionToken, entities_id: selectedEntityId })
                      });
                      if (!res.ok) throw new Error("Falha ao mudar entidade");
 
                      // Update active entity in session data locally
-                     pendingSession.fullSessionData.glpiactive_entity = entityId;
+                     pendingSession.fullSessionData.glpiactive_entity = selectedEntityId;
                      onLogin(pendingSession);
                 } catch (e) {
                     setError(e.message);
@@ -266,14 +268,21 @@
                              <h1 className="text-xl font-bold text-slate-800">Selecione o Perfil</h1>
                              <p className="text-slate-500">Qual entidade você deseja acessar?</p>
                         </div>
-                        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                        <div className="space-y-3 max-h-[50vh] overflow-y-auto mb-6">
                             {entities.map(ent => (
-                                <button key={ent.id} onClick={() => handleEntitySelect(ent.id)}
-                                    className="w-full text-left p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all font-medium text-slate-700">
+                                <button key={ent.id} onClick={() => setSelectedEntityId(ent.id)}
+                                    className={`w-full text-left p-4 border rounded-xl transition-all font-medium ${selectedEntityId === ent.id ? 'bg-blue-100 border-blue-500 text-blue-800 ring-2 ring-blue-200' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
                                     {ent.name}
                                 </button>
                             ))}
                         </div>
+
+                        {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium text-center mb-4">{error}</div>}
+
+                        <button onClick={confirmEntitySelection} disabled={loading || !selectedEntityId}
+                            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 touch-btn flex items-center justify-center transition-all disabled:opacity-50 disabled:shadow-none">
+                            {loading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "ENTRAR"}
+                        </button>
                     </div>
                 );
             }
