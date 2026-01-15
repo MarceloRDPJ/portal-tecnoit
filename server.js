@@ -172,7 +172,7 @@ app.post('/api/proxy/changeActiveEntity', async (req, res) => {
         return res.status(400).json({ message: 'Parâmetros obrigatórios faltando.' });
     }
 
-    const apiUrl = `${glpiUrl}/apirest.php/changeActiveEntity`;
+    const apiUrl = `${glpiUrl}/apirest.php/changeActiveEntities`;
     try {
         const response = await axios.post(apiUrl,
             { entities_id: entities_id },
