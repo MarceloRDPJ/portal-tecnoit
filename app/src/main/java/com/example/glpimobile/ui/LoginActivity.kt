@@ -167,8 +167,12 @@ class LoginActivity : AppCompatActivity() {
 
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Select Entity")
-        builder.setSingleChoiceItems(entityNames, checkedItem) { dialog, which ->
-             val selectedEntity = entities[which]
+        builder.setSingleChoiceItems(entityNames, checkedItem) { _, which ->
+            checkedItem = which
+        }
+
+        builder.setPositiveButton("ENTRAR") { dialog, _ ->
+             val selectedEntity = entities[checkedItem]
 
              showLoading(true)
              dialog.dismiss()
@@ -185,7 +189,6 @@ class LoginActivity : AppCompatActivity() {
                          navigateToMainApp()
                      } else {
                          Toast.makeText(this@LoginActivity, "Failed to switch entity", Toast.LENGTH_SHORT).show()
-                         // Navigate anyway or retry? Navigate anyway for now, defaulting to what initSession gave
                          navigateToMainApp()
                      }
                  } catch (e: Exception) {
@@ -196,7 +199,8 @@ class LoginActivity : AppCompatActivity() {
                  }
              }
         }
-        // Prevent cancelling without selection if strict, or allow default
+
+        // Prevent cancelling without selection if strict
         builder.setCancelable(false)
         builder.show()
     }
