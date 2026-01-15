@@ -70,7 +70,12 @@ app.post('/api/proxy/getTickets', async (req, res) => {
 
     const apiUrl = `${glpiUrl}/apirest.php/Ticket?get_my_tickets=true&range=${range || '0-49'}`;
     try {
-        const response = await axios.get(apiUrl, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+        // Add sorting by date desc to ensure newest first
+        const params = new URLSearchParams();
+        params.append('sort', 'date_mod');
+        params.append('order', 'DESC');
+
+        const response = await axios.get(`${apiUrl}&${params.toString()}`, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
         const totalCount = response.headers['content-range'] ? parseInt(response.headers['content-range'].split('/')[1], 10) : 0;
         res.json({ tickets: response.data, totalCount });
     } catch (error) { res.status(error.response?.status || 500).json({ message: 'Falha ao buscar chamados.' }); }
@@ -362,11 +367,12 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
                     }
 
                     // B. Link to Ticket (Item_Ticket)
+                    // Updated to use 'ConsumableItem' as the itemtype per GLPI internal class naming for CommonDBTM
                     const linkUrl = `${glpiUrl}/apirest.php/Item_Ticket`;
                     await axios.post(linkUrl, {
                         input: {
                             tickets_id: ticketId,
-                            itemtype: 'ConsumItem',
+                            itemtype: 'ConsumableItem',
                             items_id: itemId,
                             amount: item.qty || 1
                         }

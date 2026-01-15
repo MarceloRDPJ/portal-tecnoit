@@ -152,7 +152,9 @@ class MainActivity : AppCompatActivity() {
 
         // Assigned To Me Filter
         if (filterAssignedToMe) {
-             filteredList = filteredList.filter { it.users_id_recipient == currentUserId }
+             filteredList = filteredList.filter {
+                 it.users_id_recipient == currentUserId || it.users_id_assign == currentUserId
+             }
         }
 
         // Search Filter
