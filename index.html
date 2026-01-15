@@ -44,7 +44,7 @@
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff;
+        let User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff, Search, X;
 
         // Firebase is kept for potential future use or auth if needed, but the main logic is now Proxy-based
         const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -56,7 +56,7 @@
             useEffect(() => {
                 Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
                     .then(([lucide, app, auth, firestore]) => {
-                        ({ User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff } = lucide);
+                        ({ User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff, Search, X } = lucide);
                         window.firebase = { app, auth, firestore };
                         setLibsLoaded(true);
                     }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
@@ -527,6 +527,9 @@
             const [tickets, setTickets] = useState([]);
             const [filter, setFilter] = useState('new'); // new, pending, solved, me
             const [loading, setLoading] = useState(true);
+            const [range, setRange] = useState(50);
+            const [showSearch, setShowSearch] = useState(false);
+            const [searchText, setSearchText] = useState('');
 
             // Fetch Tickets
             useEffect(() => {
@@ -535,21 +538,32 @@
                     try {
                         const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getTickets', {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ glpiUrl, sessionToken, range: '0-50' })
+                            body: JSON.stringify({ glpiUrl, sessionToken, range: `0-${range-1}` })
                         });
                         const data = await res.json();
                         setTickets(data.tickets || []);
                     } catch(e) { console.error(e); } finally { setLoading(false); }
                 };
                 load();
-            }, [glpiUrl, sessionToken]);
+            }, [glpiUrl, sessionToken, range]);
 
             // Simple Filter Logic (Client-side for prototype)
             // GLPI Status: 1=New, 2=Assign, 3=Plan, 4=Wait, 5=Solved, 6=Closed
             const filteredTickets = tickets.filter(t => {
                 const s = t.status;
+                const matchesSearch = searchText ? (
+                    (t.name && t.name.toLowerCase().includes(searchText.toLowerCase())) ||
+                    (String(t.id).includes(searchText))
+                ) : true;
+
+                if (!matchesSearch) return false;
+
                 if(filter === 'me') {
-                     return (t.users_id_recipient === userId);
+                     // Check if I am the assigned technician (users_id_assign) or recipient
+                     // Note: GLPI response for users_id_assign can be int or array in some versions/contexts?
+                     // Assuming simple view returns basic fields. get_my_tickets usually filters by actor.
+                     // We check both for robustness.
+                     return (t.users_id_assign === userId || t.users_id_recipient === userId);
                 }
                 if(filter === 'new') return (s === 1 || s === 2 || s === 3); // Em atendimento
                 if(filter === 'pending') return s === 4; // Pendente
@@ -559,16 +573,36 @@
 
             return (
                 <div className="flex-1 flex flex-col h-full bg-slate-50">
-                    <header className="bg-white p-4 shadow-sm z-10 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">{userName.charAt(0)}</div>
-                             <span className="font-bold text-slate-700">{userName}</span>
-                        </div>
-                        <button onClick={onLogout} className="text-xs bg-slate-100 px-3 py-1 rounded-full">Sair</button>
+                    <header className="bg-white p-4 shadow-sm z-10 flex justify-between items-center sticky top-0">
+                        {showSearch ? (
+                            <div className="flex-1 flex items-center gap-2 animate-fade-in">
+                                <div className="relative flex-1">
+                                    <input autoFocus type="text" value={searchText} onChange={e => setSearchText(e.target.value)}
+                                        className="w-full pl-3 pr-8 py-2 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar ID ou Título..." />
+                                    {searchText && <button onClick={() => setSearchText('')} className="absolute right-2 top-2 text-slate-400"><X className="w-4 h-4"/></button>}
+                                </div>
+                                <button onClick={() => { setShowSearch(false); setSearchText(''); }} className="text-slate-500 font-medium text-sm">Cancelar</button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-3">
+                                     <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold border-2 border-white shadow-sm">{userName.charAt(0)}</div>
+                                     <div className="flex flex-col">
+                                         <span className="font-bold text-slate-800 text-sm leading-tight">{userName}</span>
+                                         <span className="text-[10px] text-slate-500 font-medium tracking-wide">FIELD SERVICE</span>
+                                     </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => setShowSearch(true)} className="p-2 text-slate-600 bg-slate-50 rounded-full hover:bg-slate-100"><Search className="w-5 h-5"/></button>
+                                    <button onClick={onLogout} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold">Sair</button>
+                                </div>
+                            </>
+                        )}
                     </header>
 
                     {/* Filter Tabs */}
-                    <div className="flex p-2 gap-2 overflow-x-auto bg-white border-b border-slate-100">
+                    <div className="flex px-4 py-3 gap-3 overflow-x-auto bg-white border-b border-slate-100 no-scrollbar">
                         {[
                             {id: 'me', label: 'Para Mim'},
                             {id: 'new', label: 'Em Andamento'},
@@ -585,20 +619,43 @@
                     {/* List */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {loading ? <p className="text-center text-slate-400 mt-10">Carregando chamados...</p> : (
-                            filteredTickets.length === 0 ? <p className="text-center text-slate-400 mt-10">Nenhum chamado encontrado.</p> :
+                            filteredTickets.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center mt-10 text-slate-400 gap-2">
+                                    <div className="bg-slate-100 p-4 rounded-full"><Box className="w-8 h-8 opacity-50"/></div>
+                                    <p>Nenhum chamado encontrado.</p>
+                                </div>
+                            ) :
                             filteredTickets.map(t => (
                                 <div key={t.id} onClick={() => onNavigate('ticketDetail', t.id)}
-                                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 active:scale-98 transition-transform cursor-pointer">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="font-bold text-slate-800 text-sm line-clamp-1">{t.name}</span>
-                                        <span className="text-xs font-mono text-slate-400">#{t.id}</span>
+                                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 active:scale-98 transition-transform cursor-pointer hover:shadow-md">
+                                    <div className="flex justify-between items-start mb-1 gap-2">
+                                        <h4 className="font-bold text-slate-800 text-sm line-clamp-2 leading-snug flex-1">{t.name}</h4>
+                                        <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{t.id}</span>
                                     </div>
-                                    <p className="text-xs text-slate-500 mb-2 line-clamp-2" dangerouslySetInnerHTML={{__html: t.content}}></p>
-                                    <div className="flex gap-2 text-xs">
-                                        <span className="bg-slate-100 px-2 py-1 rounded text-slate-600">{t.date_mod || t.date}</span>
+                                    <div className="text-xs text-slate-500 mb-3 line-clamp-2 h-8" dangerouslySetInnerHTML={{__html: t.content}}></div>
+                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-50">
+                                        <div className="flex items-center gap-1 text-slate-400">
+                                            <span>📅 {t.date_mod || t.date}</span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded font-bold ${t.status === 5 || t.status === 6 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            {t.status === 5 || t.status === 6 ? 'Finalizado' : 'Aberto'}
+                                        </span>
                                     </div>
                                 </div>
                             ))
+                        )}
+
+                        {/* Pagination Control */}
+                        {!loading && tickets.length > 0 && (
+                            <div className="py-4 flex justify-center items-center gap-2 text-sm text-slate-500">
+                                <span>Exibir:</span>
+                                <select value={range} onChange={e => setRange(Number(e.target.value))} className="bg-white border border-slate-200 rounded p-1 font-bold">
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
                         )}
                     </div>
                 </div>
