@@ -25,7 +25,7 @@ interface GlpiApiService {
         @Query("password") password: String? = null
     ): Response<SessionResponse>
 
-    @POST("changeActiveEntity")
+    @POST("changeActiveEntities")
     suspend fun changeActiveEntity(
         @Header("Session-Token") sessionToken: String,
         @Header("App-Token") appToken: String,
