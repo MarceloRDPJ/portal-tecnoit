@@ -29,8 +29,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etSearch: TextInputEditText
 
     private var allTickets: List<Ticket> = emptyList()
-    private var currentFilterStatus: Int? = null // null means all
+    private var currentFilterStatus: List<Int>? = null // Changed to List to support grouping
+    private var filterAssignedToMe: Boolean = false
     private var currentSearchQuery: String = ""
+    private var currentUserId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +50,14 @@ class MainActivity : AppCompatActivity() {
         etSearch = findViewById(R.id.etSearch)
 
         setupRecyclerView()
+        // Get user ID from session if possible (saved in prefs maybe?)
+        // Currently SessionManager saves only token. We need to save ID in LoginActivity if we want to filter by "Me".
+        // Checking LoginActivity logic... it saves "saved_entities" and "active_entity_id".
+        // It does NOT save user ID. I need to update LoginActivity to save it or parse it from body.session.glpiID
+        // For now, I'll try to load it from prefs "glpi_user_id" if it exists.
+        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
+        currentUserId = prefs.getInt("glpi_user_id", 0)
+
         setupFilters()
         setupSearch()
     }
@@ -65,16 +75,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFilters() {
         chipGroupFilters.setOnCheckedStateChangeListener { group, checkedIds ->
+            filterAssignedToMe = false
             if (checkedIds.isEmpty()) {
                 currentFilterStatus = null
             } else {
                 val chipId = checkedIds[0]
-                currentFilterStatus = when (chipId) {
-                    R.id.chipNew -> 1 // Assuming GLPI status 1 is New
-                    R.id.chipAssigned -> 2 // Assuming GLPI status 2 is Assigned
-                    R.id.chipPending -> 4 // Assuming GLPI status 4 is Pending
-                    R.id.chipSolved -> 5 // Assuming GLPI status 5 is Solved
-                    else -> null
+                when (chipId) {
+                    R.id.chipAssignedToMe -> {
+                        filterAssignedToMe = true
+                        currentFilterStatus = null
+                    }
+                    R.id.chipNew -> currentFilterStatus = listOf(1, 2, 3) // New, Assigned, Planned -> "In Progress"
+                    R.id.chipAssigned -> currentFilterStatus = listOf(2, 3) // Specific Assigned/Planned
+                    R.id.chipPending -> currentFilterStatus = listOf(4)
+                    R.id.chipSolved -> currentFilterStatus = listOf(5, 6) // Solved, Closed
+                    else -> currentFilterStatus = null
                 }
             }
             applyFilters()
@@ -132,7 +147,12 @@ class MainActivity : AppCompatActivity() {
 
         // Status Filter
         if (currentFilterStatus != null) {
-            filteredList = filteredList.filter { it.status == currentFilterStatus } // Need to make sure Ticket model has status
+            filteredList = filteredList.filter { it.status in currentFilterStatus!! }
+        }
+
+        // Assigned To Me Filter
+        if (filterAssignedToMe) {
+             filteredList = filteredList.filter { it.users_id_recipient == currentUserId }
         }
 
         // Search Filter

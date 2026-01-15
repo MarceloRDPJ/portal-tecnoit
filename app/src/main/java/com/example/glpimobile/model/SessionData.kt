@@ -8,7 +8,10 @@ data class SessionData(
     val myEntities: JsonElement?, // Can be JsonArray or JsonObject
 
     @SerializedName("glpiactive_entity")
-    val activeEntityId: String?
+    val activeEntityId: String?,
+
+    @SerializedName("glpiID")
+    val glpiID: String?
 )
 
 data class Entity(

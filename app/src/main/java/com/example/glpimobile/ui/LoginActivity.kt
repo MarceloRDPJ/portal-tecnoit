@@ -5,9 +5,11 @@ import android.os.Bundle
 import android.util.Base64
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.glpimobile.R
@@ -24,6 +26,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var passwordEditText: EditText
     private lateinit var loginButton: Button
     private lateinit var progressBar: ProgressBar
+    private lateinit var rememberMeCheckBox: CheckBox
 
     companion object {
         private const val SERVER_URL = "https://suporte.tecnoit.com.br/"
@@ -38,6 +41,15 @@ class LoginActivity : AppCompatActivity() {
         passwordEditText = findViewById(R.id.etPassword)
         loginButton = findViewById(R.id.btnLogin)
         progressBar = findViewById(R.id.progressBar)
+        rememberMeCheckBox = findViewById(R.id.cbRememberMe)
+
+        // Load saved credentials
+        val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
+        if (prefs.getBoolean("remember_me", false)) {
+            usernameEditText.setText(prefs.getString("saved_username", ""))
+            passwordEditText.setText(prefs.getString("saved_password", ""))
+            rememberMeCheckBox.isChecked = true
+        }
 
         loginButton.setOnClickListener {
             performLogin()
@@ -55,10 +67,21 @@ class LoginActivity : AppCompatActivity() {
 
         // Save server URL and App-Token for later use
         val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
-        prefs.edit()
+        val editor = prefs.edit()
             .putString("server_url", SERVER_URL)
             .putString("app_token", APP_TOKEN)
-            .apply()
+            .remove("glpi_user_id") // Clear old ID
+
+        if (rememberMeCheckBox.isChecked) {
+            editor.putBoolean("remember_me", true)
+            editor.putString("saved_username", username)
+            editor.putString("saved_password", password)
+        } else {
+            editor.remove("remember_me")
+            editor.remove("saved_username")
+            editor.remove("saved_password")
+        }
+        editor.apply()
 
         showLoading(true)
 
@@ -76,9 +99,14 @@ class LoginActivity : AppCompatActivity() {
                     // Parse Entities
                     val entities = parseEntities(body.session?.myEntities)
                     val activeEntityId = body.session?.activeEntityId
-                    saveEntities(entities, activeEntityId)
+                    val glpiID = body.session?.glpiID?.toIntOrNull() ?: 0
+                    saveEntities(entities, activeEntityId, glpiID)
 
-                    navigateToMainApp()
+                    if (entities.size > 1) {
+                         showEntitySelectionDialog(entities, apiService, sessionToken)
+                    } else {
+                         navigateToMainApp()
+                    }
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Toast.makeText(this@LoginActivity, "Login failed: $errorBody", Toast.LENGTH_LONG).show()
@@ -131,13 +159,58 @@ class LoginActivity : AppCompatActivity() {
         return entities
     }
 
-    private fun saveEntities(entities: List<Entity>, activeEntityId: String?) {
+    private fun showEntitySelectionDialog(entities: List<Entity>, apiService: com.example.glpimobile.network.GlpiApiService, sessionToken: String) {
+        val entityNames = entities.map { it.name }.toTypedArray()
+
+        // Find current selection index if possible, else 0
+        var checkedItem = 0
+
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Select Entity")
+        builder.setSingleChoiceItems(entityNames, checkedItem) { dialog, which ->
+             val selectedEntity = entities[which]
+
+             showLoading(true)
+             dialog.dismiss()
+
+             lifecycleScope.launch {
+                 try {
+                     val jsonBody = com.google.gson.JsonObject()
+                     jsonBody.addProperty("entities_id", selectedEntity.id)
+
+                     val response = apiService.changeActiveEntity(sessionToken, APP_TOKEN, jsonBody)
+
+                     if (response.isSuccessful) {
+                         saveEntities(entities, selectedEntity.id.toString())
+                         navigateToMainApp()
+                     } else {
+                         Toast.makeText(this@LoginActivity, "Failed to switch entity", Toast.LENGTH_SHORT).show()
+                         // Navigate anyway or retry? Navigate anyway for now, defaulting to what initSession gave
+                         navigateToMainApp()
+                     }
+                 } catch (e: Exception) {
+                     Toast.makeText(this@LoginActivity, "Error switching entity: ${e.message}", Toast.LENGTH_SHORT).show()
+                     navigateToMainApp()
+                 } finally {
+                     showLoading(false)
+                 }
+             }
+        }
+        // Prevent cancelling without selection if strict, or allow default
+        builder.setCancelable(false)
+        builder.show()
+    }
+
+    private fun saveEntities(entities: List<Entity>, activeEntityId: String?, glpiID: Int = 0) {
         val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
         val gson = Gson()
         val json = gson.toJson(entities)
         val editor = prefs.edit().putString("saved_entities", json)
         if (activeEntityId != null) {
             editor.putString("active_entity_id", activeEntityId)
+        }
+        if (glpiID != 0) {
+            editor.putInt("glpi_user_id", glpiID)
         }
         editor.apply()
     }

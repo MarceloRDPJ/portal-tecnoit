@@ -25,6 +25,13 @@ interface GlpiApiService {
         @Query("password") password: String? = null
     ): Response<SessionResponse>
 
+    @POST("changeActiveEntity")
+    suspend fun changeActiveEntity(
+        @Header("Session-Token") sessionToken: String,
+        @Header("App-Token") appToken: String,
+        @Body body: JsonObject
+    ): Response<Void>
+
     @GET("Ticket")
     suspend fun getTickets(): Response<List<Ticket>>
 

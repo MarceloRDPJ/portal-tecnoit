@@ -15,6 +15,9 @@ data class Ticket(
     @SerializedName("status")
     val status: Int,
 
+    @SerializedName("users_id_recipient")
+    val users_id_recipient: Int,
+
     @SerializedName("date_creation")
     val creationDate: String
 )

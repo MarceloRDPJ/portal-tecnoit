@@ -14,7 +14,9 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <meta name="theme-color" content="#ffffff">
-    <link rel="apple-touch-icon" href="assets/logo.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
     <style>
         body { font-family: 'Roboto', sans-serif; -webkit-font-smoothing: antialiased; background-color: #f8fafc; }
         .touch-btn:active { transform: scale(0.98); }
@@ -156,6 +158,11 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
 
+            // Entity Selection State
+            const [showEntitySelect, setShowEntitySelect] = useState(false);
+            const [entities, setEntities] = useState([]);
+            const [pendingSession, setPendingSession] = useState(null);
+
             useEffect(() => {
                 const savedUser = localStorage.getItem('glpiUsername');
                 if (savedUser) setUsername(savedUser);
@@ -198,11 +205,32 @@
                         fullSession = (await sessionRes.json()).session;
                     }
 
-                    onLogin({
-                        sessionToken: data.session_token,
-                        fullSessionData: fullSession,
-                        glpiUrl
-                    });
+                    // Parse entities
+                    const rawEntities = fullSession.glpimy_entities;
+                    const parsedEntities = [];
+                    // Handle recursive structure or simple array
+                    if (Array.isArray(rawEntities)) {
+                        rawEntities.forEach(e => parsedEntities.push({ id: e.id, name: e.completename || e.name }));
+                    } else if (typeof rawEntities === 'object') {
+                         // Iterate values
+                         Object.values(rawEntities).forEach(e => {
+                             if(typeof e === 'object') parsedEntities.push({ id: e.id, name: e.completename || e.name });
+                             else parsedEntities.push({ id: e, name: e }); // Primitive?
+                         });
+                    }
+                    parsedEntities.sort((a,b) => a.name.localeCompare(b.name));
+
+                    if (parsedEntities.length > 1) {
+                        setEntities(parsedEntities);
+                        setPendingSession({ sessionToken: data.session_token, fullSessionData: fullSession, glpiUrl });
+                        setShowEntitySelect(true);
+                    } else {
+                        onLogin({
+                            sessionToken: data.session_token,
+                            fullSessionData: fullSession,
+                            glpiUrl
+                        });
+                    }
 
                 } catch (err) {
                     setError(err.message);
@@ -210,6 +238,45 @@
                     setLoading(false);
                 }
             };
+
+            const handleEntitySelect = async (entityId) => {
+                setLoading(true);
+                try {
+                     const { sessionToken, glpiUrl } = pendingSession;
+                     const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/changeActiveEntity', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ glpiUrl, sessionToken, entities_id: entityId })
+                     });
+                     if (!res.ok) throw new Error("Falha ao mudar entidade");
+
+                     // Update active entity in session data locally
+                     pendingSession.fullSessionData.glpiactive_entity = entityId;
+                     onLogin(pendingSession);
+                } catch (e) {
+                    setError(e.message);
+                    setLoading(false);
+                }
+            };
+
+            if (showEntitySelect) {
+                return (
+                    <div className="flex-1 flex flex-col justify-center p-6 max-w-md mx-auto w-full">
+                        <div className="text-center mb-6">
+                             <h1 className="text-xl font-bold text-slate-800">Selecione o Perfil</h1>
+                             <p className="text-slate-500">Qual entidade você deseja acessar?</p>
+                        </div>
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                            {entities.map(ent => (
+                                <button key={ent.id} onClick={() => handleEntitySelect(ent.id)}
+                                    className="w-full text-left p-4 bg-white border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all font-medium text-slate-700">
+                                    {ent.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="flex-1 flex flex-col justify-center p-6 max-w-md mx-auto w-full">
@@ -430,9 +497,10 @@
         function Dashboard({ session, onNavigate, onLogout }) {
             const { sessionToken, fullSessionData, glpiUrl } = session;
             const userName = fullSessionData?.glpifirstname || 'Técnico';
+            const userId = fullSessionData?.glpiID ? parseInt(fullSessionData.glpiID) : 0;
 
             const [tickets, setTickets] = useState([]);
-            const [filter, setFilter] = useState('new'); // new (Processando), pending, solved
+            const [filter, setFilter] = useState('new'); // new, pending, solved, me
             const [loading, setLoading] = useState(true);
 
             // Fetch Tickets
@@ -455,6 +523,9 @@
             // GLPI Status: 1=New, 2=Assign, 3=Plan, 4=Wait, 5=Solved, 6=Closed
             const filteredTickets = tickets.filter(t => {
                 const s = t.status;
+                if(filter === 'me') {
+                     return (t.users_id_recipient === userId);
+                }
                 if(filter === 'new') return (s === 1 || s === 2 || s === 3); // Em atendimento
                 if(filter === 'pending') return s === 4; // Pendente
                 if(filter === 'solved') return (s === 5 || s === 6); // Solucionado
@@ -474,6 +545,7 @@
                     {/* Filter Tabs */}
                     <div className="flex p-2 gap-2 overflow-x-auto bg-white border-b border-slate-100">
                         {[
+                            {id: 'me', label: 'Para Mim'},
                             {id: 'new', label: 'Em Andamento'},
                             {id: 'pending', label: 'Pendentes'},
                             {id: 'solved', label: 'Finalizados'}
