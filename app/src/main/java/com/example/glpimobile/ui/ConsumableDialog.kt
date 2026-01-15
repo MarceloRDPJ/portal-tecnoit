@@ -49,8 +49,8 @@ class ConsumableDialog(private val context: Context, private val onConsumableSel
                                  Consumable(
                                      id = if (obj.has("id")) obj.get("id").asInt else 0,
                                      name = if (obj.has("name")) obj.get("name").asString else "Unknown",
-                                     ref = if (obj.has("ref") && !obj.get("ref").isJsonNull) obj.get("ref").asString else null,
-                                     stock = 0 // Not provided in basic view
+                                     reference = if (obj.has("ref") && !obj.get("ref").isJsonNull) obj.get("ref").asString else null,
+                                     entityId = if (obj.has("entities_id")) obj.get("entities_id").asInt else 0
                                  )
                              }.sortedBy { it.name }
                         } else {

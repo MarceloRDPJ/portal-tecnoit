@@ -43,14 +43,14 @@ class SyncWorker(
                 var success = false
                 when (action.type) {
                     "SOLUTION" -> {
-                        val payload = JsonParser.parseString(action.payloadJson).asJsonObject
+                        val payload = JsonParser().parse(action.payloadJson).asJsonObject
                         val response = apiService.addSolution(sessionToken, appToken, payload)
                         if (response.isSuccessful) success = true
                     }
                     "CONSUMABLE" -> {
                         // Assuming payload has { "item_id": 123, "qty": 1, ... }
                         // And we map it to Item_Ticket logic
-                        val payloadObj = JsonParser.parseString(action.payloadJson).asJsonObject
+                        val payloadObj = JsonParser().parse(action.payloadJson).asJsonObject
 
                         var itemId = payloadObj.get("item_id").asInt
                         val name = payloadObj.get("name").asString
@@ -81,13 +81,13 @@ class SyncWorker(
                         // {"input": {"tickets_id": ..., "items_id": ..., "itemtype": "ConsumableItem", "amount": ...}}
                         val glpiPayload = JsonObject()
                         val input = JsonObject()
-                        input.addProperty("tickets_id", action.ticketId)
-                        input.addProperty("items_id", itemId)
+                        input.addProperty("tickets_id", action.ticketId as Number)
+                        input.addProperty("items_id", itemId as Number)
                         input.addProperty("itemtype", "ConsumableItem")
                         if (payloadObj.has("qty")) {
-                            input.addProperty("amount", payloadObj.get("qty").asInt)
+                            input.addProperty("amount", payloadObj.get("qty").asInt as Number)
                         } else {
-                            input.addProperty("amount", 1)
+                            input.addProperty("amount", 1 as Number)
                         }
 
                         glpiPayload.add("input", input)
@@ -96,7 +96,7 @@ class SyncWorker(
                         if (response.isSuccessful) success = true
                     }
                     "DOCUMENT" -> {
-                        val payloadObj = JsonParser.parseString(action.payloadJson).asJsonObject
+                        val payloadObj = JsonParser().parse(action.payloadJson).asJsonObject
                         val path = payloadObj.get("path").asString
                         val file = File(path)
                         if (file.exists()) {
@@ -107,7 +107,7 @@ class SyncWorker(
                             val manifest = JsonObject()
                             val input = JsonObject()
                             input.addProperty("name", "Evidence " + file.name)
-                            input.addProperty("tickets_id", action.ticketId)
+                            input.addProperty("tickets_id", action.ticketId as Number)
                             manifest.add("input", input)
 
                             val response = apiService.uploadDocument(sessionToken, appToken, manifest.toString(), body)
