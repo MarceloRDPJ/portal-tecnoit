@@ -163,6 +163,28 @@ app.post('/api/proxy/getFullSession', async (req, res) => {
     }
 });
 
+// Rota para mudar a entidade ativa
+app.post('/api/proxy/changeActiveEntity', async (req, res) => {
+    const { glpiUrl, sessionToken, entities_id } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+
+    if (!glpiUrl || !sessionToken || !entities_id) {
+        return res.status(400).json({ message: 'Parâmetros obrigatórios faltando.' });
+    }
+
+    const apiUrl = `${glpiUrl}/apirest.php/changeActiveEntity`;
+    try {
+        const response = await axios.post(apiUrl,
+            { entities_id: entities_id },
+            { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } }
+        );
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error("Error changing active entity:", error.message);
+        res.status(error.response?.status || 500).json({ message: 'Falha ao mudar entidade.' });
+    }
+});
+
 // Rotas para adicionar itens a um chamado
 const createAddItemRoute = (itemName, endpointName) => {
     app.post(`/api/proxy/${endpointName}`, async (req, res) => {
