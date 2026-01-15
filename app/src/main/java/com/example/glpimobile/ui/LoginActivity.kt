@@ -29,6 +29,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var rememberMeCheckBox: CheckBox
 
     companion object {
+        // Hardcoded credentials for Field Service profile
         private const val SERVER_URL = "https://suporte.tecnoit.com.br/"
         private const val APP_TOKEN = "Xj0RxV34GlelfYzuuPR9wXyrcw1cHnSHfThr7Yfy"
     }
