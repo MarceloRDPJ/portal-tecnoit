@@ -342,6 +342,12 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
                 try {
                     let itemId = item.id;
 
+                    // Ensure ID is an integer if it's not custom
+                    if (!String(itemId).startsWith('custom-')) {
+                         itemId = parseInt(itemId, 10);
+                         if (isNaN(itemId)) throw new Error(`Invalid Item ID: ${item.id}`);
+                    }
+
                     // A. Create Item if it's custom
                     if (String(itemId).startsWith('custom-')) {
                         const createItemUrl = `${glpiUrl}/apirest.php/ConsumItem`;
