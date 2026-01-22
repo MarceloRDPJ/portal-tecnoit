@@ -155,10 +155,17 @@ class RespondTicketActivity : AppCompatActivity() {
     }
 
     private fun calculateMetragem() {
-        val initial = etMetragemInicial.text.toString().toDoubleOrNull() ?: 0.0
-        val final = etMetragemFinal.text.toString().toDoubleOrNull() ?: 0.0
-        val spent = (final - initial).coerceAtLeast(0.0)
-        tvMetragemGasta.text = "Gasto: ${spent}m"
+        // Handle commas for Brazilian inputs
+        val cleanInitial = etMetragemInicial.text.toString().replace(",", ".")
+        val cleanFinal = etMetragemFinal.text.toString().replace(",", ".")
+
+        val initial = cleanInitial.toDoubleOrNull() ?: 0.0
+        val final = cleanFinal.toDoubleOrNull() ?: 0.0
+
+        // Use absolute difference as spools may count up or down
+        val spent = kotlin.math.abs(final - initial)
+
+        tvMetragemGasta.text = "Gasto: ${String.format("%.2f", spent)}m"
     }
 
     private fun setupFiberLogic() {
@@ -208,9 +215,13 @@ class RespondTicketActivity : AppCompatActivity() {
                 }
 
                 // Construct HTML Table
-                val initial = etMetragemInicial.text.toString()
-                val final = etMetragemFinal.text.toString()
-                val spent = (initial.toDoubleOrNull() ?: 0.0).let { i -> (final.toDoubleOrNull() ?: 0.0) - i }.coerceAtLeast(0.0)
+                val initialStr = etMetragemInicial.text.toString()
+                val finalStr = etMetragemFinal.text.toString()
+                val initialVal = initialStr.replace(",", ".").toDoubleOrNull() ?: 0.0
+                val finalVal = finalStr.replace(",", ".").toDoubleOrNull() ?: 0.0
+
+                val spent = kotlin.math.abs(finalVal - initialVal)
+                val spentFormatted = String.format("%.2f", spent)
 
                 val alcas = etAlcas.text.toString()
                 val esticador = etEsticador.text.toString()
@@ -225,9 +236,9 @@ class RespondTicketActivity : AppCompatActivity() {
                             <tr><td><b>Alças:</b></td><td>${alcas}</td></tr>
                             <tr><td><b>Esticador:</b></td><td>${esticador}</td></tr>
                             <tr><td><b>Conector:</b></td><td>${conector}</td></tr>
-                            <tr><td><b>Metragem Inicial:</b></td><td>${initial}m</td></tr>
-                            <tr><td><b>Metragem Final:</b></td><td>${final}m</td></tr>
-                            <tr><td><b>Metragem Gasta:</b></td><td><b>${spent}m</b></td></tr>
+                            <tr><td><b>Metragem Inicial:</b></td><td>${initialStr}m</td></tr>
+                            <tr><td><b>Metragem Final:</b></td><td>${finalStr}m</td></tr>
+                            <tr><td><b>Metragem Gasta:</b></td><td><b>${spentFormatted}m</b></td></tr>
                             <tr><td><b>Extras:</b></td><td>${etExtras.text}</td></tr>
                         </table>
                     </div>
