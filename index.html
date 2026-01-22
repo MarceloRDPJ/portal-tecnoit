@@ -365,10 +365,13 @@
             const [showHelp, setShowHelp] = useState(false);
 
             const metragemGasta = useMemo(() => {
-                const i = parseFloat(techData.metragemInicial);
-                const f = parseFloat(techData.metragemFinal);
+                // Handle commas for Brazilian locale inputs
+                const clean = (val) => String(val).replace(',', '.');
+                const i = parseFloat(clean(techData.metragemInicial));
+                const f = parseFloat(clean(techData.metragemFinal));
                 if (isNaN(i) || isNaN(f)) return 0;
-                return Math.max(0, f - i);
+                // Use absolute difference as spools may count up or down
+                return Math.abs(f - i).toFixed(2);
             }, [techData.metragemInicial, techData.metragemFinal]);
 
             // Stock Logic
