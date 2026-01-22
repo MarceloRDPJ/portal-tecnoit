@@ -40,6 +40,7 @@ class RespondTicketActivity : AppCompatActivity() {
     private lateinit var llEvidenceList: LinearLayout
 
     // New Fields
+    private lateinit var btnHelp: android.widget.ImageButton
     private lateinit var rgResponseType: android.widget.RadioGroup
     private lateinit var llTechnicalData: LinearLayout
     private lateinit var etPonto: TextInputEditText
@@ -98,6 +99,7 @@ class RespondTicketActivity : AppCompatActivity() {
         llEvidenceList = findViewById(R.id.llEvidenceList)
 
         // Bind New Views
+        btnHelp = findViewById(R.id.btnHelp)
         rgResponseType = findViewById(R.id.rgResponseType)
         llTechnicalData = findViewById(R.id.llTechnicalData)
         etPonto = findViewById(R.id.etPonto)
@@ -110,12 +112,22 @@ class RespondTicketActivity : AppCompatActivity() {
         tvMetragemGasta = findViewById(R.id.tvMetragemGasta)
         etExtras = findViewById(R.id.etExtras)
 
+        btnHelp.setOnClickListener { showHelpDialog() }
+
         setupResponseType()
         setupFiberLogic()
         setupSubmit()
         setupConsumables()
         setupEvidence()
         setupMetragemCalculation()
+    }
+
+    private fun showHelpDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Como Responder?")
+            .setMessage("📝 Comentário:\nUse para dúvidas ou avisos. O chamado NÃO será encerrado.\n\n✅ Solucionar:\nUse para FINALIZAR o serviço. Todos os dados técnicos (Ponto, Drop, Metragens...) e a evidência (foto) são OBRIGATÓRIOS.\n\n* Se usou 0 materiais, digite '0'.")
+            .setPositiveButton("Entendi", null)
+            .show()
     }
 
     private fun setupResponseType() {
@@ -176,8 +188,20 @@ class RespondTicketActivity : AppCompatActivity() {
 
             if (isSolution) {
                 // Validation
-                if (etPonto.text.isNullOrBlank()) { etPonto.error = "Obrigatório"; return@setOnClickListener }
-                if (etDrop.text.isNullOrBlank()) { etDrop.error = "Obrigatório"; return@setOnClickListener }
+                val requiredFields = listOf(
+                    etPonto to "Ponto", etDrop to "Drop",
+                    etAlcas to "Alças", etEsticador to "Esticador", etConector to "Conector",
+                    etMetragemInicial to "Metragem Inicial", etMetragemFinal to "Metragem Final"
+                )
+
+                for ((field, name) in requiredFields) {
+                    if (field.text.isNullOrBlank()) {
+                        field.error = "Campo Obrigatório (use 0 se necessário)"
+                        Toast.makeText(this, "Preencha o campo $name", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                }
+
                 if (!hasEvidence) {
                     Toast.makeText(this, "É obrigatório anexar uma evidência (foto)", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
@@ -188,9 +212,9 @@ class RespondTicketActivity : AppCompatActivity() {
                 val final = etMetragemFinal.text.toString()
                 val spent = (initial.toDoubleOrNull() ?: 0.0).let { i -> (final.toDoubleOrNull() ?: 0.0) - i }.coerceAtLeast(0.0)
 
-                val alcas = etAlcas.text.toString().ifBlank { "0" }
-                val esticador = etEsticador.text.toString().ifBlank { "0" }
-                val conector = etConector.text.toString().ifBlank { "0" }
+                val alcas = etAlcas.text.toString()
+                val esticador = etEsticador.text.toString()
+                val conector = etConector.text.toString()
 
                 finalContent = """
                     <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background-color: #f9f9f9;">

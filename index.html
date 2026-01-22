@@ -351,20 +351,23 @@
             const [responseType, setResponseType] = useState('comment'); // 'comment' | 'solution'
 
             // Technical Data
+            // Initialized as strings to detect "empty" vs "0"
             const [techData, setTechData] = useState({
                 ponto: '',
-                alcas: 0,
-                esticador: 0,
-                conector: 0,
-                metragemInicial: 0,
-                metragemFinal: 0,
+                alcas: '',
+                esticador: '',
+                conector: '',
+                metragemInicial: '',
+                metragemFinal: '',
                 drop: '',
                 extras: ''
             });
+            const [showHelp, setShowHelp] = useState(false);
 
             const metragemGasta = useMemo(() => {
-                const i = parseFloat(techData.metragemInicial) || 0;
-                const f = parseFloat(techData.metragemFinal) || 0;
+                const i = parseFloat(techData.metragemInicial);
+                const f = parseFloat(techData.metragemFinal);
+                if (isNaN(i) || isNaN(f)) return 0;
                 return Math.max(0, f - i);
             }, [techData.metragemInicial, techData.metragemFinal]);
 
@@ -431,11 +434,23 @@
 
                 // Validation for Solution
                 if (isSolving) {
-                    if (!techData.ponto) return alert("O campo 'Ponto' é obrigatório.");
-                    if (!techData.drop) return alert("O campo 'Drop' é obrigatório.");
+                    const requiredFields = [
+                        { k: 'ponto', label: 'Ponto' },
+                        { k: 'drop', label: 'Drop' },
+                        { k: 'alcas', label: 'Alças' },
+                        { k: 'esticador', label: 'Esticador' },
+                        { k: 'conector', label: 'Conector' },
+                        { k: 'metragemInicial', label: 'Metragem Inicial' },
+                        { k: 'metragemFinal', label: 'Metragem Final' }
+                    ];
+
+                    for (let f of requiredFields) {
+                        if (techData[f.k] === '' || techData[f.k] === null || techData[f.k] === undefined) {
+                            return alert(`O campo '${f.label}' é obrigatório (use "0" se necessário).`);
+                        }
+                    }
+
                     if (!evidence) return alert("É obrigatório anexar uma evidência (foto).");
-                    // Check numeric fields if strictly > -1 (allowing 0)
-                    if (techData.alcas < 0 || techData.esticador < 0 || techData.conector < 0) return alert("Valores numéricos inválidos.");
                 }
 
                 setIsSubmitting(true);
@@ -521,12 +536,15 @@
             return (
                 <div className="flex flex-col h-full bg-slate-50">
                     {/* Header */}
-                    <div className="bg-white p-4 shadow-sm flex items-center gap-4 z-20">
-                         <button onClick={onBack} className="p-2 -ml-2 text-slate-500 rounded-full"><ChevronDown className="w-6 h-6 rotate-90" /></button>
-                         <div>
-                             <h2 className="text-lg font-bold text-slate-800 leading-tight">Chamado #{ticket.id}</h2>
-                             <p className="text-xs text-slate-500">{ticket.name}</p>
+                    <div className="bg-white p-4 shadow-sm flex items-center justify-between z-20">
+                         <div className="flex items-center gap-4">
+                             <button onClick={onBack} className="p-2 -ml-2 text-slate-500 rounded-full"><ChevronDown className="w-6 h-6 rotate-90" /></button>
+                             <div>
+                                 <h2 className="text-lg font-bold text-slate-800 leading-tight">Chamado #{ticket.id}</h2>
+                                 <p className="text-xs text-slate-500">{ticket.name}</p>
+                             </div>
                          </div>
+                         <button onClick={() => setShowHelp(true)} className="p-2 text-blue-600 bg-blue-50 rounded-full font-bold w-10 h-10 flex items-center justify-center">?</button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -557,42 +575,42 @@
                             {/* Technical Fields (Only for Solution) */}
                             {responseType === 'solution' && (
                                 <div className="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200 animate-fade-in">
-                                    <h4 className="font-bold text-slate-700 text-sm">Dados Obrigatórios</h4>
+                                    <h4 className="font-bold text-slate-700 text-sm">Dados Técnicos <span className="text-red-500">* Obrigatórios</span></h4>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Ponto</label>
-                                            <input type="text" value={techData.ponto} onChange={e => setTechData({...techData, ponto: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Nome/ID" />
+                                            <label className="text-xs font-semibold text-slate-500">Ponto <span className="text-red-500">*</span></label>
+                                            <input type="text" value={techData.ponto} onChange={e => setTechData({...techData, ponto: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Nome/ID" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Drop</label>
-                                            <input type="text" value={techData.drop} onChange={e => setTechData({...techData, drop: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Tipo/Metros" />
+                                            <label className="text-xs font-semibold text-slate-500">Drop <span className="text-red-500">*</span></label>
+                                            <input type="text" value={techData.drop} onChange={e => setTechData({...techData, drop: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Tipo/Metros" />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-2">
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Alças</label>
-                                            <input type="number" min="0" value={techData.alcas} onChange={e => setTechData({...techData, alcas: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                            <label className="text-xs font-semibold text-slate-500">Alças <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={techData.alcas} onChange={e => setTechData({...techData, alcas: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Esticador</label>
-                                            <input type="number" min="0" value={techData.esticador} onChange={e => setTechData({...techData, esticador: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                            <label className="text-xs font-semibold text-slate-500">Esticador <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={techData.esticador} onChange={e => setTechData({...techData, esticador: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Conector</label>
-                                            <input type="number" min="0" value={techData.conector} onChange={e => setTechData({...techData, conector: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                            <label className="text-xs font-semibold text-slate-500">Conector <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={techData.conector} onChange={e => setTechData({...techData, conector: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Metragem Inicial</label>
-                                            <input type="number" min="0" value={techData.metragemInicial} onChange={e => setTechData({...techData, metragemInicial: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                            <label className="text-xs font-semibold text-slate-500">Metr. Inicial <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={techData.metragemInicial} onChange={e => setTechData({...techData, metragemInicial: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Metros" />
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-slate-500">Metragem Final</label>
-                                            <input type="number" min="0" value={techData.metragemFinal} onChange={e => setTechData({...techData, metragemFinal: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                            <label className="text-xs font-semibold text-slate-500">Metr. Final <span className="text-red-500">*</span></label>
+                                            <input type="number" min="0" value={techData.metragemFinal} onChange={e => setTechData({...techData, metragemFinal: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Metros" />
                                         </div>
                                     </div>
 
@@ -601,8 +619,8 @@
                                     </div>
 
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-500">Materiais Extras (Opcional)</label>
-                                        <input type="text" value={techData.extras} onChange={e => setTechData({...techData, extras: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Ex: Fita isolante, Parafusos..." />
+                                        <label className="text-xs font-semibold text-slate-500">Materiais Extras</label>
+                                        <input type="text" value={techData.extras} onChange={e => setTechData({...techData, extras: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Ex: Fita isolante, Parafusos..." />
                                     </div>
                                 </div>
                             )}
@@ -653,6 +671,43 @@
                             {isSubmitting ? 'Enviando...' : (responseType === 'solution' ? 'FINALIZAR CHAMADO' : 'ENVIAR RESPOSTA')}
                         </button>
                     </div>
+
+                    {/* Help/Onboarding Modal */}
+                    {showHelp && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
+                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
+                                <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+
+                                <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <span className="bg-blue-100 text-blue-600 p-2 rounded-lg"><RefreshCw className="w-5 h-5"/></span>
+                                    Como Responder?
+                                </h3>
+
+                                <div className="space-y-4">
+                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                        <h4 className="font-bold text-slate-700 mb-1">📝 Comentário</h4>
+                                        <p className="text-sm text-slate-500 leading-relaxed">
+                                            Use esta opção para dúvidas, avisos ou interações parciais. O chamado <b>não será encerrado</b> e continuará pendente.
+                                        </p>
+                                    </div>
+
+                                    <div className="p-3 bg-green-50 rounded-xl border border-green-100">
+                                        <h4 className="font-bold text-green-800 mb-1">✅ Solucionar</h4>
+                                        <p className="text-sm text-green-700 leading-relaxed">
+                                            Use para <b>finalizar</b> o serviço. É obrigatório preencher todos os dados técnicos (Ponto, Drop, Metragens...) e anexar a foto da evidência.
+                                        </p>
+                                        <p className="text-xs text-green-600 mt-2 font-bold">
+                                            * Se usou 0 materiais, preencha com "0".
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button onClick={() => setShowHelp(false)} className="w-full mt-6 bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200">
+                                    Entendi
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Stock Modal (Simplified) */}
                     {isModalOpen && (

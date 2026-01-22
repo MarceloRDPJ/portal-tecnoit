@@ -17,8 +17,19 @@
             android:layout_height="wrap_content"
             android:text="Responder Chamado"
             android:textAppearance="?attr/textAppearanceHeadline6"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btnHelp"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="@+id/btnHelp"/>
+
+        <ImageButton
+            android:id="@+id/btnHelp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_help"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/design_default_color_primary"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <!-- Response Type Toggle -->
