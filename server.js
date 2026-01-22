@@ -265,6 +265,26 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
             }
         });
 
+        // SAFETY LINK: Explicitly link the document to the ticket via Document_Item
+        // This ensures the image doesn't "disappear" or fail to link if the manifest method is flaky.
+        if (response.data && response.data.id) {
+            const docId = response.data.id;
+            try {
+                const linkUrl = `${glpiUrl}/apirest.php/Document_Item`;
+                await axios.post(linkUrl, {
+                    input: {
+                        documents_id: docId,
+                        items_id: parseInt(ticketId, 10),
+                        itemtype: 'Ticket'
+                    }
+                }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
+                console.log(`Document ${docId} explicitly linked to Ticket ${ticketId}`);
+            } catch (linkError) {
+                console.warn(`Failed to explicitly link document ${docId} (might already be linked via manifest):`, linkError.message);
+                // We don't fail the request here because the manifest method might have worked.
+            }
+        }
+
         res.status(201).json(response.data);
     } catch (error) {
         console.error('GLPI Upload Error:', error.response?.data || error.message);
