@@ -39,6 +39,21 @@ class RespondTicketActivity : AppCompatActivity() {
     private lateinit var btnGallery: Button
     private lateinit var llEvidenceList: LinearLayout
 
+    // New Fields
+    private lateinit var rgResponseType: android.widget.RadioGroup
+    private lateinit var llTechnicalData: LinearLayout
+    private lateinit var etPonto: TextInputEditText
+    private lateinit var etDrop: TextInputEditText
+    private lateinit var etAlcas: TextInputEditText
+    private lateinit var etEsticador: TextInputEditText
+    private lateinit var etConector: TextInputEditText
+    private lateinit var etMetragemInicial: TextInputEditText
+    private lateinit var etMetragemFinal: TextInputEditText
+    private lateinit var tvMetragemGasta: android.widget.TextView
+    private lateinit var etExtras: TextInputEditText
+
+    private var hasEvidence = false
+
     private val cameraLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.TakePicturePreview()) { bitmap ->
         if (bitmap != null) {
             // Save bitmap to file and queue
@@ -73,7 +88,7 @@ class RespondTicketActivity : AppCompatActivity() {
         }
 
         etSolution = findViewById(R.id.etSolution)
-        tilFiberLength = findViewById(R.id.tilFiberLength)
+        tilFiberLength = findViewById(R.id.tilFiberLength) // Kept for backward compat/legacy
         etFiberLength = findViewById(R.id.etFiberLength)
         btnSubmit = findViewById(R.id.btnSubmitResponse)
         llConsumablesList = findViewById(R.id.llConsumablesList)
@@ -82,10 +97,56 @@ class RespondTicketActivity : AppCompatActivity() {
         btnGallery = findViewById(R.id.btnGallery)
         llEvidenceList = findViewById(R.id.llEvidenceList)
 
+        // Bind New Views
+        rgResponseType = findViewById(R.id.rgResponseType)
+        llTechnicalData = findViewById(R.id.llTechnicalData)
+        etPonto = findViewById(R.id.etPonto)
+        etDrop = findViewById(R.id.etDrop)
+        etAlcas = findViewById(R.id.etAlcas)
+        etEsticador = findViewById(R.id.etEsticador)
+        etConector = findViewById(R.id.etConector)
+        etMetragemInicial = findViewById(R.id.etMetragemInicial)
+        etMetragemFinal = findViewById(R.id.etMetragemFinal)
+        tvMetragemGasta = findViewById(R.id.tvMetragemGasta)
+        etExtras = findViewById(R.id.etExtras)
+
+        setupResponseType()
         setupFiberLogic()
         setupSubmit()
         setupConsumables()
         setupEvidence()
+        setupMetragemCalculation()
+    }
+
+    private fun setupResponseType() {
+        rgResponseType.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId == R.id.rbSolution) {
+                llTechnicalData.visibility = View.VISIBLE
+                btnSubmit.text = "FINALIZAR CHAMADO"
+            } else {
+                llTechnicalData.visibility = View.GONE
+                btnSubmit.text = "ENVIAR RESPOSTA"
+            }
+        }
+    }
+
+    private fun setupMetragemCalculation() {
+        val watcher = object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                calculateMetragem()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        }
+        etMetragemInicial.addTextChangedListener(watcher)
+        etMetragemFinal.addTextChangedListener(watcher)
+    }
+
+    private fun calculateMetragem() {
+        val initial = etMetragemInicial.text.toString().toDoubleOrNull() ?: 0.0
+        val final = etMetragemFinal.text.toString().toDoubleOrNull() ?: 0.0
+        val spent = (final - initial).coerceAtLeast(0.0)
+        tvMetragemGasta.text = "Gasto: ${spent}m"
     }
 
     private fun setupFiberLogic() {
@@ -93,9 +154,7 @@ class RespondTicketActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val text = s.toString().lowercase(Locale.getDefault())
-                val isFiberRelated = fiberTerms.any { text.contains(it) }
-                tilFiberLength.visibility = if (isFiberRelated) View.VISIBLE else View.GONE
+                // Legacy logic, kept if needed, but Technical Data form supersedes this
             }
 
             override fun afterTextChanged(s: Editable?) {}
@@ -104,40 +163,72 @@ class RespondTicketActivity : AppCompatActivity() {
 
     private fun setupSubmit() {
         btnSubmit.setOnClickListener {
+            val isSolution = (rgResponseType.checkedRadioButtonId == R.id.rbSolution)
             val solutionText = etSolution.text.toString()
+
             if (solutionText.isBlank()) {
-                etSolution.error = "Solution cannot be empty"
+                etSolution.error = "Descrição obrigatória"
                 return@setOnClickListener
             }
 
-            if (tilFiberLength.visibility == View.VISIBLE) {
-                val fiberLength = etFiberLength.text.toString()
-                if (fiberLength.isBlank()) {
-                    etFiberLength.error = "Fiber length is required for this operation"
+            var finalContent = solutionText
+            var status: Int? = null
+
+            if (isSolution) {
+                // Validation
+                if (etPonto.text.isNullOrBlank()) { etPonto.error = "Obrigatório"; return@setOnClickListener }
+                if (etDrop.text.isNullOrBlank()) { etDrop.error = "Obrigatório"; return@setOnClickListener }
+                if (!hasEvidence) {
+                    Toast.makeText(this, "É obrigatório anexar uma evidência (foto)", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
-                // Append fiber info to solution text or handle separately
-                // For now, appending to text as per standard practice unless a specific field exists
-                // The prompt says "Se a resolução contiver... O sistema deverá exigir: Quantidade de fibra".
-                // It doesn't specify where to save it. Appending to description is safest.
-                // solutionText += "\n\nFiber Used: ${fiberLength}m" (Variable needs to be mutable)
-            }
 
-            val finalSolutionText = if (tilFiberLength.visibility == View.VISIBLE) {
-                "$solutionText\n\nFiber Used: ${etFiberLength.text}m"
+                // Construct HTML Table
+                val initial = etMetragemInicial.text.toString()
+                val final = etMetragemFinal.text.toString()
+                val spent = (initial.toDoubleOrNull() ?: 0.0).let { i -> (final.toDoubleOrNull() ?: 0.0) - i }.coerceAtLeast(0.0)
+
+                val alcas = etAlcas.text.toString().ifBlank { "0" }
+                val esticador = etEsticador.text.toString().ifBlank { "0" }
+                val conector = etConector.text.toString().ifBlank { "0" }
+
+                finalContent = """
+                    <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background-color: #f9f9f9;">
+                        <h3>📋 Dados Técnicos</h3>
+                        <table style="width: 100%;">
+                            <tr><td><b>Ponto:</b></td><td>${etPonto.text}</td></tr>
+                            <tr><td><b>Drop:</b></td><td>${etDrop.text}</td></tr>
+                            <tr><td><b>Alças:</b></td><td>${alcas}</td></tr>
+                            <tr><td><b>Esticador:</b></td><td>${esticador}</td></tr>
+                            <tr><td><b>Conector:</b></td><td>${conector}</td></tr>
+                            <tr><td><b>Metragem Inicial:</b></td><td>${initial}m</td></tr>
+                            <tr><td><b>Metragem Final:</b></td><td>${final}m</td></tr>
+                            <tr><td><b>Metragem Gasta:</b></td><td><b>${spent}m</b></td></tr>
+                            <tr><td><b>Extras:</b></td><td>${etExtras.text}</td></tr>
+                        </table>
+                    </div>
+                    <div>
+                        <strong>Ação Realizada:</strong><br/>
+                        ${solutionText.replace("\n", "<br>")}
+                    </div>
+                """.trimIndent()
+
+                status = 5 // Solved
             } else {
-                solutionText
+                finalContent = solutionText.replace("\n", "<br>")
+                status = 2 // Processing
             }
 
-            saveSolution(finalSolutionText)
+            saveSolution(finalContent, status)
         }
     }
 
-    private fun saveSolution(content: String) {
+    private fun saveSolution(content: String, status: Int?) {
         lifecycleScope.launch {
             val solution = Solution(
                 ticketId = ticketId,
-                content = content
+                content = content,
+                status = status
             )
             val jsonPayload = Gson().toJson(solution)
 
@@ -269,5 +360,6 @@ class RespondTicketActivity : AppCompatActivity() {
         val textView = android.widget.TextView(this)
         textView.text = label
         llEvidenceList.addView(textView)
+        hasEvidence = true
     }
 }

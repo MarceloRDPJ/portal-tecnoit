@@ -35,6 +35,14 @@ interface GlpiApiService {
     @GET("Ticket")
     suspend fun getTickets(): Response<List<Ticket>>
 
+    @retrofit2.http.PUT("Ticket/{id}")
+    suspend fun updateTicket(
+        @retrofit2.http.Path("id") id: Int,
+        @Header("Session-Token") sessionToken: String,
+        @Header("App-Token") appToken: String,
+        @Body ticket: JsonObject
+    ): Response<JsonObject>
+
     @POST("Ticket")
     suspend fun createTicket(
         @Body ticket: JsonObject
