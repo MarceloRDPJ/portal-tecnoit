@@ -347,9 +347,28 @@
             const [ticket, setTicket] = useState(null);
             const [loading, setLoading] = useState(true);
             const [responseContent, setResponseContent] = useState('');
-            const [evidence, setEvidence] = useState(null);
+            const [evidence, setEvidence] = useState(null); // File object
+            const [responseType, setResponseType] = useState('comment'); // 'comment' | 'solution'
 
-            // Stock Logic (Reused)
+            // Technical Data
+            const [techData, setTechData] = useState({
+                ponto: '',
+                alcas: 0,
+                esticador: 0,
+                conector: 0,
+                metragemInicial: 0,
+                metragemFinal: 0,
+                drop: '',
+                extras: ''
+            });
+
+            const metragemGasta = useMemo(() => {
+                const i = parseFloat(techData.metragemInicial) || 0;
+                const f = parseFloat(techData.metragemFinal) || 0;
+                return Math.max(0, f - i);
+            }, [techData.metragemInicial, techData.metragemFinal]);
+
+            // Stock Logic
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [stockItems, setStockItems] = useState([]);
             const [availableStock, setAvailableStock] = useState([]);
@@ -357,7 +376,6 @@
             const [customItemName, setCustomItemName] = useState('');
             const [stockQty, setStockQty] = useState(1);
             const [isSubmitting, setIsSubmitting] = useState(false);
-            const [activeDictationField, setActiveDictationField] = useState(null);
 
             // Fetch Detail
             useEffect(() => {
@@ -391,7 +409,7 @@
 
             }, [ticketId]);
 
-            // Handlers for Stock (Same as before)
+            // Handlers
             const handleAddStock = () => {
                  if (!selectedStockId || stockQty <= 0) return;
                  let itemName = '', itemId = selectedStockId;
@@ -406,20 +424,78 @@
                  setSelectedStockId(''); setCustomItemName(''); setStockQty(1); setIsModalOpen(false);
             };
 
-            const handleSubmit = async (status) => {
-                if(!responseContent) return alert("Digite uma resposta.");
+            const handleSubmit = async () => {
+                if(!responseContent) return alert("Digite a descrição da ação realizada.");
+
+                const isSolving = responseType === 'solution';
+
+                // Validation for Solution
+                if (isSolving) {
+                    if (!techData.ponto) return alert("O campo 'Ponto' é obrigatório.");
+                    if (!techData.drop) return alert("O campo 'Drop' é obrigatório.");
+                    if (!evidence) return alert("É obrigatório anexar uma evidência (foto).");
+                    // Check numeric fields if strictly > -1 (allowing 0)
+                    if (techData.alcas < 0 || techData.esticador < 0 || techData.conector < 0) return alert("Valores numéricos inválidos.");
+                }
+
                 setIsSubmitting(true);
                 try {
-                    let content = responseContent;
+                    let finalContent = "";
 
-                    // Add Evidence Text
-                    if(evidence) content += `<br>[Evidência Anexada]`; // Real upload would go here
+                    if (isSolving) {
+                        // Format Technical Data as HTML Table
+                        finalContent += `
+                            <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background-color: #f9f9f9;">
+                                <h3 style="margin-top:0; color: #333;">📋 Dados Técnicos</h3>
+                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                    <tr><td style="padding: 4px; font-weight:bold;">Ponto:</td><td>${techData.ponto}</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Drop:</td><td>${techData.drop}</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Alças:</td><td>${techData.alcas}</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Esticador:</td><td>${techData.esticador}</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Conector:</td><td>${techData.conector}</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Metragem Inicial:</td><td>${techData.metragemInicial}m</td></tr>
+                                    <tr><td style="padding: 4px; font-weight:bold;">Metragem Final:</td><td>${techData.metragemFinal}m</td></tr>
+                                    <tr style="background-color: #eef;"><td style="padding: 4px; font-weight:bold;">Metragem Gasta:</td><td><b>${metragemGasta}m</b></td></tr>
+                                    ${techData.extras ? `<tr><td style="padding: 4px; font-weight:bold;">Extras:</td><td>${techData.extras}</td></tr>` : ''}
+                                </table>
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Ação Realizada:</strong><br/>
+                                ${responseContent.replace(/\n/g, '<br>')}
+                            </div>
+                        `;
+                    } else {
+                        finalContent = responseContent.replace(/\n/g, '<br>');
+                    }
+
+                    // Upload Evidence if exists
+                    // Note: In a real app we upload first, then link.
+                    // For this prototype, we'll assume the proxy handles upload if we passed it, but our current proxy 'respondTicket' doesn't handle multipart.
+                    // We must upload separately if evidence exists.
+                    if (evidence) {
+                        const formData = new FormData();
+                        formData.append('file', evidence);
+                        formData.append('glpiUrl', glpiUrl);
+                        formData.append('sessionToken', sessionToken);
+
+                        const uploadRes = await fetch(`https://portal-tecnoit-glpi.onrender.com/api/proxy/uploadDocument/${ticketId}`, {
+                             method: 'POST',
+                             body: formData
+                        });
+
+                        if (uploadRes.ok) {
+                             finalContent += `<br><i>[Evidência anexada: ${evidence.name}]</i>`;
+                        } else {
+                            throw new Error("Falha ao enviar evidência.");
+                        }
+                    }
 
                     const payload = {
                         glpiUrl, sessionToken, ticketId,
-                        content, status,
+                        content: finalContent,
+                        status: isSolving ? 5 : 2, // 5=Solved, 2=Processing
                         stockItems,
-                        entities_id: ticket.entities_id // Important for custom items
+                        entities_id: ticket.entities_id
                     };
 
                     const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/respondTicket', {
@@ -434,7 +510,7 @@
                         throw new Error(msg);
                     }
 
-                    alert("Resposta enviada!");
+                    alert(isSolving ? "Chamado solucionado!" : "Resposta enviada!");
                     onBack();
                 } catch(e) { alert("Erro: " + e.message); } finally { setIsSubmitting(false); }
             };
@@ -463,23 +539,100 @@
                              <div className="text-sm text-slate-600" dangerouslySetInnerHTML={{__html: ticket.content}} />
                         </div>
 
-                        {/* Response Form */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-                            <h3 className="font-bold text-slate-700 flex items-center gap-2"><RefreshCw className="w-4 h-4"/> Minha Resposta</h3>
-                            <textarea value={responseContent} onChange={e => setResponseContent(e.target.value)}
-                                className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-32 outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Descreva a solução ou andamento..." />
-
-                             {/* Evidence */}
-                             <input type="file" className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        {/* Response Type Toggle */}
+                        <div className="flex p-1 bg-slate-200 rounded-lg">
+                            <button onClick={() => setResponseType('comment')}
+                                className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${responseType === 'comment' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
+                                Comentário
+                            </button>
+                            <button onClick={() => setResponseType('solution')}
+                                className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${responseType === 'solution' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-500'}`}>
+                                Solucionar
+                            </button>
                         </div>
 
-                        {/* Stock */}
+                        {/* Response Form */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-4">
+
+                            {/* Technical Fields (Only for Solution) */}
+                            {responseType === 'solution' && (
+                                <div className="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200 animate-fade-in">
+                                    <h4 className="font-bold text-slate-700 text-sm">Dados Obrigatórios</h4>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Ponto</label>
+                                            <input type="text" value={techData.ponto} onChange={e => setTechData({...techData, ponto: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Nome/ID" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Drop</label>
+                                            <input type="text" value={techData.drop} onChange={e => setTechData({...techData, drop: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Tipo/Metros" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Alças</label>
+                                            <input type="number" min="0" value={techData.alcas} onChange={e => setTechData({...techData, alcas: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Esticador</label>
+                                            <input type="number" min="0" value={techData.esticador} onChange={e => setTechData({...techData, esticador: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Conector</label>
+                                            <input type="number" min="0" value={techData.conector} onChange={e => setTechData({...techData, conector: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Metragem Inicial</label>
+                                            <input type="number" min="0" value={techData.metragemInicial} onChange={e => setTechData({...techData, metragemInicial: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-semibold text-slate-500">Metragem Final</label>
+                                            <input type="number" min="0" value={techData.metragemFinal} onChange={e => setTechData({...techData, metragemFinal: Number(e.target.value)})} className="w-full p-2 border rounded-lg" />
+                                        </div>
+                                    </div>
+
+                                    <div className="p-2 bg-blue-50 text-blue-800 rounded text-center text-sm font-bold">
+                                        Gasto: {metragemGasta}m
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500">Materiais Extras (Opcional)</label>
+                                        <input type="text" value={techData.extras} onChange={e => setTechData({...techData, extras: e.target.value})} className="w-full p-2 border rounded-lg" placeholder="Ex: Fita isolante, Parafusos..." />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-2">
+                                    <RefreshCw className="w-4 h-4"/> {responseType === 'solution' ? 'Descrição da Solução / Ação Realizada' : 'Comentário'}
+                                </h3>
+                                <textarea value={responseContent} onChange={e => setResponseContent(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-32 outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder={responseType === 'solution' ? "Descreva o que foi feito..." : "Escreva sua mensagem..."} />
+                            </div>
+
+                             {/* Evidence - Mandatory for Solution */}
+                             <div>
+                                 <label className={`block text-sm font-semibold mb-1 ${responseType === 'solution' && !evidence ? 'text-red-600' : 'text-slate-700'}`}>
+                                     {responseType === 'solution' ? 'Evidência (Obrigatório) *' : 'Evidência (Opcional)'}
+                                 </label>
+                                 <input type="file" onChange={e => setEvidence(e.target.files[0])}
+                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                             </div>
+                        </div>
+
+                        {/* Stock (Consumables) */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
                              <div className="flex justify-between items-center">
-                                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Box className="w-4 h-4"/> Insumos</h3>
+                                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Box className="w-4 h-4"/> Insumos do Sistema</h3>
                                  <button onClick={() => setIsModalOpen(true)} className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">+ Add</button>
                              </div>
+                             {stockItems.length === 0 && <p className="text-xs text-slate-400">Nenhum insumo selecionado.</p>}
                              {stockItems.map((item, i) => (
                                  <div key={i} className="flex justify-between text-sm p-2 bg-slate-50 rounded border border-slate-100">
                                      <span>{item.qty}x {item.name}</span>
@@ -490,9 +643,15 @@
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="bg-white p-4 border-t border-slate-200 flex gap-2 shadow-lg z-20">
-                        <button onClick={() => handleSubmit(2)} disabled={isSubmitting} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">RESPONDER (AGUARDAR)</button>
-                        <button onClick={() => handleSubmit(5)} disabled={isSubmitting} className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-green-200">SOLUCIONAR</button>
+                    <div className="bg-white p-4 border-t border-slate-200 shadow-lg z-20">
+                        <button onClick={handleSubmit} disabled={isSubmitting}
+                            className={`w-full font-bold py-4 rounded-xl shadow-lg transition-all ${
+                                responseType === 'solution'
+                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
+                                : 'bg-slate-700 hover:bg-slate-800 text-white shadow-slate-300'
+                            }`}>
+                            {isSubmitting ? 'Enviando...' : (responseType === 'solution' ? 'FINALIZAR CHAMADO' : 'ENVIAR RESPOSTA')}
+                        </button>
                     </div>
 
                     {/* Stock Modal (Simplified) */}

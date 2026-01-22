@@ -13,5 +13,9 @@ data class Solution(
     val itemType: String = "Ticket",
 
     @SerializedName("solutiontypes_id")
-    val solutionTypeId: Int = 1 // Default
+    val solutionTypeId: Int = 1, // Default
+
+    // Extra field not used by ITILSolution API directly but used by SyncWorker logic
+    @SerializedName("status")
+    val status: Int? = null
 )

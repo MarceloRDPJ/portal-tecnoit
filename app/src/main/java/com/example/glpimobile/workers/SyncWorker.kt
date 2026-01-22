@@ -45,7 +45,22 @@ class SyncWorker(
                     "SOLUTION" -> {
                         val payload = JsonParser().parse(action.payloadJson).asJsonObject
                         val response = apiService.addSolution(sessionToken, appToken, payload)
-                        if (response.isSuccessful) success = true
+                        if (response.isSuccessful) {
+                            // Check if status update is required
+                            if (payload.has("status")) {
+                                val newStatus = payload.get("status").asInt
+                                val updatePayload = JsonObject()
+                                val input = JsonObject()
+                                input.addProperty("status", newStatus)
+                                updatePayload.add("input", input)
+
+                                val updateResponse = apiService.updateTicket(action.ticketId, sessionToken, appToken, updatePayload)
+                                if (updateResponse.isSuccessful) success = true
+                                else success = false // Fail if update fails? Or partial success?
+                            } else {
+                                success = true
+                            }
+                        }
                     }
                     "CONSUMABLE" -> {
                         // Assuming payload has { "item_id": 123, "qty": 1, ... }
