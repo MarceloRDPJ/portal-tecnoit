@@ -24,7 +24,7 @@
         @media(min-width:900px){.sidebar{display:flex;flex-direction:column;width:240px;min-width:240px;background:#0F1B2D;height:100dvh;position:relative;z-index:10;flex-shrink:0}.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column;height:100dvh}}
         .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#8BA3BE;font-size:14px;font-weight:500;cursor:pointer;border-radius:10px;margin:2px 12px;transition:all .15s;user-select:none}
         .nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
-        .nav-item.active{background:rgba(59,130,246,.2);color:#60A5FA;font-weight:600}
+        .nav-item.active{background:rgba(249,115,22,.2);color:#FB923C;font-weight:600}
         .desktop-topbar{display:none}
         @media(min-width:900px){.desktop-topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#fff;border-bottom:1px solid #E8ECF0;flex-shrink:0}.mobile-only{display:none!important}}
         @media(max-width:899px){.desktop-only{display:none!important}}
@@ -39,11 +39,11 @@
         .stat-card .stat-dot{width:8px;height:8px;border-radius:50%;margin-right:6px;display:inline-block}
         .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
         .badge-open{background:#FFF3E0;color:#E65100}
-        .badge-progress{background:#E3F2FD;color:#1565C0}
+        .badge-progress{background:#E3F2FD;color:#9A3412}
         .badge-pending{background:#F3E5F5;color:#6A1B9A}
         .badge-solved{background:#E8F5E9;color:#2E7D32}
         .device-card{background:#fff;border:1px solid #E8ECF0;border-radius:12px;padding:16px;cursor:pointer;transition:all .15s}
-        .device-card:hover{border-color:#3B82F6;box-shadow:0 2px 12px rgba(59,130,246,.1)}
+        .device-card:hover{border-color:#F97316;box-shadow:0 2px 12px rgba(249,115,22,.1)}
         ::-webkit-scrollbar{width:6px;height:6px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:#D0D8E4;border-radius:10px}
@@ -79,7 +79,7 @@ const statusInfo=s=>{
   return{label:'Aberto',cls:'badge-open'};
 };
 
-const Spinner=({size=24,color='#2563EB'})=>(
+const Spinner=({size=24,color='#EA580C'})=>(
   <svg className="spin" width={size} height={size} viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="10" stroke={color} strokeOpacity=".2" strokeWidth="3"/>
     <path d="M12 2a10 10 0 0 1 10 10" stroke={color} strokeWidth="3" strokeLinecap="round"/>
@@ -178,9 +178,9 @@ const USERS=[
   ["Wellinton do Nascimento da Silva","Wellinton.Silva@tecnoit.com.br","Supply Chain","Assistente de estoque","31 9060-7335"],
 ];
 
-const DEPT_COLORS={'TI':'#EEF2FF:#2563EB','Engenharia':'#F0FDF4:#16A34A','Comercial':'#FFF7ED:#EA580C','Supply Chain':'#FDF4FF:#9333EA','Obras':'#FFF1F2:#E11D48','Financeiro':'#ECFEFF:#0891B2','Recursos Humanos':'#FFF7ED:#D97706','PMO':'#F0F9FF:#0284C7','Diretoria':'#0F1B2D:#fff','Inovação':'#ECFDF5:#059669','Service Desk':'#F5F3FF:#7C3AED','Operação':'#FEF9C3:#CA8A04','RH':'#FFF7ED:#D97706'};
+const DEPT_COLORS={'TI':'#FFF7ED:#EA580C','Engenharia':'#F0FDF4:#16A34A','Comercial':'#FFF7ED:#EA580C','Supply Chain':'#FDF4FF:#9333EA','Obras':'#FFF1F2:#E11D48','Financeiro':'#ECFEFF:#0891B2','Recursos Humanos':'#FFF7ED:#D97706','PMO':'#F0F9FF:#0284C7','Diretoria':'#0F1B2D:#fff','Inovação':'#ECFDF5:#059669','Service Desk':'#F5F3FF:#7C3AED','Operação':'#FEF9C3:#CA8A04','RH':'#FFF7ED:#D97706'};
 const deptColor=dept=>{const k=Object.keys(DEPT_COLORS).find(k=>dept.toLowerCase().includes(k.toLowerCase()));if(!k)return{bg:'#F8FAFB',color:'#6B7280'};const[bg,color]=DEPT_COLORS[k].split(':');return{bg,color}};
-const AVATAR_COLORS=['#2563EB','#16A34A','#9333EA','#E11D48','#0891B2','#D97706','#059669','#7C3AED'];
+const AVATAR_COLORS=['#EA580C','#16A34A','#9333EA','#E11D48','#0891B2','#D97706','#059669','#7C3AED'];
 const avatarColor=name=>AVATAR_COLORS[name.charCodeAt(0)%AVATAR_COLORS.length];
 const initials=name=>{const p=name.trim().split(' ');return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():name.slice(0,2).toUpperCase()};
 
@@ -266,17 +266,23 @@ function LoginScreen({onLogin}){
       if(Array.isArray(rawEnt))rawEnt.forEach(e=>parsed.push({id:e.id,name:e.completename||e.name}));
       else if(typeof rawEnt==='object')Object.values(rawEnt).forEach(e=>{if(typeof e==='object')parsed.push({id:e.id,name:e.completename||e.name})});
       parsed.sort((a,b)=>a.name.localeCompare(b.name));
-      // Sempre inclui entidade raiz (acesso total)
-      if(!parsed.find(e=>e.id===0))parsed.unshift({id:0,name:'TecnoIT — Todas as entidades'});
-      if(parsed.length>1){setEntities(parsed);setPendingSess({sessionToken:data.session_token,fullSessionData:fullSession,glpiUrl})}
-      else onLogin({sessionToken:data.session_token,fullSessionData:fullSession,glpiUrl});
+      // Sempre inclui entidade raiz (acesso total — ver todos os chamados)
+      if(!parsed.find(e=>e.id===0))parsed.unshift({id:0,name:'🏢 TecnoIT — Todas as entidades'});
+      // Sempre mostra seleção (raiz sempre disponível)
+      setEntities(parsed);
+      setPendingSess({sessionToken:data.session_token,fullSessionData:fullSession,glpiUrl});
     }catch(err){setError(err.message)}finally{setLoading(false)}
   };
 
   const confirmEntity=async()=>{
-    if(!selEntity)return;setLoading(true);
-    try{const res=await fetch(`${PROXY}/changeActiveEntity`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken:pendingSess.sessionToken,entities_id:selEntity})});if(!res.ok)throw new Error('Falha ao mudar entidade');pendingSess.fullSessionData.glpiactive_entity=selEntity;onLogin(pendingSess)}
-    catch(e){setError(e.message);setLoading(false)}
+    if(selEntity===null)return;setLoading(true);
+    try{
+      const res=await fetch(`${PROXY}/changeActiveEntity`,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({glpiUrl,sessionToken:pendingSess.sessionToken,entities_id:selEntity,is_recursive:selEntity===0?1:0})});
+      if(!res.ok)throw new Error('Falha ao mudar entidade');
+      pendingSess.fullSessionData.glpiactive_entity=selEntity;
+      onLogin(pendingSess);
+    }catch(e){setError(e.message);setLoading(false)}
   };
 
   if(entities.length>0)return(
@@ -285,10 +291,10 @@ function LoginScreen({onLogin}){
         <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:'#0F1B2D',marginBottom:4}}>Selecione o Perfil</div>
         <div style={{fontSize:14,color:'#9BABB8',marginBottom:20}}>Qual entidade deseja acessar?</div>
         <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:300,overflowY:'auto',marginBottom:16}}>
-          {entities.map(ent=><button key={ent.id} onClick={()=>setSelEntity(ent.id)} style={{padding:'12px 16px',borderRadius:12,border:`2px solid ${selEntity===ent.id?'#2563EB':'#E8ECF0'}`,background:selEntity===ent.id?'#EEF2FF':'#fff',color:selEntity===ent.id?'#1D4ED8':'#1E2D3D',fontWeight:600,fontSize:14,cursor:'pointer',textAlign:'left'}}>{ent.name}</button>)}
+          {entities.map(ent=><button key={ent.id} onClick={()=>setSelEntity(ent.id)} style={{padding:'12px 16px',borderRadius:12,border:`2px solid ${selEntity===ent.id?'#EA580C':'#E8ECF0'}`,background:selEntity===ent.id?'#FFF7ED':'#fff',color:selEntity===ent.id?'#C2410C':'#1E2D3D',fontWeight:600,fontSize:14,cursor:'pointer',textAlign:'left'}}>{ent.name}</button>)}
         </div>
         {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:10,color:'#DC2626',fontSize:13,marginBottom:12}}>{error}</div>}
-        <button onClick={confirmEntity} disabled={loading||!selEntity} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontSize:15,fontWeight:700,cursor:loading||!selEntity?'not-allowed':'pointer',opacity:loading||!selEntity?.6:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+        <button onClick={confirmEntity} disabled={loading||selEntity===null} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:'#EA580C',color:'#fff',fontSize:15,fontWeight:700,cursor:loading||selEntity===null?'not-allowed':'pointer',opacity:loading||selEntity===null?.6:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           {loading?<Spinner size={20} color="#fff"/>:'ENTRAR'}
         </button>
       </div>
@@ -300,16 +306,16 @@ function LoginScreen({onLogin}){
       {/* Painel esquerdo */}
       <div style={{width:'42%',background:'#0A1628',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:'48px 52px',position:'relative',overflow:'hidden',flexShrink:0}}>
         <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)',backgroundSize:'44px 44px',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',top:-140,left:-80,width:420,height:420,borderRadius:'50%',background:'radial-gradient(circle,rgba(37,99,235,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',bottom:-100,right:-60,width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(96,165,250,.07) 0%,transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',top:-140,left:-80,width:420,height:420,borderRadius:'50%',background:'radial-gradient(circle,rgba(234,88,12,.2) 0%,transparent 70%)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',bottom:-100,right:-60,width:300,height:300,borderRadius:'50%',background:'radial-gradient(circle,rgba(251,146,60,.07) 0%,transparent 70%)',pointerEvents:'none'}}/>
         <img src="assets/logo.png" alt="TecnoIT" style={{height:30,objectFit:'contain',objectPosition:'left',filter:'brightness(0) invert(1)',opacity:.8,position:'relative',zIndex:1}} onError={e=>{e.target.style.display='none'}}/>
         <div style={{position:'relative',zIndex:1}}>
-          <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'rgba(37,99,235,.14)',border:'1px solid rgba(96,165,250,.18)',borderRadius:20,padding:'5px 13px',marginBottom:22}}>
-            <div style={{width:5,height:5,borderRadius:'50%',background:'#60A5FA'}}/>
-            <span style={{fontSize:10,fontWeight:700,color:'#93C5FD',letterSpacing:'.08em',textTransform:'uppercase'}}>Field Service Portal</span>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,background:'rgba(234,88,12,.14)',border:'1px solid rgba(251,146,60,.18)',borderRadius:20,padding:'5px 13px',marginBottom:22}}>
+            <div style={{width:5,height:5,borderRadius:'50%',background:'#FB923C'}}/>
+            <span style={{fontSize:10,fontWeight:700,color:'#FED7AA',letterSpacing:'.08em',textTransform:'uppercase'}}>Field Service Portal</span>
           </div>
           <div style={{fontSize:30,fontWeight:700,color:'#fff',lineHeight:1.3,marginBottom:12,letterSpacing:'-0.02em'}}>
-            Gestão de <span style={{color:'#60A5FA'}}>chamados</span><br/>e equipe técnica
+            Gestão de <span style={{color:'#FB923C'}}>chamados</span><br/>e equipe técnica
           </div>
           <div style={{fontSize:13,color:'#3D5A73',lineHeight:1.75,maxWidth:270}}>
             Acesse chamados, inventário e usuários em tempo real, de qualquer dispositivo.
@@ -317,8 +323,8 @@ function LoginScreen({onLogin}){
           <div style={{marginTop:32,display:'flex',flexDirection:'column',gap:11}}>
             {[{icon:'ticket',label:'Chamados em tempo real'},{icon:'box',label:'Inventário de equipamentos'},{icon:'users',label:'Catálogo de usuários'}].map(f=>(
               <div key={f.label} style={{display:'flex',alignItems:'center',gap:11,fontSize:13,color:'#5A7A94'}}>
-                <div style={{width:26,height:26,borderRadius:7,background:'rgba(37,99,235,.14)',border:'1px solid rgba(96,165,250,.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  <Icon name={f.icon} size={12} color="#60A5FA"/>
+                <div style={{width:26,height:26,borderRadius:7,background:'rgba(234,88,12,.14)',border:'1px solid rgba(251,146,60,.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <Icon name={f.icon} size={12} color="#FB923C"/>
                 </div>
                 {f.label}
               </div>
@@ -341,7 +347,7 @@ function LoginScreen({onLogin}){
                 <div style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="user" size={15} color="#C8D4DF"/></div>
                 <input type="text" value={username} onChange={e=>setUsername(e.target.value)} autoCapitalize="none" autoComplete="username" required placeholder="usuário de rede"
                   style={{width:'100%',padding:'13px 14px 13px 40px',borderRadius:10,border:'1.5px solid #E8ECF4',fontSize:14,outline:'none',background:'#F9FAFB',color:'#0A1628'}}
-                  onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E8ECF4'}/>
+                  onFocus={e=>e.target.style.borderColor='#EA580C'} onBlur={e=>e.target.style.borderColor='#E8ECF4'}/>
               </div>
             </div>
             <div>
@@ -350,19 +356,19 @@ function LoginScreen({onLogin}){
                 <div style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="lock" size={15} color="#C8D4DF"/></div>
                 <input type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••"
                   style={{width:'100%',padding:'13px 44px 13px 40px',borderRadius:10,border:'1.5px solid #E8ECF4',fontSize:14,outline:'none',background:'#F9FAFB',color:'#0A1628'}}
-                  onFocus={e=>e.target.style.borderColor='#2563EB'} onBlur={e=>e.target.style.borderColor='#E8ECF4'}/>
+                  onFocus={e=>e.target.style.borderColor='#EA580C'} onBlur={e=>e.target.style.borderColor='#E8ECF4'}/>
                 <button type="button" onClick={()=>setShowPass(!showPass)} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',padding:4,lineHeight:0}}>
                   <Icon name={showPass?'eyeoff':'eye'} size={15} color="#9BABB8"/>
                 </button>
               </div>
             </div>
             <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',userSelect:'none'}}>
-              <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:15,height:15,accentColor:'#2563EB',cursor:'pointer'}}/>
+              <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:15,height:15,accentColor:'#EA580C',cursor:'pointer'}}/>
               <span style={{fontSize:13,color:'#6B7280'}}>Lembrar usuário</span>
             </label>
             {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:8,color:'#DC2626',fontSize:13}}>{error}</div>}
             <button type="submit" disabled={loading}
-              style={{padding:'14px',borderRadius:10,border:'none',background:'#2563EB',color:'#fff',fontSize:14,fontWeight:700,cursor:loading?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,letterSpacing:'.02em',marginTop:2,opacity:loading?.7:1}}>
+              style={{padding:'14px',borderRadius:10,border:'none',background:'#EA580C',color:'#fff',fontSize:14,fontWeight:700,cursor:loading?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,letterSpacing:'.02em',marginTop:2,opacity:loading?.7:1}}>
               {loading?<><Spinner size={18} color="#fff"/>Entrando...</>:'ENTRAR'}
             </button>
           </form>
@@ -392,11 +398,11 @@ function LoginScreen({onLogin}){
           </div>
         </div>
         <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}>
-          <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:18,height:18,accentColor:'#2563EB'}}/>
+          <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:18,height:18,accentColor:'#EA580C'}}/>
           <span style={{fontSize:14,color:'#6B7280'}}>Lembrar meu usuário</span>
         </label>
         {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:10,color:'#DC2626',fontSize:13}}>{error}</div>}
-        <button type="submit" disabled={loading} style={{padding:14,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+        <button type="submit" disabled={loading} style={{padding:14,borderRadius:12,border:'none',background:'#EA580C',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           {loading?<Spinner size={20} color="#fff"/>:'ENTRAR'}
         </button>
       </form>
@@ -444,7 +450,7 @@ function DesktopApp({session,onLogout}){
         </nav>
         <div style={{padding:16,borderTop:'1px solid rgba(255,255,255,.06)'}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-            <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#2563EB,#60A5FA)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{ini||userName[0]}</div>
+            <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#EA580C,#FB923C)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{ini||userName[0]}</div>
             <div style={{overflow:'hidden'}}>
               <div style={{fontSize:13,fontWeight:600,color:'#fff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{userName} {userLast}</div>
               <div style={{fontSize:11,color:'#4A6380'}}>Field Service</div>
@@ -494,7 +500,7 @@ function DesktopTickets({session,onTicket}){
   });
 
   const stats=[
-    {label:'Total',value:tickets.length,color:'#2563EB',dot:'#2563EB'},
+    {label:'Total',value:tickets.length,color:'#EA580C',dot:'#EA580C'},
     {label:'Em andamento',value:tickets.filter(t=>t.status===1||t.status===2||t.status===3).length,color:'#E65100',dot:'#F97316'},
     {label:'Pendentes',value:tickets.filter(t=>t.status===4).length,color:'#6A1B9A',dot:'#A855F7'},
     {label:'Finalizados',value:tickets.filter(t=>t.status===5||t.status===6).length,color:'#2E7D32',dot:'#22C55E'},
@@ -528,7 +534,7 @@ function DesktopTickets({session,onTicket}){
         </div>
         <div style={{display:'flex',gap:6,marginBottom:16}}>
           {[{id:'all',label:'Todos'},{id:'me',label:'Para mim'},{id:'open',label:'Em andamento'},{id:'pending',label:'Pendentes'},{id:'solved',label:'Finalizados'}].map(f=>(
-            <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,transition:'all .15s',background:filter===f.id?'#2563EB':'#fff',color:filter===f.id?'#fff':'#6B7280',boxShadow:filter===f.id?'0 2px 8px rgba(37,99,235,.25)':'0 1px 3px rgba(0,0,0,.06)'}}>
+            <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,transition:'all .15s',background:filter===f.id?'#EA580C':'#fff',color:filter===f.id?'#fff':'#6B7280',boxShadow:filter===f.id?'0 2px 8px rgba(234,88,12,.25)':'0 1px 3px rgba(0,0,0,.06)'}}>
               {f.label}
             </button>
           ))}
@@ -541,7 +547,7 @@ function DesktopTickets({session,onTicket}){
               :filtered.length===0?<tr><td colSpan="5" style={{textAlign:'center',padding:48,color:'#9BABB8'}}><Icon name="ticket" size={32} color="#D0D8E4"/><div style={{marginTop:8}}>Nenhum chamado encontrado</div></td></tr>
               :filtered.map(t=>{const st=statusInfo(t.status);return(
                 <tr key={t.id} onClick={()=>onTicket(t.id)}>
-                  <td><span className="mono" style={{fontSize:12,color:'#2563EB',fontWeight:500}}>#{t.id}</span></td>
+                  <td><span className="mono" style={{fontSize:12,color:'#EA580C',fontWeight:500}}>#{t.id}</span></td>
                   <td><div style={{fontWeight:500,color:'#0F1B2D',maxWidth:480,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.name}</div></td>
                   <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                   <td style={{fontSize:12,color:'#9BABB8'}}>{t.date}</td>
@@ -597,7 +603,7 @@ function DesktopInventory({session}){
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar dispositivo..." style={{padding:'8px 12px 8px 34px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:13,width:220,outline:'none',background:'#F8FAFB'}}/>
             <div style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="search" size={14} color="#9BABB8"/></div>
           </div>
-          <button onClick={()=>setShowAdd(true)} style={{padding:'8px 18px',borderRadius:10,background:'#2563EB',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+          <button onClick={()=>setShowAdd(true)} style={{padding:'8px 18px',borderRadius:10,background:'#EA580C',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
             <Icon name="plus" size={15} color="#fff"/>Adicionar
           </button>
         </div>
@@ -606,7 +612,7 @@ function DesktopInventory({session}){
         <div style={{display:'flex',gap:8,marginBottom:20}}>
           {typeMap.map(t=>(
             <button key={t.id} onClick={()=>setType(t.id)} style={{padding:'8px 18px',borderRadius:10,border:'1px solid',cursor:'pointer',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',gap:7,transition:'all .15s',background:type===t.id?'#0F1B2D':'#fff',color:type===t.id?'#fff':'#6B7280',borderColor:type===t.id?'#0F1B2D':'#E8ECF0'}}>
-              <Icon name={t.icon} size={14} color={type===t.id?'#60A5FA':'#9BABB8'}/>{t.label}
+              <Icon name={t.icon} size={14} color={type===t.id?'#FB923C':'#9BABB8'}/>{t.label}
             </button>
           ))}
         </div>
@@ -619,8 +625,8 @@ function DesktopInventory({session}){
           {filtered.map((d,i)=>(
             <div key={i} className="device-card fade-in">
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-                <div style={{width:36,height:36,borderRadius:8,background:'#EEF2FF',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <Icon name={curTypeIcon} size={18} color="#2563EB"/>
+                <div style={{width:36,height:36,borderRadius:8,background:'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Icon name={curTypeIcon} size={18} color="#EA580C"/>
                 </div>
                 <div>
                   <div style={{fontWeight:600,color:'#0F1B2D',fontSize:14}}>{d.name||'Sem nome'}</div>
@@ -672,7 +678,7 @@ function AddDeviceModal({session,type,onClose}){
         {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:8,color:'#DC2626',fontSize:13,marginBottom:14}}>{error}</div>}
         <div style={{display:'flex',gap:10,marginTop:8}}>
           <button onClick={onClose} style={{flex:1,padding:11,borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',fontSize:14,color:'#6B7280',fontWeight:600}}>Cancelar</button>
-          <button onClick={save} disabled={saving} style={{flex:2,padding:11,borderRadius:10,border:'none',background:'#2563EB',cursor:saving?'wait':'pointer',fontSize:14,color:'#fff',fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          <button onClick={save} disabled={saving} style={{flex:2,padding:11,borderRadius:10,border:'none',background:'#EA580C',cursor:saving?'wait':'pointer',fontSize:14,color:'#fff',fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
             {saving?<><Spinner size={16} color="#fff"/>Salvando...</>:'Salvar dispositivo'}
           </button>
         </div>
@@ -725,7 +731,7 @@ function DesktopUsers(){
                         <span style={{fontWeight:500,color:'#0F1B2D'}}>{u[0]}</span>
                       </div>
                     </td>
-                    <td><a href={`mailto:${u[1]}`} className="mono" style={{fontSize:12,color:'#2563EB',textDecoration:'none'}}>{u[1]}</a></td>
+                    <td><a href={`mailto:${u[1]}`} className="mono" style={{fontSize:12,color:'#EA580C',textDecoration:'none'}}>{u[1]}</a></td>
                     <td>{u[2]&&<span style={{background:dc.bg,color:dc.color,padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700}}>{u[2]}</span>}</td>
                     <td style={{color:'#4A6380',fontSize:13}}>{u[3]}</td>
                     <td>{u[4]&&<a href={`tel:${u[4]}`} className="mono" style={{fontSize:12,color:'#0F1B2D',textDecoration:'none'}}>{u[4]}</a>}</td>
@@ -782,7 +788,7 @@ function MobileDashboard({session,onTicket,onLogout}){
         ):(
           <>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#2563EB,#60A5FA)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff'}}>{userName[0]}</div>
+              <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#EA580C,#FB923C)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff'}}>{userName[0]}</div>
               <div><div style={{fontWeight:700,fontSize:14,color:'#0F1B2D',lineHeight:1.2}}>{userName}</div><div style={{fontSize:10,color:'#9BABB8',fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase'}}>Field Service</div></div>
             </div>
             <div style={{display:'flex',gap:8}}>
@@ -798,7 +804,7 @@ function MobileDashboard({session,onTicket,onLogout}){
           <>
             <div style={{display:'flex',gap:8,padding:'12px 16px',overflowX:'auto',background:'#fff',borderBottom:'1px solid #F0F2F5',flexShrink:0}} className="no-scrollbar">
               {[{id:'me',label:'Para Mim'},{id:'new',label:'Em Andamento'},{id:'pending',label:'Pendentes'},{id:'solved',label:'Finalizados'}].map(f=>(
-                <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'7px 16px',borderRadius:20,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap',flexShrink:0,background:filter===f.id?'#2563EB':'#F0F2F5',color:filter===f.id?'#fff':'#6B7280'}}>
+                <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'7px 16px',borderRadius:20,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap',flexShrink:0,background:filter===f.id?'#EA580C':'#F0F2F5',color:filter===f.id?'#fff':'#6B7280'}}>
                   {f.label}
                 </button>
               ))}
@@ -810,7 +816,7 @@ function MobileDashboard({session,onTicket,onLogout}){
                 <div key={t.id} onClick={()=>onTicket(t.id)} style={{background:'#fff',borderRadius:14,padding:'14px 16px',border:'1px solid #E8ECF0',cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:6}}>
                     <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14,lineHeight:1.3,flex:1}}>{t.name}</div>
-                    <span className="mono" style={{fontSize:11,color:'#2563EB',background:'#EEF2FF',padding:'2px 7px',borderRadius:6,fontWeight:600,flexShrink:0}}>#{t.id}</span>
+                    <span className="mono" style={{fontSize:11,color:'#EA580C',background:'#FFF7ED',padding:'2px 7px',borderRadius:6,fontWeight:600,flexShrink:0}}>#{t.id}</span>
                   </div>
                   {t.content&&<div style={{fontSize:12,color:'#9BABB8',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',marginBottom:8}} dangerouslySetInnerHTML={{__html:t.content}}/>}
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:8,borderTop:'1px solid #F0F2F5'}}>
@@ -842,8 +848,8 @@ function MobileDashboard({session,onTicket,onLogout}){
 
       <nav style={{background:'#fff',borderTop:'1px solid #E8ECF0',display:'flex',flexShrink:0,height:60}}>
         {[{id:'tickets',icon:'ticket',label:'Chamados'},{id:'inventory',icon:'box',label:'Inventário'},{id:'users',icon:'users',label:'Usuários'}].map(item=>(
-          <button key={item.id} onClick={()=>setTab(item.id)} style={{flex:1,border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,color:tab===item.id?'#2563EB':'#9BABB8',paddingBottom:2}}>
-            <Icon name={item.icon} size={20} color={tab===item.id?'#2563EB':'#9BABB8'}/>
+          <button key={item.id} onClick={()=>setTab(item.id)} style={{flex:1,border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,color:tab===item.id?'#EA580C':'#9BABB8',paddingBottom:2}}>
+            <Icon name={item.icon} size={20} color={tab===item.id?'#EA580C':'#9BABB8'}/>
             <span style={{fontSize:10,fontWeight:tab===item.id?700:500}}>{item.label}</span>
           </button>
         ))}
@@ -867,7 +873,7 @@ function MobileUsers(){
             <div style={{fontSize:12,color:'#6B7280'}}>{u[3]}</div>
             <div style={{fontSize:11,color:'#9BABB8'}}>{u[2]}</div>
           </div>
-          {u[4]&&<a href={`tel:${u[4]}`} style={{padding:8,borderRadius:10,background:'#EEF2FF',display:'flex',textDecoration:'none'}}><Icon name="users" size={14} color="#2563EB"/></a>}
+          {u[4]&&<a href={`tel:${u[4]}`} style={{padding:8,borderRadius:10,background:'#FFF7ED',display:'flex',textDecoration:'none'}}><Icon name="users" size={14} color="#EA580C"/></a>}
         </div>
       ))}
     </div>
@@ -933,7 +939,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
   };
 
   if(loading)return<LoadingScreen message="Carregando chamado..."/>;
-  if(!ticket)return<div style={{padding:24,textAlign:'center'}}><button onClick={onBack} style={{background:'none',border:'none',color:'#2563EB',cursor:'pointer',fontSize:14,fontWeight:600}}>← Voltar</button><p style={{color:'#9BABB8',marginTop:16}}>Erro ao carregar.</p></div>;
+  if(!ticket)return<div style={{padding:24,textAlign:'center'}}><button onClick={onBack} style={{background:'none',border:'none',color:'#EA580C',cursor:'pointer',fontSize:14,fontWeight:600}}>← Voltar</button><p style={{color:'#9BABB8',marginTop:16}}>Erro ao carregar.</p></div>;
 
   const st=statusInfo(ticket.status);
 
@@ -946,7 +952,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
           <div style={{fontSize:12,color:'#9BABB8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ticket.name}</div>
         </div>
         <span className={`badge ${st.cls}`}>{st.label}</span>
-        <button onClick={()=>setShowHelp(true)} style={{width:32,height:32,borderRadius:'50%',background:'#EEF2FF',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#2563EB',fontSize:14}}>?</button>
+        <button onClick={()=>setShowHelp(true)} style={{width:32,height:32,borderRadius:'50%',background:'#FFF7ED',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#EA580C',fontSize:14}}>?</button>
       </div>
 
       <div style={{flex:1,overflowY:'auto',padding:desktop?'20px 28px':16,display:'flex',flexDirection:'column',gap:14}}>
@@ -981,7 +987,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
                 <div key={f.k}><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>{f.label}</div><input type="number" min="0" value={techData[f.k]} onChange={e=>setTechData({...techData,[f.k]:e.target.value})} placeholder="Metros" style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
               ))}
             </div>
-            <div style={{padding:'8px 12px',background:'#EEF2FF',borderRadius:8,textAlign:'center',fontSize:13,fontWeight:700,color:'#1D4ED8',marginBottom:10}}>Gasto: {metragemGasta}m</div>
+            <div style={{padding:'8px 12px',background:'#FFF7ED',borderRadius:8,textAlign:'center',fontSize:13,fontWeight:700,color:'#C2410C',marginBottom:10}}>Gasto: {metragemGasta}m</div>
             <div><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>Extras</div><input value={techData.extras} onChange={e=>setTechData({...techData,extras:e.target.value})} placeholder="Ex: Fita isolante..." style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
           </div>
         )}
@@ -998,7 +1004,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
         <div style={{background:'#fff',borderRadius:14,padding:16,border:'1px solid #E8ECF0'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
             <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14}}>Insumos</div>
-            <button onClick={()=>setIsModalOpen(true)} style={{padding:'5px 12px',borderRadius:8,background:'#EEF2FF',border:'none',color:'#2563EB',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Adicionar</button>
+            <button onClick={()=>setIsModalOpen(true)} style={{padding:'5px 12px',borderRadius:8,background:'#FFF7ED',border:'none',color:'#EA580C',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Adicionar</button>
           </div>
           {stockItems.length===0?<div style={{fontSize:13,color:'#9BABB8'}}>Nenhum insumo selecionado.</div>:stockItems.map((item,i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:'#F8FAFB',borderRadius:8,marginBottom:6,fontSize:13}}>
@@ -1010,7 +1016,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
       </div>
 
       <div style={{background:'#fff',padding:'14px 20px',borderTop:'1px solid #E8ECF0',flexShrink:0}}>
-        <button onClick={handleSubmit} disabled={isSubmitting} style={{width:'100%',padding:14,borderRadius:12,border:'none',cursor:isSubmitting?'wait':'pointer',fontSize:15,fontWeight:700,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:responseType==='solution'?'linear-gradient(135deg,#15803D,#16A34A)':'linear-gradient(135deg,#1E3A5F,#2563EB)'}}>
+        <button onClick={handleSubmit} disabled={isSubmitting} style={{width:'100%',padding:14,borderRadius:12,border:'none',cursor:isSubmitting?'wait':'pointer',fontSize:15,fontWeight:700,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:responseType==='solution'?'linear-gradient(135deg,#15803D,#16A34A)':'linear-gradient(135deg,#1E3A5F,#EA580C)'}}>
           {isSubmitting?<><Spinner size={18} color="#fff"/>Enviando...</>:(responseType==='solution'?'FINALIZAR CHAMADO':'ENVIAR RESPOSTA')}
         </button>
       </div>
@@ -1021,7 +1027,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
             <div style={{fontWeight:700,fontSize:18,color:'#0F1B2D',marginBottom:16}}>Como responder?</div>
             <div style={{background:'#F8FAFB',borderRadius:12,padding:14,marginBottom:12}}><div style={{fontWeight:700,marginBottom:4}}>📝 Comentário</div><div style={{fontSize:13,color:'#6B7280'}}>O chamado não será encerrado.</div></div>
             <div style={{background:'#F0FDF4',borderRadius:12,padding:14,marginBottom:20}}><div style={{fontWeight:700,color:'#15803D',marginBottom:4}}>✅ Solucionar</div><div style={{fontSize:13,color:'#4B5563'}}>Preencha todos os dados técnicos e anexe a evidência. Use "0" se necessário.</div></div>
-            <button onClick={()=>setShowHelp(false)} style={{width:'100%',padding:12,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:14}}>Entendi</button>
+            <button onClick={()=>setShowHelp(false)} style={{width:'100%',padding:12,borderRadius:12,border:'none',background:'#EA580C',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:14}}>Entendi</button>
           </div>
         </div>
       )}
@@ -1039,7 +1045,7 @@ function TicketDetail({session,ticketId,onBack,desktop}){
             <input type="number" min="1" value={stockQty} onChange={e=>setStockQty(e.target.value)} style={{padding:'10px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none'}}/>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setIsModalOpen(false)} style={{flex:1,padding:10,borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',fontSize:14,fontWeight:600,color:'#6B7280'}}>Cancelar</button>
-              <button onClick={handleAddStock} style={{flex:2,padding:10,borderRadius:10,border:'none',background:'#2563EB',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:600}}>Salvar</button>
+              <button onClick={handleAddStock} style={{flex:2,padding:10,borderRadius:10,border:'none',background:'#EA580C',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:600}}>Salvar</button>
             </div>
           </div>
         </div>
