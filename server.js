@@ -557,68 +557,7 @@ app.post('/api/proxy/linkUserToAsset', async (req, res) => {
     }
 });
 
-// Rota: OCR inteligente via Claude API (lê foto e extrai dados do ativo)
-app.post('/api/proxy/ocrAsset', upload.single('image'), async (req, res) => {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) return res.status(500).json({ message: 'ANTHROPIC_API_KEY não configurada.' });
-    if (!req.file) return res.status(400).json({ message: 'Imagem não enviada.' });
-
-    const imageBase64 = req.file.buffer.toString('base64');
-    const mediaType = req.file.mimetype || 'image/jpeg';
-
-    try {
-        const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1024,
-            messages: [{
-                role: 'user',
-                content: [
-                    {
-                        type: 'image',
-                        source: { type: 'base64', media_type: mediaType, data: imageBase64 }
-                    },
-                    {
-                        type: 'text',
-                        text: `Analise esta imagem de um equipamento de TI (computador, notebook, celular, monitor, etc.) e extraia TODOS os dados visíveis.
-
-Retorne APENAS um JSON válido com os campos abaixo (deixe em branco "" se não encontrar):
-{
-  "name": "nome ou hostname do equipamento",
-  "serial": "número de série (S/N, Serial Number)",
-  "model": "modelo do equipamento",
-  "manufacturer": "fabricante/marca",
-  "mac_address": "endereço MAC (se visível)",
-  "asset_tag": "patrimônio ou tag de ativo",
-  "os": "sistema operacional (se visível)",
-  "type": "tipo: notebook | desktop | celular | monitor | impressora | outro",
-  "notes": "qualquer outra informação relevante visível na imagem",
-  "confidence": "alta | media | baixa"
-}
-
-Seja preciso. Extraia EXATAMENTE o que está escrito na imagem, sem inventar dados.`
-                    }
-                ]
-            }]
-        }, {
-            headers: {
-                'x-api-key': anthropicKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json'
-            }
-        });
-
-        const text = response.data.content[0].text;
-        // Extract JSON from response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) return res.status(422).json({ message: 'Não foi possível extrair dados da imagem.', raw: text });
-
-        const extracted = JSON.parse(jsonMatch[0]);
-        res.json(extracted);
-    } catch (error) {
-        console.error('OCR error:', error.response?.data || error.message);
-        res.status(500).json({ message: 'Falha no OCR.', error: error.response?.data || error.message });
-    }
-});
+// OCR: processado no browser via Tesseract.js (sem rota de servidor necessária)
 
 // Rota: Buscar modelos de equipamentos para autocomplete
 app.post('/api/proxy/getModels', async (req, res) => {
