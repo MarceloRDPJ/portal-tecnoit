@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TecnoIT — Gestão de Ativos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f5f5f5;
+  --bg2: #ffffff;
+  --bg3: #f0f0f0;
+  --border: #e4e4e4;
+  --border2: #d0d0d0;
+  --accent: #f97316;
+  --accent2: #ea6a00;
+  --green: #16a34a;
+  --amber: #d97706;
+  --red: #dc2626;
+  --text: #1a1a1a;
+  --text2: #555555;
+  --text3: #999999;
+  --mono: 'Nunito', sans-serif;
+  --sans: 'Nunito', sans-serif;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+/* ─── LOGIN ──────────────────────────────────────── */
+#login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.login-card {
+  width: 380px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 40px 36px;
+}
+.login-logo { font-family: var(--sans); font-size: 13px; color: var(--text3); margin-bottom: 32px; font-weight: 600; }
+.login-logo span { color: var(--accent); }
+.login-title { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; }
+.field-label { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+.field-input {
+  width: 100%; height: 40px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-family: var(--sans); font-size: 14px;
+  padding: 0 12px; outline: none; transition: border-color .15s;
+}
+.field-input:focus { border-color: var(--accent); }
+.field-wrap { margin-bottom: 16px; }
+.btn-primary {
+  width: 100%; height: 40px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: #fff; font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background .15s; margin-top: 8px;
+}
+.btn-primary:hover { background: var(--accent2); }
+.login-note { font-size: 11px; color: var(--text3); margin-top: 16px; text-align: center; line-height: 1.5; }
+.login-note a { color: var(--accent); text-decoration: none; }
+
+/* ─── APP ────────────────────────────────────────── */
+#app { display: none; flex-direction: row; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 220px; min-height: 100vh; background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 0; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-logo {
+  padding: 24px 20px 20px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+}
+.sidebar-logo .brand { color: var(--accent); font-weight: 500; font-size: 14px; }
+.sidebar-logo .sub { color: var(--text3); font-size: 10px; margin-top: 2px; }
+.nav-section { padding: 16px 12px 8px; }
+.nav-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: 0 8px; margin-bottom: 6px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius);
+  color: var(--text2); cursor: pointer; transition: all .15s; font-size: 13px; font-weight: 400;
+  text-decoration: none; border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: #fff0e8; color: var(--accent); }
+.nav-icon { width: 16px; height: 16px; opacity: .7; flex-shrink: 0; }
+.sidebar-user {
+  margin-top: auto; padding: 16px 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--accent2);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0;
+}
+.sidebar-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.sidebar-role { font-size: 11px; color: var(--text3); }
+.btn-logout { margin-left: auto; background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px; border-radius: 4px; }
+.btn-logout:hover { color: var(--red); }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: 56px; border-bottom: 1px solid var(--border); padding: 0 24px;
+  display: flex; align-items: center; gap: 12px; background: var(--bg2);
+}
+.topbar-title { font-size: 15px; font-weight: 500; color: var(--text); }
+.topbar-badge { font-family: var(--mono); font-size: 10px; color: var(--text3); background: var(--bg3); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); }
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn { height: 32px; padding: 0 14px; border-radius: var(--radius); font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; border: none; }
+.btn-ghost { background: none; border: 1px solid var(--border); color: var(--text2); }
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { background: var(--accent2); }
+.btn-green { background: #f0fdf4; color: var(--green); border: 1px solid #dcfce7; }
+.btn-green:hover { background: #dcfce7; }
+
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* Sections */
+.section { display: none; }
+.section.active { display: block; }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px;
+}
+.stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.stat-value { font-family: var(--mono); font-size: 26px; font-weight: 500; color: var(--text); line-height: 1; }
+.stat-sub { font-size: 11px; color: var(--text3); margin-top: 6px; }
+.stat-card.accent { border-color: #fdd5be; background: #fff8f5; }
+.stat-card.accent .stat-value { color: var(--accent); }
+.stat-card.green { border-color: #bbf7d0; background: #f0fdf4; }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-card.amber { border-color: #fde68a; background: #fffbeb; }
+.stat-card.amber .stat-value { color: var(--amber); }
+
+/* Table */
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.table-toolbar { padding: 14px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+.search-input {
+  flex: 1; max-width: 280px; height: 32px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); font-family: var(--sans); font-size: 13px;
+  padding: 0 12px; outline: none;
+}
+.search-input:focus { border-color: var(--accent); }
+.filter-select {
+  height: 32px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text2); font-family: var(--sans); font-size: 12px; padding: 0 10px; outline: none; cursor: pointer;
+}
+.filter-select:focus { border-color: var(--accent); }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead th {
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text3);
+  padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 500;
+  background: var(--bg2);
+}
+tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--bg3); }
+tbody td { padding: 10px 14px; font-size: 13px; color: var(--text2); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tbody td.primary { color: var(--text); font-weight: 500; }
+
+.avatar-cell { display: flex; align-items: center; gap: 10px; }
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 500; letter-spacing: .04em; }
+.badge-blue { background: #fff0e8; color: #c2460a; border: 1px solid #fdd5be; }
+.badge-green { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.badge-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.badge-gray { background: #f5f5f5; color: #737373; border: 1px solid #e5e5e5; }
+
+.action-btn {
+  height: 26px; padding: 0 10px; border-radius: 5px; font-size: 11px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: none; color: var(--text2); transition: all .1s;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); background: #fff0e8; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+}
+.modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 15px; font-weight: 500; }
+.modal-close { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 4px; }
+.modal-close:hover { color: var(--text); }
+.modal-body { padding: 20px 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; display: block; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-family: var(--sans); font-size: 13px; padding: 8px 12px; outline: none; transition: border-color .15s;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { min-height: 72px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Asset tags */
+.asset-tag {
+  display: inline-flex; align-items: center; gap: 6px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 5px; padding: 3px 8px; font-size: 11px; color: var(--text2);
+  margin: 2px;
+}
+.asset-tag .remove { cursor: pointer; color: var(--text3); font-size: 14px; line-height: 1; }
+.asset-tag .remove:hover { color: var(--red); }
+
+/* User profile card */
+.profile-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; margin-bottom: 16px; }
+.profile-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+.profile-avatar-big {
+  width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 600; margin-bottom: 14px;
+}
+.profile-name { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.profile-title { font-size: 12px; color: var(--text3); margin-bottom: 14px; }
+.profile-detail { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+.profile-detail svg { opacity: .5; flex-shrink: 0; }
+
+/* Pagination */
+.pagination { display: flex; align-items: center; gap: 6px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.page-btn { height: 28px; min-width: 28px; padding: 0 8px; border-radius: 5px; background: none; border: 1px solid var(--border); color: var(--text2); font-size: 12px; cursor: pointer; }
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.page-info { font-size: 12px; color: var(--text3); margin-left: auto; }
+
+/* Dashboard charts placeholder */
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+.chart-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 11px; color: var(--text2); width: 70px; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+.bar-value { font-family: var(--mono); font-size: 11px; color: var(--text3); width: 24px; }
+
+/* Dept list */
+.dept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dept-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--bg3); border-radius: var(--radius); }
+.dept-name { font-size: 12px; color: var(--text2); }
+.dept-count { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px; font-size: 13px; color: var(--text);
+  z-index: 200; transform: translateY(80px); opacity: 0; transition: all .3s;
+  display: flex; align-items: center; gap: 8px; min-width: 240px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: #bbf7d0; }
+.toast.error { border-color: #fecaca; }
+
+/* Section title */
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.section-title { font-size: 18px; font-weight: 600; color: var(--text); }
+.section-sub { font-size: 12px; color: var(--text3); }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text3); }
+.empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: .4; }
+.empty-state p { font-size: 13px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo"><span>TecnoIT</span> / Gestão de Ativos</div>
+    <div class="login-title">Acesse o sistema</div>
+    <div class="login-sub">Use seu login do GLPI para entrar.</div>
+    <div class="field-wrap">
+      <div class="field-label">Usuário GLPI</div>
+      <input class="field-input" type="text" id="login-email" placeholder="ex: marcelo.junior" autocomplete="username">
+    </div>
+    <div class="field-wrap">
+      <div class="field-label">Senha</div>
+      <input class="field-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Entrar</button>
+    <div class="login-note" style="color:var(--text3)">
+      Sistema de inventário TecnoIT — GLPI integrado<br>
+      <span style="color:var(--accent)">suporte.tecnoit.com.br</span>
+    </div>
+  </div>
+</div>
+
+<!-- ACCESS DENIED -->
+<div id="access-denied" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:var(--bg)">
+  <div style="width:400px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px;text-align:center">
+    <div style="font-size:48px;margin-bottom:14px">🔒</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Acesso não liberado</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">Seu login GLPI funcionou, mas você ainda não tem permissão de acesso ao sistema de Gestão de Ativos.</div>
+    <div id="denied-user-info" style="font-size:12px;color:var(--text3);background:var(--bg3);padding:8px 12px;border-radius:var(--radius);margin-bottom:16px"></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:20px">Solicite acesso ao administrador:<br><strong>marcelo.junior</strong></div>
+    <button class="btn-primary" onclick="doLogout()">Voltar ao login</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">TecnoIT</div>
+      <div class="sub">Gestão de Ativos v1.0</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <button class="nav-item active" onclick="showSection('dashboard', this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".7"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity=".4"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="showSection('usuarios', this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" fill="currentColor" opacity=".7"/><path d="M2 13c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".5"/></svg>
+        Colaboradores
+      </button>
+      <button class="nav-item" onclick="showSection('equipamentos', this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.4" fill="none" opacity=".7"/><path d="M5 12l-1 2M11 12l1 2M4 14h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/></svg>
+        Equipamentos
+      </button>
+      <button class="nav-item" onclick="showSection('vincular', this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".7"/></svg>
+        Vincular Ativo
+      </button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Relatórios</div>
+      <button class="nav-item" onclick="showSection('relatorios', this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.4" fill="none" opacity=".7"/><line x1="5" y1="5" x2="11" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/><line x1="5" y1="11" x2="8" y2="11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/></svg>
+        Relatórios
+      </button>
+    </div>
+    <div id="admin-nav" style="display:none;padding:14px 10px 6px">
+      <div class="nav-label" style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:0 8px;margin-bottom:5px">Administração</div>
+      <button class="nav-item" onclick="showSection('acessos',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4" fill="none" opacity=".8"/><path d="M8 5v3l2 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".6"/></svg>
+        Controle de Acesso <span style="font-size:8px;font-weight:700;letter-spacing:.06em;background:#fde68a;color:#92400e;padding:1px 5px;border-radius:3px;margin-left:auto">ADMIN</span>
+      </button>
+    </div>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar" id="sidebar-avatar">MJ</div>
+      <div style="min-width:0">
+        <div class="sidebar-name" id="sidebar-name">Marcelo Junior</div>
+        <div id="sidebar-role" style="font-size:10px;color:var(--accent);font-weight:700">Super Admin</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Sair">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 8H3M3 8L5.5 5.5M3 8L5.5 10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 4V3a1 1 0 011-1h4a1 1 0 011 1v10a1 1 0 01-1 1H8a1 1 0 01-1-1v-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="section active">
+      <div class="topbar">
+        <span class="topbar-title">Dashboard</span>
+        <span class="topbar-badge" id="dash-date"></span>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" onclick="exportExcel()">↓ Excel</button>
+          <button class="btn btn-ghost" onclick="exportPDF()">↓ PDF</button>
+          <button class="btn btn-accent" style="font-size:11px" onclick="syncGLPI()" id="btn-sync">⟳ Sincronizar GLPI</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats-grid">
+          <div class="stat-card accent">
+            <div class="stat-label">Colaboradores</div>
+            <div class="stat-value" id="stat-users">—</div>
+            <div class="stat-sub">cadastrados no sistema</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total ativos</div>
+            <div class="stat-value" id="stat-assets">—</div>
+            <div class="stat-sub">equipamentos registrados</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-label">Vinculados</div>
+            <div class="stat-value" id="stat-linked">—</div>
+            <div class="stat-sub">ativos com responsável</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">Sem vínculo</div>
+            <div class="stat-value" id="stat-unlinked">—</div>
+            <div class="stat-sub">aguardando responsável</div>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="chart-card">
+            <div class="chart-title">Por departamento</div>
+            <div class="bar-chart" id="dept-chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Por tipo de equipamento</div>
+            <div class="bar-chart" id="type-chart"></div>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom:14px">
+          <div class="chart-title">Últimas vinculações</div>
+          <table style="width:100%">
+            <thead><tr>
+              <th style="font-size:10px;color:var(--text3);padding:6px 8px;text-align:left;letter-spacing:.06em;text-transform:uppercase">Colaborador</th>
+              <th style="font-size:10px;color:var(--text3);padding:6px 8px;text-align:left;letter-spacing:.06em;text-transform:uppercase">Equipamento</th>
+              <th style="font-size:10px;color:var(--text3);padding:6px 8px;text-align:left;letter-spacing:.06em;text-transform:uppercase">Tipo</th>
+              <th style="font-size:10px;color:var(--text3);padding:6px 8px;text-align:left;letter-spacing:.06em;text-transform:uppercase">Data</th>
+            </tr></thead>
+            <tbody id="recent-links"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLABORADORES -->
+    <div id="sec-usuarios" class="section">
+      <div class="topbar">
+        <span class="topbar-title">Colaboradores</span>
+        <span class="topbar-badge" id="users-count-badge">114 usuários</span>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" onclick="exportExcel('users')">↓ Excel</button>
+          <button class="btn btn-ghost" onclick="exportPDF('users')">↓ PDF</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <input class="search-input" type="text" placeholder="Buscar por nome, e-mail, departamento..." oninput="filterUsers(this.value)">
+            <select class="filter-select" onchange="filterUsersDept(this.value)" id="dept-filter">
+              <option value="">Todos os departamentos</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <colgroup><col width="36%"><col width="22%"><col width="22%"><col width="12%"><col width="8%"></colgroup>
+              <thead><tr>
+                <th>Colaborador</th><th>Departamento</th><th>Cargo</th><th>Ativos</th><th></th>
+              </tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="users-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EQUIPAMENTOS -->
+    <div id="sec-equipamentos" class="section">
+      <div class="topbar">
+        <span class="topbar-title">Equipamentos</span>
+        <span class="topbar-badge" id="assets-count-badge">0 ativos</span>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost" onclick="exportExcel('assets')">↓ Excel</button>
+          <button class="btn btn-ghost" onclick="exportPDF('assets')">↓ PDF</button>
+          <button class="btn btn-accent" onclick="openAddAsset()">+ Novo Ativo</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <input class="search-input" type="text" placeholder="Buscar por nome, serial, modelo..." oninput="filterAssets(this.value)">
+            <select class="filter-select" onchange="filterAssetsType(this.value)">
+              <option value="">Todos os tipos</option>
+              <option value="notebook">Notebook</option>
+              <option value="celular">Celular</option>
+              <option value="desktop">Desktop</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <colgroup><col width="24%"><col width="12%"><col width="18%"><col width="16%"><col width="18%"><col width="12%"></colgroup>
+              <thead><tr>
+                <th>Equipamento</th><th>Tipo</th><th>Fabricante / Modelo</th><th>Nº de Série</th><th>Responsável</th><th></th>
+              </tr></thead>
+              <tbody id="assets-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="assets-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VINCULAR -->
+    <div id="sec-vincular" class="section">
+      <div class="topbar">
+        <span class="topbar-title">Vincular Ativo a Colaborador</span>
+      </div>
+      <div class="content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+          <div>
+            <div class="section-header" style="margin-bottom:12px">
+              <div>
+                <div class="section-title" style="font-size:14px">1. Selecione o colaborador</div>
+              </div>
+            </div>
+            <input class="search-input" type="text" placeholder="Buscar colaborador..." oninput="filterVincularUsers(this.value)" style="width:100%;max-width:none;margin-bottom:10px">
+            <div id="vincular-users-list" style="max-height:380px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg)"></div>
+          </div>
+          <div>
+            <div class="section-header" style="margin-bottom:12px">
+              <div>
+                <div class="section-title" style="font-size:14px">2. Selecione o equipamento</div>
+              </div>
+            </div>
+            <input class="search-input" type="text" placeholder="Buscar equipamento..." oninput="filterVincularAssets(this.value)" style="width:100%;max-width:none;margin-bottom:10px">
+            <div id="vincular-assets-list" style="max-height:380px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg)"></div>
+          </div>
+        </div>
+        <div id="vincular-preview" style="display:none;margin-top:20px;max-width:900px">
+          <div class="chart-card">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div id="vp-user" style="font-size:13px;color:var(--text2)">—</div>
+              <div style="font-size:18px;color:var(--text3)">→</div>
+              <div id="vp-asset" style="font-size:13px;color:var(--text2)">—</div>
+              <button class="btn btn-accent" style="margin-left:auto" onclick="confirmVinculo()">Confirmar vínculo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div id="sec-relatorios" class="section">
+      <div class="topbar">
+        <span class="topbar-title">Relatórios</span>
+      </div>
+      <div class="content">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px">
+          <div class="chart-card" style="cursor:pointer" onclick="exportExcel('full')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">📊</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Inventário completo</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Todos os ativos com responsáveis</div>
+            <span class="badge badge-green">↓ Excel</span>
+          </div>
+          <div class="chart-card" style="cursor:pointer" onclick="exportPDF('full')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">📄</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Relatório PDF</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Inventário formatado para impressão</div>
+            <span class="badge badge-blue">↓ PDF</span>
+          </div>
+          <div class="chart-card" style="cursor:pointer" onclick="exportExcel('users')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">👥</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Colaboradores</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Lista completa com ativos vinculados</div>
+            <span class="badge badge-green">↓ Excel</span>
+          </div>
+          <div class="chart-card" style="cursor:pointer" onclick="exportExcel('sem-vinculo')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">⚠️</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Sem responsável</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Ativos que precisam de vinculação</div>
+            <span class="badge badge-amber">↓ Excel</span>
+          </div>
+          <div class="chart-card" style="cursor:pointer" onclick="exportExcel('notebooks')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">💻</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Notebooks</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Inventário de notebooks por responsável</div>
+            <span class="badge badge-green">↓ Excel</span>
+          </div>
+          <div class="chart-card" style="cursor:pointer" onclick="exportExcel('celulares')">
+            <div style="font-size:24px;margin-bottom:12px;opacity:.6">📱</div>
+            <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px">Celulares</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Inventário de celulares por responsável</div>
+            <span class="badge badge-green">↓ Excel</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- CONTROLE DE ACESSO (Admin only) -->
+    <div id="sec-acessos" class="section">
+      <div class="topbar">
+        <span class="topbar-title">Controle de Acesso</span>
+        <span class="topbar-badge">Apenas super admin</span>
+        <div class="topbar-actions">
+          <button class="btn btn-accent" onclick="openAddAccess()">+ Liberar usuário</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="chart-card" style="margin-bottom:14px;padding:14px 16px">
+          <p style="font-size:13px;color:var(--text2);line-height:1.6">
+            Controle quais logins do GLPI acessam este sistema. Somente usuários listados abaixo conseguem entrar.
+            Você (<strong>marcelo.junior</strong>) tem acesso irrestrito e permanente.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <div class="table-toolbar">
+            <input class="search-input" id="ac-search-q" type="text" placeholder="Buscar usuário..." oninput="filterAccess(this.value)">
+          </div>
+          <table>
+            <colgroup><col width="26%"><col width="30%"><col width="20%"><col width="14%"><col width="10%"></colgroup>
+            <thead><tr><th>Login GLPI</th><th>Nome</th><th>Perfil</th><th>Acesso</th><th></th></tr></thead>
+            <tbody id="access-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL ACESSO -->
+<div class="modal-overlay" id="modal-access">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Liberar acesso</div>
+      <button class="modal-close" onclick="closeModal('modal-access')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Login GLPI</label>
+        <input class="form-input" type="text" id="ac-user" placeholder="ex: joao.silva">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nome completo</label>
+        <input class="form-input" type="text" id="ac-name" placeholder="ex: João Silva">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Perfil</label>
+        <select class="form-select" id="ac-role">
+          <option value="viewer">Visualizador</option>
+          <option value="editor">Editor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-access')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveAccess()">Liberar acesso</button>
+    </div>
+
+<!-- MODAL ADD ASSET -->
+<div class="modal-overlay" id="modal-asset">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-asset-title">Novo Equipamento</div>
+      <button class="modal-close" onclick="closeModal('modal-asset')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome / Hostname *</label>
+          <input class="form-input" type="text" id="fa-name" placeholder="ex: LAPTOP-ABC123">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo *</label>
+          <select class="form-select" id="fa-type">
+            <option value="notebook">Notebook</option>
+            <option value="celular">Celular</option>
+            <option value="desktop">Desktop</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fabricante</label>
+          <select class="form-select" id="fa-brand">
+            <option value="">Selecionar</option>
+            <option>Lenovo</option><option>Dell</option><option>Acer</option>
+            <option>HP</option><option>Samsung</option><option>Motorola</option><option>Apple</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modelo</label>
+          <input class="form-input" type="text" id="fa-model" placeholder="ex: IdeaPad 3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nº de Série / IMEI</label>
+          <input class="form-input" type="text" id="fa-serial" placeholder="ex: PE0AE7LM">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="fa-status">
+            <option value="disponivel">Disponível</option>
+            <option value="em-uso">Em uso</option>
+            <option value="manutencao">Em manutenção</option>
+            <option value="devolvido">Devolvido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sistema Operacional</label>
+        <input class="form-input" type="text" id="fa-so" placeholder="ex: Windows 11 Business">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-textarea" id="fa-obs" placeholder="Informações adicionais..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Responsável (opcional)</label>
+        <input class="form-input" type="text" id="fa-resp-search" placeholder="Buscar colaborador..." oninput="searchRespUser(this.value)">
+        <div id="fa-resp-results" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-top:4px;max-height:120px;overflow-y:auto;display:none"></div>
+        <div id="fa-resp-selected" style="margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-asset')">Cancelar</button>
+      <button class="btn btn-accent" onclick="saveAsset()">Salvar equipamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL USER DETAIL -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title">Perfil do colaborador</div>
+      <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-user-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Fechar</button>
+      <button class="btn btn-accent" onclick="goVincular()">Vincular ativo</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const USERS_DATA = [{"id":"522516de","name":"Abelardo Neto","firstName":"Abelardo","email":"abelardo.neto@tecnoit.com.br","department":"Obras","title":"Supervisor de Campo","city":"","phone":"(11) 98603-9859","initials":"AN","assets":[]},{"id":"376bf5e8","name":"Alberto Silva","firstName":"Alberto","email":"alberto.silva@tecnoit.com.br","department":"Engenharia","title":"Supervisor de Campo","city":"Goiânia","phone":"62981825550","initials":"AS","assets":[]},{"id":"5ca1aa7b","name":"Alexandre Gomes","firstName":"Alexandre","email":"alexandre.gomes@tecnoit.com.br","department":"Comercial","title":"Analista de Pre Vendas","city":"","phone":"75 8828-5057","initials":"AG","assets":[]},{"id":"f309b2d4","name":"Alexandre Lopes dos Santos","firstName":"Alexandre","email":"alexandre.lopes@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"31 8832-0677","initials":"AS","assets":[]},{"id":"f3bc8515","name":"Allisson Dillan do Nascimento Melo","firstName":"Allisson","email":"Allisson.melo@tecnoit.com.br","department":"TI","title":"Coordenador de Suporte","city":"","phone":"61 98418-1367","initials":"AM","assets":[]},{"id":"ff18a831","name":"Allyne Muniz da Conceição","firstName":"Allyne","email":"Allyne.Muniz@tecnoit.com.br","department":"Financeiro","title":"Analista financeira","city":"","phone":"62 9291-0933","initials":"AC","assets":[]},{"id":"6bba4af5","name":"Ana Luiza Dias","firstName":"Ana Luiza","email":"ana.dias@tecnoit.com.br","department":"Administrativo CEO","title":"Assessora de Assuntos Executivos e Comunicação Interna","city":"Goiânia","phone":"(62) 99460-4902","initials":"AD","assets":[]},{"id":"fe57289a","name":"Anderson Gomes da Silva","firstName":"Anderson","email":"anderson.gomes@tecnoit.com.br","department":"Engenharia","title":"Técnico de Segurança do Trabalho","city":"","phone":"","initials":"AS","assets":[]},{"id":"7a163fba","name":"Anderson Pereira Nogueira","firstName":"Anderson","email":"Anderson.nogueira@tecnoit.com.br","department":"TI","title":"Analista de TI","city":"","phone":"61 9928-2472","initials":"AN","assets":[]},{"id":"0bea0383","name":"Andre Felipe Rodrigues do Carmo","firstName":"Andre","email":"Andre.carmo@tecnoit.com.br","department":"Administrativo financeiro","title":"Analista de compras","city":"","phone":"62 9319-3450","initials":"AC","assets":[]},{"id":"be3f83af","name":"Ariane Ferreira","firstName":"Ariane","email":"ariane.ferreira@tecnoit.com.br","department":"Supply Chain","title":"Analista de Compras","city":"Goiânia","phone":"(62)  99231-8102","initials":"AF","assets":[]},{"id":"c9127765","name":"Bianca Cristine de Oliveira Costa","firstName":"Bianca","email":"bianca.costa@tecnoit.com.br","department":"RH","title":"Gerente de RH","city":"","phone":"62999591505","initials":"BC","assets":[]},{"id":"978218ad","name":"Camila Oliveira","firstName":"Camila","email":"camila.oliveira@tecnoit.com.br","department":"PMO","title":"Coordenador de Projetos","city":"Belo Horizonte","phone":"(31) 99347-8263","initials":"CO","assets":[]},{"id":"bae6123b","name":"Camila Peleja","firstName":"Camila","email":"camila.peleja@tecnoit.com.br","department":"Recursos Humanos","title":"Analista de Recursos Humanos","city":"Goiânia","phone":"(62) 99513-1458","initials":"CP","assets":[]},{"id":"b17c337c","name":"Carlos Roberto Sena","firstName":"Carlos","email":"carlos.sena@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"Goiania","phone":"62 9651-7273","initials":"CS","assets":[]},{"id":"41bfc6d7","name":"Cesar Pinheiro dos Santos","firstName":"Cesar","email":"CESAR.SANTOS@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"61 9313-5042","initials":"CS","assets":[]},{"id":"af6e2867","name":"Danielly Santos","firstName":"Danielly","email":"danielly.santos@tecnoit.com.br","department":"Engenharia","title":"Projetista","city":"Goiânia","phone":"( 62 ) 98483-0901","initials":"DS","assets":[]},{"id":"6208b92b","name":"Diego Silva","firstName":"Diego","email":"diego.silva@tecnoit.com.br","department":"Service Desk","title":"Técnico de Cabeamento Estruturado","city":"Goiânia","phone":"6298176-8138","initials":"DS","assets":[]},{"id":"e0ab9ac3","name":"Douglas Santos Nunes Ribeiro","firstName":"Douglas","email":"Douglas.Ribeiro@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"61 9299-2167","initials":"DR","assets":[]},{"id":"9535023b","name":"Edson Carlos Souza Silva","firstName":"Edson","email":"Edson.silva@tecnoit.com.br","department":"","title":"Instalador de infraestrutura","city":"","phone":"","initials":"ES","assets":[]},{"id":"0e2e538d","name":"Edson Fernando Lima","firstName":"Edson","email":"Edson.lima@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"","initials":"EL","assets":[]},{"id":"8390a550","name":"Edson Monteiro","firstName":"Edson","email":"edson.monteiro@tecnoit.com.br","department":"Obras","title":"Supervisor de Campo","city":"Goiânia","phone":"(62) 9 8286-3602","initials":"EM","assets":[]},{"id":"60cadf6d","name":"Eduardo Paes","firstName":"Eduardo","email":"eduardo.paes@tecnoit.com.br","department":"Operações","title":"Planejador","city":"","phone":"(62)99606-1199","initials":"EP","assets":[]},{"id":"42b4ffce","name":"Edvanilton Nascimento Santos","firstName":"Edvanilton","email":"Edvanilton.santos@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"79 9642-4290","initials":"ES","assets":[]},{"id":"d55c9c75","name":"Élem Souza","firstName":"Élem","email":"elem.souza@tecnoit.com.br","department":"Financeiro","title":"Analista Financeiro","city":"Goiânia","phone":"(62) 99460-4880","initials":"ÉS","assets":[]},{"id":"93185d13","name":"Emanuel Luiz Damascena","firstName":"Emanuel","email":"Emanuel.damascena@tecnoit.com.br","department":"Engenharia","title":"Instalador de infraestrutura","city":"","phone":"","initials":"ED","assets":[]},{"id":"64369f38","name":"Espedito Soares Santos","firstName":"Espedito","email":"espedito.santos@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"31 9223-3288","initials":"ES","assets":[]},{"id":"e7c77456","name":"Ester Piccirilli","firstName":"Ester","email":"ester.franca@tecnoit.com.br","department":"Comercial","title":"Coordenadora Comercial","city":"Goiânia","phone":"62 8328-0154","initials":"EP","assets":[]},{"id":"c54104dd","name":"Felipe Castro de Oliveira","firstName":"Felipe","email":"felipe.oliveira@tecnoit.com.br","department":"","title":"Analista de pre Vendas","city":"","phone":"","initials":"FO","assets":[]},{"id":"558ffed2","name":"Gabriel Cabral","firstName":"Gabriel","email":"gabriel.cabral@tecnoit.com.br","department":"Engenharia","title":"Analista de Implantação","city":"Nova Lima","phone":"(37) 99928-1245","initials":"GC","assets":[]},{"id":"1775ac38","name":"Gabriel Soares","firstName":"Gabriel","email":"gabriel.soares@tecnoit.com.br","department":"Pré Vendas","title":"Analista de Pré Vendas","city":"Goiânia","phone":"61 9 9157-8891","initials":"GS","assets":[]},{"id":"4eed47f8","name":"Giovanna Faleiro","firstName":"Giovanna","email":"giovanna.faleiro@tecnoit.com.br","department":"Comercial","title":"Assistente Administrativo","city":"Goiânia","phone":"","initials":"GF","assets":[]},{"id":"dd1ab64c","name":"Giselly Maria Pereira Barbosa","firstName":"Giselly","email":"Giselly.barbosa@tecnoit.com.br","department":"Administrativo Financeiro","title":"Analista de faturamento","city":"","phone":"62 98315-1881","initials":"GB","assets":[]},{"id":"98b8535d","name":"Ibrahim Boufleur","firstName":"Ibrahim","email":"ibra@tecnoit.com.br","department":"Diretoria","title":"CEO","city":"Goiânia","phone":"+55 62 9 8254-8000","initials":"IB","assets":[]},{"id":"5b36b001","name":"Jair Prado de Medeiros Filho","firstName":"Jair","email":"jair.filho@tecnoit.com.br","department":"Engenharia","title":"Técnico de Cabeamento Estruturado","city":"","phone":"31 9847-0766","initials":"JF","assets":[]},{"id":"94d51143","name":"Jean Santana","firstName":"Jean","email":"jean.santana@tecnoit.com.br","department":"Operação","title":"Supervisor de Campo","city":"Brasilia","phone":"","initials":"JS","assets":[]},{"id":"f3821c74","name":"Jefte Ruben De Oliveira","firstName":"Jefte","email":"Jefte.oliveira@tecnoit.com.br","department":"","title":"Supervisor de campo BSB","city":"","phone":"","initials":"JO","assets":[]},{"id":"5f7e468c","name":"Jhonathan Felipe Neves","firstName":"Jhonathan","email":"jhonathan.neves@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"31 8321-1010","initials":"JN","assets":[]},{"id":"f87cfa09","name":"Jhones Beckman de Sousa","firstName":"Jhones","email":"Jhones.sousa@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"","initials":"JS","assets":[]},{"id":"29899099","name":"João Paulo Gomes de Jesus","firstName":"João Paulo","email":"joao.jesus@tecnoit.com.br","department":"Supply Chain","title":"Auxiliar de Logística","city":"Goiânia","phone":"","initials":"JJ","assets":[]},{"id":"cecab832","name":"Jonas João da Silva","firstName":"Jonas","email":"Jonas.joao@tecnoit.com.br","department":"Engenharia","title":"Instalador de Infraestrutura","city":"","phone":"75 98807-2572","initials":"JS","assets":[]},{"id":"51d7a559","name":"Jose Leite de Souza","firstName":"Jose","email":"jose.souza@tecnoit.com.br","department":"Engenharia","title":"Auxiliar Tecnico","city":"","phone":"79 8811-4537","initials":"JS","assets":[]},{"id":"a5ff25d4","name":"Joseildo Elias da Silva","firstName":"Joseildo","email":"joseildo.silva@tecnoit.com.br","department":"Engenharia","title":"Auxiliar Técnico","city":"Paulo Afonso","phone":"75 98852-0055","initials":"JS","assets":[]},{"id":"4e906511","name":"Júlio Junior","firstName":"Júlio","email":"julio.junior@tecnoit.com.br","department":"Service Desk","title":"Técnico de cabeamento estruturado","city":"Minas Gerais","phone":"31 9725-4824","initials":"JJ","assets":[]},{"id":"d342de27","name":"Leilson Silva","firstName":"Leilson","email":"leilson.silva@tecnoit.com.br","department":"Engenharia","title":"Técnico de cabeamento estruturado","city":"","phone":"","initials":"LS","assets":[]},{"id":"e7fb3e1d","name":"Leonardo Prado","firstName":"Leonardo","email":"leonardo.prado@tecnoit.com.br","department":"Engenharia","title":"Engenheiro de Redes","city":"MG","phone":"35 8808-1348","initials":"LP","assets":[]},{"id":"b55096ff","name":"Lucas Pereira Cardoso","firstName":"Lucas","email":"lucas.cardoso@tecnoit.com.br","department":"TI","title":"Analista de Suporte","city":"","phone":"","initials":"LC","assets":[]},{"id":"50ae81b8","name":"Lucas Rodrigues Martins","firstName":"Lucas","email":"Lucas.martins@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"61 9194-2239","initials":"LM","assets":[]},{"id":"d75a8818","name":"Luizmar Almeida","firstName":"Luizmar","email":"luizmar.almeida@tecnoit.com.br","department":"Comercial","title":"Gerente de Canais","city":"Goiânia","phone":"62 9 8328-0174","initials":"LA","assets":[]},{"id":"aa16fc36","name":"Marcos Santos","firstName":"Marcos","email":"marcos.santos@tecnoit.com.br","department":"","title":"","city":"","phone":"","initials":"MS","assets":[]},{"id":"9eaa7994","name":"Matheus Sousa","firstName":"Matheus","email":"matheus.sousa@tecnoit.com.br","department":"Obras","title":"Técnico de Cabeamento Estruturado","city":"Goiânia","phone":"61 9 9558-0618","initials":"MS","assets":[]},{"id":"673e25fc","name":"Matheus Vilela Torres","firstName":"Matheus","email":"Matheus.torres@tecnoit.com.br","department":"Engenharia","title":"Instalador de infraestrutura","city":"","phone":"","initials":"MT","assets":[]},{"id":"ad86191c","name":"Milton Alves dos Santos","firstName":"Milton","email":"milton.santos@tecnoit.com.br","department":"Engenharia","title":"Auxiliar Técnico","city":"","phone":"48 8455-0621","initials":"MS","assets":[]},{"id":"e324f96c","name":"Murillo França","firstName":"Murillo","email":"murillo.franca@tecnoit.com.br","department":"Engenharia","title":"Coordenador de TI","city":"","phone":"","initials":"MF","assets":[]},{"id":"6dd3e1de","name":"Nasser Mourad Filho","firstName":"Nasser","email":"nasser.filho@tecnoit.com.br","department":"","title":"","city":"","phone":"","initials":"NF","assets":[]},{"id":"1ef08e3d","name":"Pablo Oliveira","firstName":"Pablo","email":"pablo.oliveira@tecnoit.com.br","department":"Service Desk","title":"Analista de Suporte","city":"Goiânia","phone":"62 9 9432-1879","initials":"PO","assets":[]},{"id":"59f3534c","name":"Paulo Cesar Soares","firstName":"Paulo","email":"Paulo.Soares@tecnoit.com.br","department":"Administrativo financeiro","title":"Assistente administrativo","city":"","phone":"62 98513-0346","initials":"PS","assets":[]},{"id":"425e9f75","name":"Paulo Gerson da Cunha Gonçalves","firstName":"Paulo","email":"Paulo.gerson@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"61 9164-5212","initials":"PG","assets":[]},{"id":"deedeea0","name":"Pedro Henrique Gomes Barbosa dos Santos","firstName":"Pedro","email":"Pedro.Santos@tecnoit.com.br","department":"Engenharia","title":"Auxiliar técnico de cabeamento","city":"","phone":"61 9370-3086","initials":"PS","assets":[]},{"id":"3ecdea1b","name":"Pedro Nascimento","firstName":"Pedro","email":"pedro.nascimento@tecnoit.com.br","department":"Service Desk","title":"Técnico de Cabeamento","city":"","phone":"","initials":"PN","assets":[]},{"id":"41d01bf5","name":"Poliana Amorim","firstName":"Poliana","email":"poliana.silva@tecnoit.com.br","department":"Supply Chain","title":"Gerente de Supply Chain","city":"Goiânia","phone":"62 9 8123-5038","initials":"PA","assets":[]},{"id":"16bc5213","name":"Rafael Ximenes Barcelos Faria","firstName":"Rafael","email":"Rafael.faria@tecnoit.com.br","department":"","title":"Coordenador de obras BSB","city":"","phone":"","initials":"RF","assets":[]},{"id":"c63be6e5","name":"Rodrigo Dos Santos","firstName":"Rodrigo","email":"rodrigo.santos@tecnoit.com.br","department":"","title":"","city":"","phone":"","initials":"RS","assets":[]},{"id":"56549198","name":"Rodrigo Henrique de Oliveira","firstName":"Rodrigo","email":"rodrigo.henrique@tecnoit.com.br","department":"Engenharia","title":"Auxiliar Técnico de Cabeamento","city":"","phone":"","initials":"RO","assets":[]},{"id":"79d2cd17","name":"Rodrigo Muzzi","firstName":"Rodrigo","email":"rodrigo.muzzi@tecnoit.com.br","department":"Engenharia e TI","title":"Gerente de Engenharia e Tecnologia","city":"","phone":"61 98299-6362","initials":"RM","assets":[]},{"id":"b8579ddf","name":"Rodrigo Silva","firstName":"Rodrigo","email":"rodrigo.silva@tecnoit.com.br","department":"Obras","title":"Supervisor de Campo","city":"","phone":"(31) 98647-9242","initials":"RS","assets":[]},{"id":"77da672f","name":"Ronaldo Cavalcante Dos Santos Junior","firstName":"Ronaldo","email":"Ronaldo.junior@tecnoit.com.br","department":"Engenharia","title":"Instalador de infraestrutura","city":"","phone":"","initials":"RJ","assets":[]},{"id":"7561cf18","name":"Samuel Teixeira Souza","firstName":"Samuel","email":"samuel.souza@tecnoit.com.br","department":"","title":"Técnico de Cabeamento","city":"Paulo Afonso","phone":"","initials":"SS","assets":[]},{"id":"c24a18d9","name":"Sheila Lins de Melo e Silva","firstName":"Sheila","email":"sheila.silva@tecnoit.com.br","department":"Comercial","title":"Gerente de Negócios","city":"Goiania","phone":"62 99343-4245","initials":"SS","assets":[]},{"id":"4707b601","name":"Sophia Viana Pedrosa","firstName":"Sophia","email":"Sophia.Pedrosa@tecnoit.com.br","department":"","title":"Jovem aprendiz","city":"","phone":"62 99936-7788","initials":"SP","assets":[]},{"id":"a054c043","name":"Tarcísio Silva","firstName":"Tarcísio","email":"tarcisio.silva@tecnoit.com.br","department":"Engenharia","title":"Supervisor de Campo","city":"","phone":"(31) 988156055","initials":"TS","assets":[]},{"id":"ed98c30a","name":"Thiago Varjão Dias","firstName":"Thiago","email":"thiago.dias@tecnoit.com.br","department":"","title":"Técnico de Cabeamento","city":"Paulo Afonso","phone":"","initials":"TD","assets":[]},{"id":"6f7aab48","name":"Thiago Coelho","firstName":"Thiago","email":"thiago.coelho@tecnoit.com.br","department":"RH","title":"Técnico de Segurança do Trabalho","city":"","phone":"","initials":"TC","assets":[]},{"id":"4acebe8d","name":"Thiago de Morais Golçalves","firstName":"Thiago","email":"thiago.goncalves@tecnoit.com.br","department":"Engenharia","title":"Auxiliar Técnico","city":"","phone":"75 98345-5742","initials":"TG","assets":[]},{"id":"ee13d604","name":"Valdemir Lima","firstName":"Valdemir","email":"valdemir.lima@tecnoit.com.br","department":"Obras","title":"Técnico de Cabeamento Estruturado","city":"Goiânia","phone":"62  9 8434-6054","initials":"VL","assets":[]},{"id":"1702d00e","name":"Valéria da Silva","firstName":"Valéria","email":"Valeria.silva@tecnoit.com.br","department":"Administrativo financeiro","title":"Analista financeira","city":"","phone":"62 99553-6106","initials":"VS","assets":[]},{"id":"d4c3e23d","name":"Victor Lima","firstName":"Victor","email":"victor.lima@tecnoit.com.br","department":"Obras","title":"Supervisor de Campo","city":"","phone":"62 9 9229-6343","initials":"VL","assets":[]},{"id":"f50c046a","name":"Victor Teles","firstName":"Victor","email":"victor.teles@tecnoit.com.br","department":"PMO","title":"Analista Administrativo","city":"Goiânia","phone":"62984002312","initials":"VT","assets":[]},{"id":"3c4a4879","name":"Victor Venâncio da Silva","firstName":"Victor","email":"victor.silva@tecnoit.com.br","department":"Engenharia","title":"Analista de projetos","city":"Goiania","phone":"62 992115451","initials":"VS","assets":[]},{"id":"5402d56d","name":"Vinnicius Campagnuci","firstName":"Vinnicius","email":"vinnicius.oliveira@tecnoit.com.br","department":"Inovação","title":"Desenvolvedor Backend","city":"Goiânia","phone":"62 9 8339-2112","initials":"VC","assets":[]},{"id":"409f3991","name":"Wanderson Bruno Alves de Andrade","firstName":"Wanderson","email":"Wanderson.andrade@tecnoit.com.br","department":"Engenharia","title":"Técnico de Cabeamento","city":"","phone":"","initials":"WA","assets":[]},{"id":"481140a1","name":"Wellinton do Nascimento da Silva","firstName":"Wellinton","email":"Wellinton.Silva@tecnoit.com.br","department":"Supply Chain","title":"Assistente de estoque","city":"","phone":"31 9060-7335","initials":"WS","assets":[]}];
+
+const INITIAL_ASSETS = [
+  {id:'a1',name:'DESKTOP-0U9H5KT',type:'notebook',brand:'Lenovo',model:'82ME',serial:'PE0AE7LM',so:'Windows 11 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a2',name:'DESKTOP-3IPS5LF',type:'notebook',brand:'Lenovo',model:'IdeaPad 3 15IML05',serial:'PE07KD3L',so:'Windows 10 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a3',name:'DESKTOP-9TQ65O8',type:'notebook',brand:'Lenovo',model:'82NM',serial:'PE08E6V2',so:'Windows 11 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a4',name:'DESKTOP-IT7QHO6',type:'notebook',brand:'Lenovo',model:'82UM',serial:'PE0DNCRP',so:'Windows 11 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a5',name:'LAPTOP-1MPMREV4',type:'notebook',brand:'Lenovo',model:'82ME',serial:'PE0A2MFT',so:'Windows 11 Business',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a6',name:'LAPTOP-2GFM576P',type:'notebook',brand:'Lenovo',model:'IdeaPad 3 15ITL6',serial:'PE0A40KJ',so:'Windows 11 Home',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a7',name:'LAPTOP-59GQ2QDK',type:'notebook',brand:'Lenovo',model:'82ME',serial:'PE0AE7MZ',so:'Windows 11 Business',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a8',name:'LAPTOP-E65MGNHT',type:'notebook',brand:'Acer',model:'Aspire A515-54',serial:'NXHQMAL00R14',so:'Windows 11 Home',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a9',name:'LAPTOP-GD9KIDH3',type:'notebook',brand:'HP',model:'HP 250 G7',serial:'BRJ042DFRR',so:'Windows 11 Business',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a10',name:'Lenovo I7',type:'notebook',brand:'Lenovo',model:'82UM',serial:'PE0DHDWV',so:'Windows 11 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a11',name:'Dell G15',type:'notebook',brand:'Dell',model:'G15',serial:'',so:'',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a12',name:'DESKTOP-TU1GOTJ',type:'notebook',brand:'Dell',model:'Latitude 3420',serial:'2F5XNT3',so:'Windows 11 Business',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a13',name:'NOTEBOOL V15',type:'notebook',brand:'Lenovo',model:'V15',serial:'PEDAE7KW',so:'',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a14',name:'ACER 14 POLEGADAS',type:'notebook',brand:'Acer',model:'',serial:'NXHQMAL00R14',so:'',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'a15',name:'TecnoIT Samsung',type:'notebook',brand:'Samsung',model:'550XCJ',serial:'09P39QAN800479',so:'Windows 11 Home',status:'disponivel',userId:'',obs:'',date:'2026-03-10'},
+  {id:'c1',name:'GALAXY A34 5G',type:'celular',brand:'Samsung',model:'Galaxy A34 5G',serial:'351406758143261',so:'Android',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'c2',name:'GALAXY A34',type:'celular',brand:'Samsung',model:'Galaxy A34',serial:'351406758178689',so:'Android',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+  {id:'c3',name:'MOTO G35 5G',type:'celular',brand:'Motorola',model:'Moto G35 5G',serial:'320321970728693',so:'Android',status:'em-uso',userId:'',obs:'',date:'2026-03-10'},
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = {
+  users: [],
+  assets: [],
+  recentLinks: JSON.parse(localStorage.getItem('ti_recent') || '[]'),
+  glpiSession: null,
+  loggedUser: null,
+  usersPage: 1, assetsPage: 1,
+  usersFilter: '', assetFilter: '', assetTypeFilter: '', userDeptFilter: '',
+  vincularUser: null, vincularAsset: null,
+  editingAssetId: null,
+  selectedRespUser: null,
+};
+const PER_PAGE = 15;
+
+function save() {
+  // users and assets come from GLPI - only save recent links
+  localStorage.setItem('ti_recent', JSON.stringify(state.recentLinks));
+}
+
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const PROXY    = 'https://portal-tecnoit-glpi.onrender.com';
+const GLPI_URL = 'https://suporte.tecnoit.com.br';
+const SUPER_ADMINS = ['marcelo.junior', 'master'];
+
+// ─── ACCESS CONTROL ───────────────────────────────────────────────────────────
+// Salvo no localStorage — marcelo.junior gerencia via tela de admin
+function getAccessList() {
+  const saved = localStorage.getItem('ti_access_v2');
+  if (saved) return JSON.parse(saved);
+  const defaults = [
+    { login:'marcelo.junior', name:'Marcelo Junior', role:'superadmin', active:true },
+    { login:'master',         name:'Master GLPI',    role:'superadmin', active:true },
+  ];
+  localStorage.setItem('ti_access_v2', JSON.stringify(defaults));
+  return defaults;
+}
+function saveAccessList(list) { localStorage.setItem('ti_access_v2', JSON.stringify(list)); }
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-email').value.trim();
+  const pass     = document.getElementById('login-pass').value.trim();
+  if (!username || !pass) { toast('Preencha usuário e senha', 'error'); return; }
+
+  const btn = document.querySelector('.btn-primary');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+
+  try {
+    const res = await fetch(PROXY + '/api/proxy/initSession', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ glpiUrl: GLPI_URL, username, password: pass, get_full_session: true })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Credenciais inválidas');
+
+    const sessionToken = data.session_token;
+    const glpiName = data.session?.glpifullname || data.session?.glpifirstname || username;
+    const glpiID   = data.session?.glpiID || 0;
+
+    // Check access
+    const isSuperAdmin = SUPER_ADMINS.includes(username.toLowerCase());
+    const accessList   = getAccessList();
+    const hasAccess    = isSuperAdmin || accessList.some(a => a.active && a.login.toLowerCase() === username.toLowerCase());
+
+    if (!hasAccess) {
+      // Show denied screen
+      document.getElementById('login-screen').style.display = 'none';
+      const denied = document.getElementById('access-denied');
+      if (denied) {
+        denied.style.display = 'flex';
+        const dinfo = document.getElementById('denied-user-info');
+        if (dinfo) dinfo.textContent = username + ' · ' + glpiName;
+      }
+      return;
+    }
+
+    // Store session in state
+    state.glpiSession = { sessionToken, glpiUrl: GLPI_URL, username, glpiName, glpiID, isSuperAdmin };
+
+    // Setup sidebar
+    const parts = glpiName.split(' ');
+    const init = parts.length >= 2 ? parts[0][0]+parts[parts.length-1][0] : glpiName.slice(0,2);
+    document.getElementById('sidebar-avatar').textContent = init.toUpperCase();
+    document.getElementById('sidebar-name').textContent = glpiName;
+    const roleEl = document.getElementById('sidebar-role');
+    if (roleEl) {
+      roleEl.textContent = isSuperAdmin ? '★ Super Admin' : (accessList.find(a=>a.login===username)?.role || 'Usuário');
+      roleEl.style.color = isSuperAdmin ? 'var(--accent)' : 'var(--text3)';
+    }
+    const adminNav = document.getElementById('admin-nav');
+    if (adminNav) adminNav.style.display = isSuperAdmin ? 'block' : 'none';
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('dash-date').textContent = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'short',year:'numeric'});
+
+    // Load real data from GLPI
+    await loadGLPIData();
+    initApp();
+
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+
+async function loadGLPIData() {
+  const { sessionToken, glpiUrl } = state.glpiSession;
+  const callGLPI = async (endpoint, body={}) => {
+    const r = await fetch(PROXY + '/api/proxy/' + endpoint, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ glpiUrl, sessionToken, ...body })
+    });
+    if (!r.ok) return null;
+    return r.json();
+  };
+
+  // Load users from GLPI
+  try {
+    const usersData = await callGLPI('getUsers', { search:'' });
+    if (Array.isArray(usersData)) {
+      state.users = usersData.filter(u => u.name).map(u => {
+        const full = ((u.firstname||'')+' '+(u.realname||'')).trim() || u.name;
+        const parts = full.split(' ');
+        return {
+          id: 'glpi_' + u.id,
+          name: full,
+          firstName: u.firstname || full.split(' ')[0],
+          email: u.email || u.name + '@tecnoit.com.br',
+          department: u.groups_id || '',
+          title: u.title || '',
+          city: u.locations_id || '',
+          phone: u.phone || '',
+          initials: (parts[0][0]+(parts[parts.length-1]?.[0]||'')).toUpperCase(),
+          assets: [],
+          _glpiId: u.id
+        };
+      });
+    }
+  } catch(e) { console.warn('loadUsers error:', e); }
+
+  // Load assets from GLPI (Computer + Phone)
+  try {
+    const [computers, phones] = await Promise.all([
+      callGLPI('getAssets', { itemtype:'Computer', range:'0-499' }),
+      callGLPI('getAssets', { itemtype:'Phone',    range:'0-199' }),
+    ]);
+    const toAsset = (a, type) => ({
+      id: type[0] + a.id,
+      name: a.name || '(sem nome)',
+      type: type === 'Computer' ? 'notebook' : 'celular',
+      brand: typeof a.manufacturers_id === 'string' ? a.manufacturers_id : '',
+      model: typeof a.computermodels_id === 'string' ? a.computermodels_id : (typeof a.phonemodels_id === 'string' ? a.phonemodels_id : ''),
+      serial: a.serial || '',
+      so: typeof a.operatingsystems_id === 'string' ? a.operatingsystems_id : '',
+      status: a.users_id && a.users_id !== 0 ? 'em-uso' : 'disponivel',
+      userId: a.users_id && a.users_id !== 0 ? 'glpi_' + a.users_id : '',
+      obs: a.comment || '',
+      date: (a.date_mod || '').slice(0, 10),
+      _glpiId: a.id, _glpiType: type
+    });
+    state.assets = [
+      ...(computers?.assets || []).map(a => toAsset(a, 'Computer')),
+      ...(phones?.assets    || []).map(a => toAsset(a, 'Phone')),
+    ];
+    // Keep recent links but update from GLPI
+    state.users.forEach(u => {
+      u.assets = state.assets.filter(a => a.userId === u.id).map(a => a.id);
+    });
+  } catch(e) { console.warn('loadAssets error:', e); }
+}
+
+function doLogout() {
+  state.glpiSession = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  const denied = document.getElementById('access-denied');
+  if (denied) denied.style.display = 'none';
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function showSection(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='dashboard')   renderDashboard();
+  if(id==='usuarios')    renderUsers();
+  if(id==='equipamentos') renderAssets();
+  if(id==='vincular')    renderVincular();
+  if(id==='acessos')     renderAccess();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const COLORS = ['#4f8ef7','#22c55e','#f59e0b','#a78bfa','#f472b6','#38bdf8','#fb923c','#34d399'];
+function avatarColor(str) { let h=0; for(let c of str) h=(h<<5)-h+c.charCodeAt(0); return COLORS[Math.abs(h)%COLORS.length]; }
+
+function typeBadge(t) {
+  const m = {notebook:'<span class="badge badge-blue">Notebook</span>',celular:'<span class="badge badge-green">Celular</span>',desktop:'<span class="badge badge-amber">Desktop</span>',outro:'<span class="badge badge-gray">Outro</span>'};
+  return m[t]||'<span class="badge badge-gray">—</span>';
+}
+function statusBadge(s) {
+  const m = {'em-uso':'<span class="badge badge-green">Em uso</span>',disponivel:'<span class="badge badge-blue">Disponível</span>',manutencao:'<span class="badge badge-amber">Manutenção</span>',devolvido:'<span class="badge badge-gray">Devolvido</span>'};
+  return m[s]||'<span class="badge badge-gray">—</span>';
+}
+function getUserById(id) { return state.users.find(u=>u.id===id); }
+function getAssetById(id) { return state.assets.find(a=>a.id===id); }
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const linked = state.assets.filter(a=>a.userId).length;
+  document.getElementById('stat-users').textContent = state.users.length;
+  document.getElementById('stat-assets').textContent = state.assets.length;
+  document.getElementById('stat-linked').textContent = linked;
+  document.getElementById('stat-unlinked').textContent = state.assets.length - linked;
+
+  // Dept chart
+  const depts = {};
+  state.users.forEach(u => { const d = u.department||'Sem dept'; depts[d]=(depts[d]||0)+1; });
+  const topDepts = Object.entries(depts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxD = Math.max(...topDepts.map(x=>x[1]));
+  document.getElementById('dept-chart').innerHTML = topDepts.map(([d,c])=>`
+    <div class="bar-row">
+      <div class="bar-label">${d.length>9?d.slice(0,9)+'…':d}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxD*100)}%;background:var(--accent)"></div></div>
+      <div class="bar-value">${c}</div>
+    </div>`).join('');
+
+  // Type chart
+  const types = {};
+  state.assets.forEach(a => { types[a.type]=(types[a.type]||0)+1; });
+  const topTypes = Object.entries(types).sort((a,b)=>b[1]-a[1]);
+  const maxT = Math.max(...topTypes.map(x=>x[1]));
+  const tColors = {notebook:'var(--accent)',celular:'var(--green)',desktop:'var(--amber)',outro:'#a78bfa'};
+  document.getElementById('type-chart').innerHTML = topTypes.map(([t,c])=>`
+    <div class="bar-row">
+      <div class="bar-label">${t}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(c/maxT*100)}%;background:${tColors[t]||'var(--accent)'}"></div></div>
+      <div class="bar-value">${c}</div>
+    </div>`).join('');
+
+  // Recent links
+  const tbody = document.getElementById('recent-links');
+  if (state.recentLinks.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text3)">Nenhum vínculo registrado ainda</td></tr>';
+  } else {
+    tbody.innerHTML = state.recentLinks.slice(-8).reverse().map(l=>`
+      <tr>
+        <td style="padding:8px;font-size:12px;color:var(--text2)">${l.userName}</td>
+        <td style="padding:8px;font-size:12px;color:var(--text2)">${l.assetName}</td>
+        <td style="padding:8px">${typeBadge(l.assetType)}</td>
+        <td style="padding:8px;font-family:var(--mono);font-size:11px;color:var(--text3)">${l.date}</td>
+      </tr>`).join('');
+  }
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+function renderUsers() {
+  const deptSel = document.getElementById('dept-filter');
+  if (deptSel.options.length <= 1) {
+    const depts = [...new Set(state.users.map(u=>u.department).filter(Boolean))].sort();
+    depts.forEach(d => { const o=document.createElement('option'); o.value=d; o.textContent=d; deptSel.appendChild(o); });
+  }
+  const q = state.usersFilter.toLowerCase();
+  const dd = state.userDeptFilter;
+  let filtered = state.users.filter(u =>
+    (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.department||'').toLowerCase().includes(q)) &&
+    (!dd || u.department === dd)
+  );
+  document.getElementById('users-count-badge').textContent = `${filtered.length} colaboradores`;
+  const total = Math.ceil(filtered.length/PER_PAGE);
+  if(state.usersPage > total) state.usersPage = 1;
+  const page = filtered.slice((state.usersPage-1)*PER_PAGE, state.usersPage*PER_PAGE);
+
+  document.getElementById('users-tbody').innerHTML = page.map(u => {
+    const clr = avatarColor(u.name);
+    const assetCount = state.assets.filter(a=>a.userId===u.id).length;
+    return `<tr>
+      <td class="primary">
+        <div class="avatar-cell">
+          <div class="avatar" style="background:${clr}22;color:${clr}">${u.initials}</div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${u.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>${u.department ? `<span class="badge badge-gray">${u.department}</span>` : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-size:12px">${u.title||'—'}</td>
+      <td>${assetCount > 0 ? `<span class="badge badge-green">${assetCount} ativo${assetCount>1?'s':''}</span>` : '<span class="badge badge-gray">0</span>'}</td>
+      <td><button class="action-btn" onclick="openUserDetail('${u.id}')">Ver</button></td>
+    </tr>`;
+  }).join('');
+
+  renderPagination('users', state.usersPage, total, filtered.length);
+}
+
+function filterUsers(v) { state.usersFilter=v; state.usersPage=1; renderUsers(); }
+function filterUsersDept(v) { state.userDeptFilter=v; state.usersPage=1; renderUsers(); }
+
+function openUserDetail(uid) {
+  const u = getUserById(uid);
+  if(!u) return;
+  const clr = avatarColor(u.name);
+  const userAssets = state.assets.filter(a=>a.userId===uid);
+  document.getElementById('modal-user-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div class="avatar" style="width:56px;height:56px;font-size:18px;background:${clr}22;color:${clr}">${u.initials}</div>
+      <div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px">${u.name}</div>
+        <div style="font-size:12px;color:var(--text3)">${u.title||'Cargo não cadastrado'} ${u.department?'· '+u.department:''}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:10px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">E-mail</div>
+        <div style="font-size:12px;color:var(--text2)">${u.email}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:10px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Telefone</div>
+        <div style="font-size:12px;color:var(--text2)">${u.phone||'—'}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:10px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Cidade</div>
+        <div style="font-size:12px;color:var(--text2)">${u.city||'—'}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius);padding:10px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Ativos vinculados</div>
+        <div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--accent)">${userAssets.length}</div>
+      </div>
+    </div>
+    ${userAssets.length > 0 ? `
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Equipamentos</div>
+      ${userAssets.map(a=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:6px">
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${a.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${a.brand} ${a.model} · ${a.serial||'S/N não informado'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${typeBadge(a.type)}
+            <button class="action-btn" style="color:var(--red);border-color:#fecaca" onclick="desvincular('${a.id}','${uid}')">Desvincular</button>
+          </div>
+        </div>`).join('')}
+    ` : '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Nenhum ativo vinculado a este colaborador</div>'}
+  `;
+  document.getElementById('modal-user').setAttribute('data-uid', uid);
+  openModal('modal-user');
+}
+
+function desvincular(assetId, userId) {
+  const asset = getAssetById(assetId);
+  if (!asset) return;
+  asset.userId = '';
+  asset.status = 'disponivel';
+  save();
+  closeModal('modal-user');
+  toast('Ativo desvinculado', 'success');
+  renderDashboard();
+}
+
+function goVincular() {
+  const uid = document.getElementById('modal-user').getAttribute('data-uid');
+  closeModal('modal-user');
+  state.vincularUser = uid;
+  showSection('vincular', document.querySelector('.nav-item:nth-child(4)'));
+}
+
+// ─── ASSETS ──────────────────────────────────────────────────────────────────
+function renderAssets() {
+  const q = state.assetFilter.toLowerCase();
+  const ty = state.assetTypeFilter;
+  let filtered = state.assets.filter(a =>
+    (!q || a.name.toLowerCase().includes(q) || a.brand.toLowerCase().includes(q) || a.serial.toLowerCase().includes(q) || a.model.toLowerCase().includes(q)) &&
+    (!ty || a.type === ty)
+  );
+  document.getElementById('assets-count-badge').textContent = `${filtered.length} ativos`;
+  const total = Math.ceil(filtered.length/PER_PAGE);
+  if(state.assetsPage > total) state.assetsPage = 1;
+  const page = filtered.slice((state.assetsPage-1)*PER_PAGE, state.assetsPage*PER_PAGE);
+
+  document.getElementById('assets-tbody').innerHTML = page.map(a => {
+    const user = a.userId ? getUserById(a.userId) : null;
+    const clr = avatarColor(a.name);
+    return `<tr>
+      <td class="primary">
+        <div class="avatar-cell">
+          <div class="avatar" style="background:${clr}22;color:${clr};font-size:10px">${a.name.slice(0,2).toUpperCase()}</div>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${a.serial||'S/N não informado'}</div>
+          </div>
+        </div>
+      </td>
+      <td>${typeBadge(a.type)}</td>
+      <td style="font-size:12px">${a.brand} ${a.model||''}</td>
+      <td><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${a.serial||'—'}</span></td>
+      <td>${user ? `<span style="font-size:12px;color:var(--green)">${user.name}</span>` : '<span style="font-size:12px;color:var(--text3)">— sem responsável</span>'}</td>
+      <td style="display:flex;gap:4px;flex-wrap:nowrap">
+        <button class="action-btn" onclick="editAsset('${a.id}')">Editar</button>
+        <button class="action-btn" style="color:var(--red);border-color:#fee2e2" onclick="deleteAsset('${a.id}')">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPagination('assets', state.assetsPage, total, filtered.length);
+}
+
+function filterAssets(v) { state.assetFilter=v; state.assetsPage=1; renderAssets(); }
+function filterAssetsType(v) { state.assetTypeFilter=v; state.assetsPage=1; renderAssets(); }
+
+function openAddAsset() {
+  state.editingAssetId = null;
+  document.getElementById('modal-asset-title').textContent = 'Novo Equipamento';
+  ['fa-name','fa-model','fa-serial','fa-so','fa-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fa-type').value='notebook';
+  document.getElementById('fa-brand').value='';
+  document.getElementById('fa-status').value='disponivel';
+  document.getElementById('fa-resp-selected').innerHTML='';
+  state.selectedRespUser = null;
+  openModal('modal-asset');
+}
+
+function editAsset(id) {
+  const a = getAssetById(id);
+  if (!a) return;
+  state.editingAssetId = id;
+  document.getElementById('modal-asset-title').textContent = 'Editar Equipamento';
+  document.getElementById('fa-name').value = a.name;
+  document.getElementById('fa-type').value = a.type;
+  document.getElementById('fa-brand').value = a.brand;
+  document.getElementById('fa-model').value = a.model;
+  document.getElementById('fa-serial').value = a.serial;
+  document.getElementById('fa-so').value = a.so||'';
+  document.getElementById('fa-status').value = a.status;
+  document.getElementById('fa-obs').value = a.obs||'';
+  state.selectedRespUser = a.userId ? getUserById(a.userId) : null;
+  document.getElementById('fa-resp-selected').innerHTML = state.selectedRespUser
+    ? `<div style="font-size:12px;color:var(--green)">✓ ${state.selectedRespUser.name}</div>` : '';
+  openModal('modal-asset');
+}
+
+function saveAsset() {
+  const name = document.getElementById('fa-name').value.trim();
+  if (!name) { toast('Informe o nome do equipamento', 'error'); return; }
+  if (state.editingAssetId) {
+    const a = getAssetById(state.editingAssetId);
+    a.name=name; a.type=document.getElementById('fa-type').value;
+    a.brand=document.getElementById('fa-brand').value; a.model=document.getElementById('fa-model').value;
+    a.serial=document.getElementById('fa-serial').value; a.so=document.getElementById('fa-so').value;
+    a.status=document.getElementById('fa-status').value; a.obs=document.getElementById('fa-obs').value;
+    if (state.selectedRespUser) { a.userId=state.selectedRespUser.id; a.status='em-uso'; }
+  } else {
+    const newAsset = {
+      id: 'a'+Date.now(), name, type:document.getElementById('fa-type').value,
+      brand:document.getElementById('fa-brand').value, model:document.getElementById('fa-model').value,
+      serial:document.getElementById('fa-serial').value, so:document.getElementById('fa-so').value,
+      status:document.getElementById('fa-status').value, obs:document.getElementById('fa-obs').value,
+      userId: state.selectedRespUser ? state.selectedRespUser.id : '',
+      date: new Date().toISOString().split('T')[0]
+    };
+    if (state.selectedRespUser) newAsset.status = 'em-uso';
+    state.assets.push(newAsset);
+  }
+  save();
+  closeModal('modal-asset');
+  renderAssets();
+  renderDashboard();
+  toast(state.editingAssetId ? 'Equipamento atualizado' : 'Equipamento cadastrado', 'success');
+}
+
+function deleteAsset(id) {
+  if (!confirm('Remover este equipamento do inventário?')) return;
+  state.assets = state.assets.filter(a=>a.id!==id);
+  save(); renderAssets(); renderDashboard();
+  toast('Equipamento removido', 'success');
+}
+
+function searchRespUser(q) {
+  const box = document.getElementById('fa-resp-results');
+  if (!q) { box.style.display='none'; return; }
+  const matches = state.users.filter(u=>u.name.toLowerCase().includes(q.toLowerCase())).slice(0,6);
+  if (!matches.length) { box.style.display='none'; return; }
+  box.style.display='block';
+  box.innerHTML = matches.map(u=>`
+    <div onclick="selectRespUser('${u.id}')" style="padding:8px 12px;cursor:pointer;font-size:13px;color:var(--text2);border-bottom:1px solid var(--border)"
+         onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      ${u.name} <span style="font-size:11px;color:var(--text3)">· ${u.department||'S/ dept'}</span>
+    </div>`).join('');
+}
+
+function selectRespUser(uid) {
+  const u = getUserById(uid);
+  state.selectedRespUser = u;
+  document.getElementById('fa-resp-search').value = '';
+  document.getElementById('fa-resp-results').style.display='none';
+  document.getElementById('fa-resp-selected').innerHTML = `<div style="font-size:12px;color:var(--green)">✓ ${u.name} <button onclick="clearRespUser()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px">✕</button></div>`;
+}
+function clearRespUser() { state.selectedRespUser=null; document.getElementById('fa-resp-selected').innerHTML=''; }
+
+// ─── VINCULAR ─────────────────────────────────────────────────────────────────
+let vincSelectedUser = null, vincSelectedAsset = null;
+
+function renderVincular() {
+  vincSelectedUser = state.vincularUser ? getUserById(state.vincularUser) : null;
+  vincSelectedAsset = null;
+  state.vincularUser = null;
+  renderVincularUsers('');
+  renderVincularAssets('');
+  updateVincularPreview();
+}
+
+function renderVincularUsers(q) {
+  const filtered = state.users.filter(u => !q || u.name.toLowerCase().includes(q.toLowerCase())).slice(0, 40);
+  document.getElementById('vincular-users-list').innerHTML = filtered.map(u => {
+    const sel = vincSelectedUser && vincSelectedUser.id===u.id;
+    const clr = avatarColor(u.name);
+    return `<div onclick="selectVincUser('${u.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${sel?'#fff0e8':''};transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${sel?'#fff0e8':''}'">
+      <div class="avatar" style="width:28px;height:28px;font-size:10px;background:${clr}22;color:${clr}">${u.initials}</div>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:${sel?600:400};color:${sel?'var(--accent)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${u.department||'Sem departamento'}</div>
+      </div>
+      ${sel?'<div style="margin-left:auto;color:var(--accent);font-size:16px">✓</div>':''}
+    </div>`;
+  }).join('');
+}
+
+function renderVincularAssets(q) {
+  const available = state.assets.filter(a => !a.userId && (a.status==='disponivel'||a.status==='em-uso'));
+  const filtered = available.filter(a => !q || a.name.toLowerCase().includes(q.toLowerCase()) || a.brand.toLowerCase().includes(q.toLowerCase()));
+  if (!filtered.length) {
+    document.getElementById('vincular-assets-list').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Nenhum ativo disponível</div>';
+    return;
+  }
+  document.getElementById('vincular-assets-list').innerHTML = filtered.slice(0,40).map(a => {
+    const sel = vincSelectedAsset && vincSelectedAsset.id===a.id;
+    const clr = avatarColor(a.name);
+    return `<div onclick="selectVincAsset('${a.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:${sel?'#f0fdf4':''};transition:background .1s" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='${sel?'#f0fdf4':''}'">
+      <div class="avatar" style="width:28px;height:28px;font-size:10px;background:${clr}22;color:${clr}">${a.name.slice(0,2).toUpperCase()}</div>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:${sel?600:400};color:${sel?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${a.brand} ${a.model} · ${a.serial||'S/N'}</div>
+      </div>
+      ${sel?'<div style="margin-left:auto;color:var(--green);font-size:16px">✓</div>':''}
+    </div>`;
+  }).join('');
+}
+
+function selectVincUser(id) { vincSelectedUser=getUserById(id); renderVincularUsers(''); updateVincularPreview(); }
+function selectVincAsset(id) { vincSelectedAsset=getAssetById(id); renderVincularAssets(''); updateVincularPreview(); }
+function filterVincularUsers(q) { renderVincularUsers(q); }
+function filterVincularAssets(q) { renderVincularAssets(q); }
+
+function updateVincularPreview() {
+  const prev = document.getElementById('vincular-preview');
+  if (vincSelectedUser && vincSelectedAsset) {
+    prev.style.display='block';
+    document.getElementById('vp-user').innerHTML = `<strong style="color:var(--text)">${vincSelectedUser.name}</strong> <span style="color:var(--text3)">(${vincSelectedUser.department||'—'})</span>`;
+    document.getElementById('vp-asset').innerHTML = `<strong style="color:var(--text)">${vincSelectedAsset.name}</strong> <span style="color:var(--text3)">${vincSelectedAsset.brand} ${vincSelectedAsset.model}</span>`;
+  } else {
+    prev.style.display='none';
+  }
+}
+
+function confirmVinculo() {
+  if (!vincSelectedUser || !vincSelectedAsset) return;
+  vincSelectedAsset.userId = vincSelectedUser.id;
+  vincSelectedAsset.status = 'em-uso';
+  state.recentLinks.push({
+    userName: vincSelectedUser.name, assetName: vincSelectedAsset.name,
+    assetType: vincSelectedAsset.type, date: new Date().toLocaleDateString('pt-BR')
+  });
+  save();
+  toast(`✓ ${vincSelectedAsset.name} vinculado a ${vincSelectedUser.name}`, 'success');
+  vincSelectedUser = null; vincSelectedAsset = null;
+  renderVincular();
+  renderDashboard();
+}
+
+// ─── PAGINATION ───────────────────────────────────────────────────────────────
+function renderPagination(type, current, total, count) {
+  const el = document.getElementById(type+'-pagination');
+  if (total <= 1) { el.innerHTML=`<span class="page-info">${count} itens</span>`; return; }
+  let html = '';
+  const max = 7;
+  let pages = [];
+  if (total <= max) { for(let i=1;i<=total;i++) pages.push(i); }
+  else {
+    pages = [1];
+    if (current > 3) pages.push('...');
+    for(let i=Math.max(2,current-1);i<=Math.min(total-1,current+1);i++) pages.push(i);
+    if (current < total-2) pages.push('...');
+    pages.push(total);
+  }
+  if (current>1) html+=`<button class="page-btn" onclick="goPage('${type}',${current-1})">‹</button>`;
+  pages.forEach(p => {
+    if(p==='...') html+=`<span style="color:var(--text3);padding:0 4px">…</span>`;
+    else html+=`<button class="page-btn ${p===current?'active':''}" onclick="goPage('${type}',${p})">${p}</button>`;
+  });
+  if (current<total) html+=`<button class="page-btn" onclick="goPage('${type}',${current+1})">›</button>`;
+  html+=`<span class="page-info">${count} itens</span>`;
+  el.innerHTML=html;
+}
+function goPage(type, p) {
+  if(type==='users') { state.usersPage=p; renderUsers(); }
+  else { state.assetsPage=p; renderAssets(); }
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ─── EXPORT EXCEL ─────────────────────────────────────────────────────────────
+function exportExcel(type='full') {
+  const wb = XLSX.utils.book_new();
+
+  if (type==='full' || type==='assets' || type==='notebooks' || type==='celulares' || type==='sem-vinculo') {
+    let data = state.assets;
+    if (type==='notebooks') data=data.filter(a=>a.type==='notebook');
+    if (type==='celulares') data=data.filter(a=>a.type==='celular');
+    if (type==='sem-vinculo') data=data.filter(a=>!a.userId);
+
+    const rows = [['Nome/Hostname','Tipo','Fabricante','Modelo','Nº de Série','Sistema Operacional','Status','Responsável','E-mail Responsável','Departamento','Observações']];
+    data.forEach(a => {
+      const u = a.userId ? getUserById(a.userId) : null;
+      rows.push([a.name, a.type, a.brand, a.model, a.serial, a.so, a.status, u?u.name:'', u?u.email:'', u?u.department:'', a.obs]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Equipamentos');
+  }
+
+  if (type==='full' || type==='users') {
+    const rows = [['Nome','E-mail','Departamento','Cargo','Cidade','Telefone','Qtd. Ativos','Ativos Vinculados']];
+    state.users.forEach(u => {
+      const assets = state.assets.filter(a=>a.userId===u.id);
+      rows.push([u.name, u.email, u.department, u.title, u.city, u.phone, assets.length, assets.map(a=>a.name).join(', ')]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Colaboradores');
+  }
+
+  if (type==='full') {
+    const depts = {};
+    state.users.forEach(u => { const d=u.department||'Sem dept'; depts[d]=(depts[d]||0)+1; });
+    const rows = [['Departamento','Colaboradores','Ativos Vinculados']];
+    Object.entries(depts).sort((a,b)=>b[1]-a[1]).forEach(([d,c])=>{
+      const assetCount = state.assets.filter(a=>{const u=getUserById(a.userId); return u&&u.department===d;}).length;
+      rows.push([d,c,assetCount]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Resumo');
+  }
+
+  const fname = {full:'inventario-completo',assets:'equipamentos',users:'colaboradores',notebooks:'notebooks',celulares:'celulares','sem-vinculo':'sem-responsavel'};
+  XLSX.writeFile(wb, `TecnoIT-${fname[type]||type}-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Arquivo Excel gerado!', 'success');
+}
+
+// ─── EXPORT PDF ───────────────────────────────────────────────────────────────
+function exportPDF(type='full') {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const W = 297; const margin = 14; let y = 20;
+
+  // Header
+  doc.setFillColor(15, 17, 23);
+  doc.rect(0, 0, W, 14, 'F');
+  doc.setTextColor(79, 142, 247);
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.text('TecnoIT', margin, 9);
+  doc.setTextColor(139, 157, 192);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('Gestão de Ativos — ' + new Date().toLocaleDateString('pt-BR'), margin+22, 9);
+  doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), W-margin, 9, {align:'right'});
+
+  y = 24;
+  doc.setTextColor(232, 237, 247);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text(type==='users' ? 'Relatório de Colaboradores' : 'Relatório de Inventário', margin, y); y+=6;
+
+  // Stats row
+  const linked = state.assets.filter(a=>a.userId).length;
+  const stats = [
+    ['Colaboradores', state.users.length],
+    ['Total ativos', state.assets.length],
+    ['Vinculados', linked],
+    ['Sem responsável', state.assets.length - linked],
+  ];
+  y += 2;
+  stats.forEach((s, i) => {
+    const x = margin + i * 66;
+    doc.setFillColor(30, 37, 53);
+    doc.roundedRect(x, y, 62, 14, 2, 2, 'F');
+    doc.setTextColor(139,157,192); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(s[0].toUpperCase(), x+6, y+5);
+    doc.setTextColor(232,237,247); doc.setFontSize(12); doc.setFont('helvetica','bold');
+    doc.text(String(s[1]), x+6, y+11);
+  });
+  y += 22;
+
+  // Table
+  const isUsers = type==='users';
+  const headers = isUsers
+    ? ['Colaborador','E-mail','Departamento','Cargo','Ativos']
+    : ['Equipamento','Tipo','Fabricante / Modelo','Nº de Série','Responsável','Status'];
+
+  const colWidths = isUsers ? [60,65,45,55,20] : [55,20,50,40,65,20];
+  const rowHeight = 6.5;
+
+  // Header row
+  doc.setFillColor(30, 80, 144);
+  doc.rect(margin, y, W-margin*2, 8, 'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
+  let cx = margin + 2;
+  headers.forEach((h,i) => { doc.text(h, cx, y+5); cx += colWidths[i]; });
+  y += 8;
+
+  const data = type==='users' ? state.users : state.assets;
+  data.forEach((item, idx) => {
+    if (y > 185) {
+      doc.addPage(); y = 14;
+      doc.setFillColor(30, 80, 144);
+      doc.rect(margin, y, W-margin*2, 8, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      let cx2 = margin+2;
+      headers.forEach((h,i) => { doc.text(h, cx2, y+5); cx2+=colWidths[i]; });
+      y+=8;
+    }
+    doc.setFillColor(idx%2===0?22:26, idx%2===0?30:35, idx%2===0?45:50);
+    doc.rect(margin, y, W-margin*2, rowHeight, 'F');
+    doc.setTextColor(180,190,210); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    cx = margin+2;
+    let cols;
+    if (isUsers) {
+      const assets = state.assets.filter(a=>a.userId===item.id);
+      cols = [item.name, item.email, item.department||'—', (item.title||'—').slice(0,30), String(assets.length)];
+    } else {
+      const u = item.userId ? getUserById(item.userId) : null;
+      cols = [item.name, item.type, item.brand+' '+item.model, item.serial||'—', u?u.name:'—', item.status];
+    }
+    cols.forEach((c,i) => {
+      const maxW = colWidths[i]-3;
+      const txt = String(c||'').length > maxW/1.6 ? String(c||'').slice(0, Math.floor(maxW/1.6))+'…' : String(c||'');
+      doc.text(txt, cx, y+4.5);
+      cx += colWidths[i];
+    });
+    y += rowHeight;
+  });
+
+  // Footer
+  doc.setFillColor(15,17,23);
+  doc.rect(0, 200, W, 10, 'F');
+  doc.setTextColor(77,96,128); doc.setFontSize(7);
+  doc.text(`TecnoIT — Sistema de Gestão de Ativos — ${new Date().toLocaleDateString('pt-BR')}`, W/2, 206, {align:'center'});
+
+  doc.save(`TecnoIT-relatorio-${type}-${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('PDF gerado com sucesso!', 'success');
+}
+
+// ─── CONTROLE DE ACESSO ──────────────────────────────────────────────────────
+function renderAccess() {
+  const q = (document.getElementById('ac-search-q')?.value || '').toLowerCase();
+  const list = getAccessList();
+  const filtered = q ? list.filter(a => a.login.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)) : list;
+  const roleLabel = { superadmin:'Super Admin', admin:'Admin', editor:'Editor', viewer:'Visualizador' };
+  const roleBadge = { superadmin:'badge-blue', admin:'badge-red', editor:'badge-amber', viewer:'badge-gray' };
+  document.getElementById('access-tbody').innerHTML = filtered.map((a,i) => `
+    <tr style="${!a.active?'opacity:.5':''}">
+      <td style="font-family:monospace;font-size:12px;font-weight:600;color:var(--text)">${a.login}</td>
+      <td style="font-size:13px;color:var(--text)">${a.name}</td>
+      <td><span class="badge ${roleBadge[a.role]||'badge-gray'}">${roleLabel[a.role]||a.role}</span></td>
+      <td>${a.role==='superadmin'?'<span style="font-size:11px;color:var(--text3)">Fixo</span>':
+        `<button onclick="toggleAccess(${i})" style="width:40px;height:22px;border-radius:11px;border:none;cursor:pointer;background:${a.active?'var(--green)':'#d1d5db'};position:relative;transition:background .2s">
+          <span style="position:absolute;top:3px;${a.active?'left:21px':'left:3px'};width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;display:block"></span>
+        </button>`}
+      </td>
+      <td>${a.role==='superadmin'?'':
+        `<button class="action-btn" style="font-size:11px;color:var(--red);border-color:#fecaca" onclick="removeAccess(${i})">Remover</button>`}
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Nenhum usuário</td></tr>';
+}
+
+function filterAccess(v) { renderAccess(); }
+function toggleAccess(i) {
+  const list = getAccessList();
+  if (list[i].role==='superadmin') return;
+  list[i].active = !list[i].active;
+  saveAccessList(list);
+  renderAccess();
+  toast(list[i].active ? list[i].login+' liberado' : list[i].login+' bloqueado', 'success');
+}
+function removeAccess(i) {
+  const list = getAccessList();
+  if (!confirm('Remover acesso de '+list[i].login+'?')) return;
+  list.splice(i,1);
+  saveAccessList(list);
+  renderAccess();
+  toast('Acesso removido', 'success');
+}
+function openAddAccess() {
+  ['ac-user','ac-name'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const r = document.getElementById('ac-role'); if(r) r.value='viewer';
+  openModal('modal-access');
+}
+function saveAccess() {
+  const login = document.getElementById('ac-user').value.trim();
+  const name  = document.getElementById('ac-name').value.trim();
+  const role  = document.getElementById('ac-role').value;
+  if (!login||!name) { toast('Preencha login e nome', 'error'); return; }
+  const list = getAccessList();
+  if (list.find(a => a.login.toLowerCase()===login.toLowerCase())) { toast('Login já cadastrado', 'error'); return; }
+  list.push({ login, name, role, active:true });
+  saveAccessList(list);
+  closeModal('modal-access');
+  renderAccess();
+  toast('Acesso liberado para '+login, 'success');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function initApp() {
+  renderDashboard();
+}
+
+async function syncGLPI() {
+  if (!state.glpiSession) return;
+  const btn = document.getElementById('btn-sync');
+  if (btn) { btn.disabled=true; btn.textContent='⟳ Sincronizando...'; }
+  state.users=[]; state.assets=[];
+  await loadGLPIData();
+  renderDashboard(); renderUsers(); renderAssets();
+  if (btn) { btn.disabled=false; btn.textContent='⟳ Sincronizar GLPI'; }
+  toast('GLPI sincronizado!', 'success');
+}
+</script>
+</body>
+</html>
