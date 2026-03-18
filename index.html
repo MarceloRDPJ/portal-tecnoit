@@ -3,884 +3,1021 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TecnoiT - Field Closing</title>
+    <title>TecnoIT — Field Service</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#0F1B2D">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: 'Roboto', sans-serif; -webkit-font-smoothing: antialiased; background-color: #f8fafc; }
-        .touch-btn:active { transform: scale(0.98); }
-        input, textarea, select { font-size: 16px !important; } /* Prevent iOS zoom */
-        .modal-overlay { background-color: rgba(0,0,0,0.5); }
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#F0F2F5;height:100dvh;overflow:hidden}
+        #root{height:100dvh;display:flex;flex-direction:column;background:#fff}
+        @media(min-width:900px){body{overflow:hidden}#root{flex-direction:row;background:#F0F2F5;max-width:unset;margin:0;box-shadow:none}}
+        .sidebar{display:none}
+        @media(min-width:900px){.sidebar{display:flex;flex-direction:column;width:240px;min-width:240px;background:#0F1B2D;height:100dvh;position:relative;z-index:10;flex-shrink:0}.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column;height:100dvh}}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#8BA3BE;font-size:14px;font-weight:500;cursor:pointer;border-radius:10px;margin:2px 12px;transition:all .15s;user-select:none}
+        .nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+        .nav-item.active{background:rgba(59,130,246,.2);color:#60A5FA;font-weight:600}
+        .desktop-topbar{display:none}
+        @media(min-width:900px){.desktop-topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:#fff;border-bottom:1px solid #E8ECF0;flex-shrink:0}.mobile-only{display:none!important}}
+        @media(max-width:899px){.desktop-only{display:none!important}}
+        .ticket-table{width:100%;border-collapse:collapse;font-size:14px}
+        .ticket-table th{text-align:left;padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9BABB8;background:#F8FAFB;border-bottom:1px solid #E8ECF0;white-space:nowrap}
+        .ticket-table td{padding:14px 16px;border-bottom:1px solid #F0F2F5;color:#1E2D3D;vertical-align:middle}
+        .ticket-table tr:hover td{background:#F7FAFF}
+        .ticket-table tr{cursor:pointer;transition:background .1s}
+        .stat-card{background:#fff;border-radius:14px;padding:20px 24px;border:1px solid #E8ECF0;display:flex;flex-direction:column;gap:6px}
+        .stat-card .stat-value{font-family:'Syne',sans-serif;font-size:32px;font-weight:700;line-height:1;color:#0F1B2D}
+        .stat-card .stat-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#9BABB8}
+        .stat-card .stat-dot{width:8px;height:8px;border-radius:50%;margin-right:6px;display:inline-block}
+        .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+        .badge-open{background:#FFF3E0;color:#E65100}
+        .badge-progress{background:#E3F2FD;color:#1565C0}
+        .badge-pending{background:#F3E5F5;color:#6A1B9A}
+        .badge-solved{background:#E8F5E9;color:#2E7D32}
+        .device-card{background:#fff;border:1px solid #E8ECF0;border-radius:12px;padding:16px;cursor:pointer;transition:all .15s}
+        .device-card:hover{border-color:#3B82F6;box-shadow:0 2px 12px rgba(59,130,246,.1)}
+        ::-webkit-scrollbar{width:6px;height:6px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:#D0D8E4;border-radius:10px}
+        input,textarea,select{font-size:16px!important}
+        .touch-btn:active{transform:scale(.98)}
+        .no-scrollbar::-webkit-scrollbar{display:none}
+        .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .fade-in{animation:fadeIn .2s ease-out}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .spin{animation:spin 1s linear infinite}
+        .mono{font-family:'JetBrains Mono',monospace}
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
-    <!-- Use 100dvh for better mobile support -->
-    <div id="root" class="h-[100dvh] flex flex-col max-w-2xl mx-auto shadow-2xl bg-white"></div>
+<body>
+<div id="root"></div>
+<script>
+const firebaseConfig={apiKey:"AIzaSyCh47eM6oXz-vN-2iAZXbDtTIi0CvFe_wY",authDomain:"app-tecnoit.firebaseapp.com",projectId:"app-tecnoit",storageBucket:"app-tecnoit.firebasestorage.app",messagingSenderId:"675993906644",appId:"1:675993906644:web:90f5fdbbb852a5caa43a41",measurementId:"G-MLEH036DLK"};
+</script>
+<script type="text/babel" data-presets="react">
+const{useState,useEffect,useMemo,useRef}=React;
+const PROXY='https://portal-tecnoit-glpi.onrender.com/api/proxy';
+const APP_VERSION='2.0.0';
+const firebaseAppUrl="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+const firebaseAuthUrl="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const isDesktop=()=>window.innerWidth>=900;
 
-    <script>
-       const firebaseConfig = {
-            apiKey: "AIzaSyCh47eM6oXz-vN-2iAZXbDtTIi0CvFe_wY",
-            authDomain: "app-tecnoit.firebaseapp.com",
-            projectId: "app-tecnoit",
-            storageBucket: "app-tecnoit.firebasestorage.app",
-            messagingSenderId: "675993906644",
-            appId: "1:675993906644:web:90f5fdbbb852a5caa43a41",
-            measurementId: "G-MLEH036DLK"
-        };
-    </script>
+const statusInfo=s=>{
+  if(s===1)return{label:'Novo',cls:'badge-open'};
+  if(s===2||s===3)return{label:'Em andamento',cls:'badge-progress'};
+  if(s===4)return{label:'Pendente',cls:'badge-pending'};
+  if(s===5||s===6)return{label:'Finalizado',cls:'badge-solved'};
+  return{label:'Aberto',cls:'badge-open'};
+};
 
-    <script type="text/babel" data-presets="react">
-        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+const Spinner=({size=24,color='#2563EB'})=>(
+  <svg className="spin" width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10" stroke={color} strokeOpacity=".2" strokeWidth="3"/>
+    <path d="M12 2a10 10 0 0 1 10 10" stroke={color} strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+);
 
-        const lucideReactUrl = "https://cdn.skypack.dev/lucide-react";
-        let User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff, Search, X;
+const SVG_PATHS={
+  ticket:<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/>,
+  box:<><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></>,
+  users:<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+  search:<><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  logout:<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
+  back:<path d="m15 18-6-6 6-6"/>,
+  eye:<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>,
+  eyeoff:<><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>,
+  user:<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+  lock:<><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+  plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+  check:<polyline points="20 6 9 17 4 12"/>,
+  x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+  refresh:<><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>,
+  monitor:<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>,
+  wifi:<><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></>,
+  printer:<><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></>,
+  cpu:<><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></>,
+};
 
-        // Firebase is kept for potential future use or auth if needed, but the main logic is now Proxy-based
-        const firebaseAppUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        const firebaseAuthUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        const firestoreUrl = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const Icon=({name,size=18,color='currentColor',style:st})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={st}>
+    {SVG_PATHS[name]}
+  </svg>
+);
 
-        function AppWrapper() {
-            const [libsLoaded, setLibsLoaded] = useState(false);
-            useEffect(() => {
-                Promise.all([import(lucideReactUrl), import(firebaseAppUrl), import(firebaseAuthUrl), import(firestoreUrl)])
-                    .then(([lucide, app, auth, firestore]) => {
-                        ({ User, Lock, LogIn, PlusCircle, Camera, Mic, Box, Trash2, CheckCircle, XCircle, ChevronDown, Wifi, WifiOff, RefreshCw, Eye, EyeOff, Search, X } = lucide);
-                        window.firebase = { app, auth, firestore };
-                        setLibsLoaded(true);
-                    }).catch(error => console.error("Falha ao carregar as bibliotecas:", error));
-            }, []);
+// ─── USERS DATA ───────────────────────────────────────────────────────────────
+const USERS=[
+  ["Abelardo Neto","abelardo.neto@tecnoit.com.br","Obras","Supervisor de Campo","(11) 98603-9859"],
+  ["Alberto Silva","alberto.silva@tecnoit.com.br","Engenharia","Supervisor de Campo","62981825550"],
+  ["Alexandre Gomes","alexandre.gomes@tecnoit.com.br","Comercial","Analista de Pre Vendas","75 8828-5057"],
+  ["Alexandre Lopes dos Santos","alexandre.lopes@tecnoit.com.br","Engenharia","Técnico de cabeamento estruturado","31 8832-0677"],
+  ["Allisson Dillan do Nascimento Melo","Allisson.melo@tecnoit.com.br","TI","Coordenador de Suporte","61 98418-1367"],
+  ["Allyne Muniz da Conceição","Allyne.Muniz@tecnoit.com.br","Financeiro","Analista financeira","62 9291-0933"],
+  ["Ana Luiza Dias","ana.dias@tecnoit.com.br","Administrativo CEO","Assessora Executiva","(62) 99460-4902"],
+  ["Anderson Pereira Nogueira","Anderson.nogueira@tecnoit.com.br","TI","Analista de TI","61 9928-2472"],
+  ["Andre Felipe Rodrigues do Carmo","Andre.carmo@tecnoit.com.br","Financeiro","Analista de compras","62 9319-3450"],
+  ["Ariane Ferreira","ariane.ferreira@tecnoit.com.br","Supply Chain","Analista de Compras","(62) 99231-8102"],
+  ["Bianca Cristine de Oliveira Costa","bianca.costa@tecnoit.com.br","Recursos Humanos","Gerente de RH","62999591505"],
+  ["Camila Oliveira","camila.oliveira@tecnoit.com.br","PMO","Coordenador de Projetos","(31) 99347-8263"],
+  ["Camila Peleja","camila.peleja@tecnoit.com.br","Recursos Humanos","Analista de RH","(62) 99513-1458"],
+  ["Carlos Roberto Sena","carlos.sena@tecnoit.com.br","Engenharia","Técnico de cabeamento estruturado","62 9651-7273"],
+  ["Cesar Pinheiro dos Santos","CESAR.SANTOS@tecnoit.com.br","Engenharia","Técnico de cabeamento estruturado","61 9313-5042"],
+  ["Cleberson Silva","cleberson.silva@tecnoit.com.br","Engenharia","Coordenador de Obras","6299268-5395"],
+  ["Danielly Santos","danielly.santos@tecnoit.com.br","Engenharia","Projetista","(62) 98483-0901"],
+  ["Diego Silva","diego.silva@tecnoit.com.br","Service Desk","Técnico de Cabeamento","6298176-8138"],
+  ["Douglas Santos Nunes Ribeiro","Douglas.Ribeiro@tecnoit.com.br","Engenharia","Auxiliar técnico de cabeamento","61 9299-2167"],
+  ["Edson Monteiro","edson.monteiro@tecnoit.com.br","Obras","Supervisor de Campo","(62) 9 8286-3602"],
+  ["Eduardo Paes","eduardo.paes@tecnoit.com.br","Operações","Planejador","(62)99606-1199"],
+  ["Élem Souza","elem.souza@tecnoit.com.br","Financeiro","Analista Financeiro","(62) 99460-4880"],
+  ["Espedito Soares Santos","espedito.santos@tecnoit.com.br","Engenharia","Técnico de cabeamento estruturado","31 9223-3288"],
+  ["Ester Piccirilli","ester.franca@tecnoit.com.br","Comercial","Coordenadora Comercial","62 8328-0154"],
+  ["Gabriel Cabral","gabriel.cabral@tecnoit.com.br","Engenharia","Analista de Implantação","(37) 99928-1245"],
+  ["Gabriel Soares","gabriel.soares@tecnoit.com.br","Pré Vendas","Analista de Pré Vendas","61 9 9157-8891"],
+  ["Giovanna Faleiro","giovanna.faleiro@tecnoit.com.br","Comercial","Assistente Administrativo",""],
+  ["Giselly Maria Pereira Barbosa","Giselly.barbosa@tecnoit.com.br","Financeiro","Analista de faturamento","62 98315-1881"],
+  ["Ibrahim Boufleur","ibra@tecnoit.com.br","Diretoria","CEO","+55 62 9 8254-8000"],
+  ["Jair Prado de Medeiros Filho","jair.filho@tecnoit.com.br","Engenharia","Técnico de Cabeamento","31 9847-0766"],
+  ["Jean Santana","jean.santana@tecnoit.com.br","Operação","Supervisor de Campo",""],
+  ["Jhonathan Felipe Neves","jhonathan.neves@tecnoit.com.br","Engenharia","Técnico de cabeamento estruturado","31 8321-1010"],
+  ["João Paulo Gomes de Jesus","joao.jesus@tecnoit.com.br","Supply Chain","Auxiliar de Logística",""],
+  ["Jonas João da Silva","Jonas.joao@tecnoit.com.br","Engenharia","Instalador de Infraestrutura","75 98807-2572"],
+  ["Júlio Junior","julio.junior@tecnoit.com.br","Service Desk","Técnico de cabeamento estruturado","31 9725-4824"],
+  ["Leonardo Prado","leonardo.prado@tecnoit.com.br","Engenharia","Engenheiro de Redes","35 8808-1348"],
+  ["Lucas Pereira Cardoso","lucas.cardoso@tecnoit.com.br","TI","Analista de Suporte",""],
+  ["Lucas Rodrigues Martins","Lucas.martins@tecnoit.com.br","Engenharia","Auxiliar técnico de cabeamento","61 9194-2239"],
+  ["Luizmar Almeida","luizmar.almeida@tecnoit.com.br","Comercial","Gerente de Canais","62 9 8328-0174"],
+  ["Marcelo Rodrigues dos Passo Junior","marcelo.junior@tecnoit.com.br","TI","Analista de Suporte",""],
+  ["Matheus Sousa","matheus.sousa@tecnoit.com.br","Obras","Técnico de Cabeamento","61 9 9558-0618"],
+  ["Milton Alves dos Santos","milton.santos@tecnoit.com.br","Engenharia","Auxiliar Técnico","48 8455-0621"],
+  ["Murillo França","murillo.franca@tecnoit.com.br","Engenharia","Coordenador de TI",""],
+  ["Pablo Oliveira","pablo.oliveira@tecnoit.com.br","Service Desk","Analista de Suporte","62 9 9432-1879"],
+  ["Paulo Cesar Soares","Paulo.Soares@tecnoit.com.br","Financeiro","Assistente administrativo","62 98513-0346"],
+  ["Pedro Henrique Gomes Barbosa dos Santos","Pedro.Santos@tecnoit.com.br","Engenharia","Auxiliar técnico de cabeamento","61 9370-3086"],
+  ["Poliana Amorim","poliana.silva@tecnoit.com.br","Supply Chain","Gerente de Supply Chain","62 9 8123-5038"],
+  ["Rodrigo Muzzi","rodrigo.muzzi@tecnoit.com.br","Engenharia","Gerente de Engenharia e TI","61 98299-6362"],
+  ["Rodrigo Silva","rodrigo.silva@tecnoit.com.br","Obras","Supervisor de Campo","(31) 98647-9242"],
+  ["Sheila Lins de Melo e Silva","sheila.silva@tecnoit.com.br","Comercial","Gerente de Negócios","62 99343-4245"],
+  ["Tarcísio Silva","tarcisio.silva@tecnoit.com.br","Engenharia","Supervisor de Campo","(31) 988156055"],
+  ["Thiago Coelho","thiago.coelho@tecnoit.com.br","RH","Técnico de Segurança do Trabalho",""],
+  ["Thiago de Morais Gonçalves","thiago.goncalves@tecnoit.com.br","Engenharia","Auxiliar Técnico","75 98345-5742"],
+  ["Valdemir Lima","valdemir.lima@tecnoit.com.br","Obras","Técnico de Cabeamento","62 9 8434-6054"],
+  ["Valéria da Silva","Valeria.silva@tecnoit.com.br","Financeiro","Analista financeira","62 99553-6106"],
+  ["Victor Lima","victor.lima@tecnoit.com.br","Obras","Supervisor de Campo","62 9 9229-6343"],
+  ["Victor Teles","victor.teles@tecnoit.com.br","PMO","Analista Administrativo","62984002312"],
+  ["Victor Venâncio da Silva","victor.silva@tecnoit.com.br","Engenharia","Analista de projetos","62 992115451"],
+  ["Vinnicius Campagnuci","vinnicius.oliveira@tecnoit.com.br","Inovação","Desenvolvedor Backend","62 9 8339-2112"],
+  ["Wanderson Bruno Alves de Andrade","Wanderson.andrade@tecnoit.com.br","Engenharia","Técnico de Cabeamento",""],
+  ["Wellinton do Nascimento da Silva","Wellinton.Silva@tecnoit.com.br","Supply Chain","Assistente de estoque","31 9060-7335"],
+];
 
-            if (!libsLoaded) return <LoadingScreen message="Iniciando sistema..." />;
-            return <App />;
-        }
+const DEPT_COLORS={'TI':'#EEF2FF:#2563EB','Engenharia':'#F0FDF4:#16A34A','Comercial':'#FFF7ED:#EA580C','Supply Chain':'#FDF4FF:#9333EA','Obras':'#FFF1F2:#E11D48','Financeiro':'#ECFEFF:#0891B2','Recursos Humanos':'#FFF7ED:#D97706','PMO':'#F0F9FF:#0284C7','Diretoria':'#0F1B2D:#fff','Inovação':'#ECFDF5:#059669','Service Desk':'#F5F3FF:#7C3AED','Operação':'#FEF9C3:#CA8A04','RH':'#FFF7ED:#D97706'};
+const deptColor=dept=>{const k=Object.keys(DEPT_COLORS).find(k=>dept.toLowerCase().includes(k.toLowerCase()));if(!k)return{bg:'#F8FAFB',color:'#6B7280'};const[bg,color]=DEPT_COLORS[k].split(':');return{bg,color}};
+const AVATAR_COLORS=['#2563EB','#16A34A','#9333EA','#E11D48','#0891B2','#D97706','#059669','#7C3AED'];
+const avatarColor=name=>AVATAR_COLORS[name.charCodeAt(0)%AVATAR_COLORS.length];
+const initials=name=>{const p=name.trim().split(' ');return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():name.slice(0,2).toUpperCase()};
 
-        const APP_VERSION = '1.1.0';
+// ─── APP WRAPPER ──────────────────────────────────────────────────────────────
+function AppWrapper(){
+  const[ready,setReady]=useState(false);
+  useEffect(()=>{
+    Promise.all([import(firebaseAppUrl),import(firebaseAuthUrl)])
+      .then(([app,auth])=>{window.firebase={app,auth};setReady(true)});
+  },[]);
+  if(!ready)return<LoadingScreen message="Iniciando sistema..."/>;
+  return<App/>;
+}
 
-        function App() {
-            const { initializeApp } = window.firebase.app;
-            const { getAuth, onAuthStateChanged, signInAnonymously } = window.firebase.auth;
-            const app = useMemo(() => initializeApp(firebaseConfig), []);
-            const auth = useMemo(() => getAuth(app), [app]);
+function App(){
+  const{initializeApp}=window.firebase.app;
+  const{getAuth,onAuthStateChanged,signInAnonymously}=window.firebase.auth;
+  const app=useMemo(()=>initializeApp(firebaseConfig),[]);
+  const auth=useMemo(()=>getAuth(app),[app]);
+  const[view,setView]=useState('login');
+  const[user,setUser]=useState(null);
+  const[glpiSession,setGlpiSession]=useState(null);
+  const[isLoading,setIsLoading]=useState(true);
+  const[selectedTicketId,setSelectedTicketId]=useState(null);
 
-            // App State
-            const [view, setView] = useState('login'); // login, dashboard, ticketDetail
-            const [user, setUser] = useState(null); // Firebase User
-            const [glpiSession, setGlpiSession] = useState(null); // { sessionToken, fullSessionData, glpiUrl }
-            const [isLoading, setIsLoading] = useState(true);
-            const [selectedTicketId, setSelectedTicketId] = useState(null);
+  useEffect(()=>{
+    const unsub=onAuthStateChanged(auth,async u=>{if(u)setUser(u);else await signInAnonymously(auth)});
+    return unsub;
+  },[auth]);
 
-            // Init Firebase Auth (Anonymous for simplicity as we use GLPI Auth)
-            useEffect(() => {
-                const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-                    if (currentUser) {
-                        setUser(currentUser);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                });
-                return () => unsubscribe();
-            }, [auth]);
+  useEffect(()=>{
+    if(!user)return;
+    const v=localStorage.getItem('appVersion');
+    if(v!==APP_VERSION){localStorage.removeItem('glpiSessionData');localStorage.setItem('appVersion',APP_VERSION)}
+    const saved=localStorage.getItem('glpiSessionData');
+    if(saved){try{setGlpiSession(JSON.parse(saved));setView('dashboard')}catch{}}
+    setIsLoading(false);
+  },[user]);
 
-            // Check for saved GLPI Session on startup & Cache Busting
-            useEffect(() => {
-                const checkSession = async () => {
-                   // Check Version to force refresh if needed
-                   const savedVersion = localStorage.getItem('appVersion');
-                   if (savedVersion !== APP_VERSION) {
-                       console.log("New version detected. Clearing old session.");
-                       localStorage.removeItem('glpiSessionData');
-                       localStorage.setItem('appVersion', APP_VERSION);
-                   }
+  const handleLogin=sess=>{setGlpiSession(sess);localStorage.setItem('glpiSessionData',JSON.stringify(sess));setView('dashboard')};
+  const handleLogout=()=>{setGlpiSession(null);localStorage.removeItem('glpiSessionData');setView('login')};
 
-                   const savedCreds = localStorage.getItem('glpiSessionData');
-                   if (savedCreds) {
-                       try {
-                           const parsed = JSON.parse(savedCreds);
-                           setGlpiSession(parsed);
-                           setView('dashboard');
-                       } catch (e) {
-                           localStorage.removeItem('glpiSessionData');
-                       }
-                   }
-                   setIsLoading(false);
-                };
-                if (user) checkSession();
-            }, [user]);
+  if(isLoading)return<LoadingScreen message="Verificando sessão..."/>;
+  if(view==='login')return<LoginScreen onLogin={handleLogin}/>;
+  if(isDesktop()&&view==='dashboard')return<DesktopApp session={glpiSession} onLogout={handleLogout}/>;
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100dvh',background:'#f8fafc'}}>
+      {view==='dashboard'&&<MobileDashboard session={glpiSession} onTicket={id=>{setSelectedTicketId(id);setView('ticketDetail')}} onLogout={handleLogout}/>}
+      {view==='ticketDetail'&&<TicketDetail session={glpiSession} ticketId={selectedTicketId} onBack={()=>setView('dashboard')}/>}
+    </div>
+  );
+}
 
-            const handleLoginSuccess = (sessionData) => {
-                setGlpiSession(sessionData);
-                localStorage.setItem('glpiSessionData', JSON.stringify(sessionData));
-                setView('dashboard');
-            };
+// ─── LOADING ──────────────────────────────────────────────────────────────────
+function LoadingScreen({message}){
+  return<div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100dvh',background:'#F0F2F5',gap:16}}><Spinner size={36}/><div style={{fontSize:15,color:'#6B7280',fontWeight:500}}>{message}</div></div>;
+}
 
-            const handleLogout = () => {
-                setGlpiSession(null);
-                localStorage.removeItem('glpiSessionData');
-                setView('login');
-            };
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+function LoginScreen({onLogin}){
+  const[username,setUsername]=useState(localStorage.getItem('glpiUsername')||'');
+  const[password,setPassword]=useState('');
+  const[showPass,setShowPass]=useState(false);
+  const[remember,setRemember]=useState(true);
+  const[loading,setLoading]=useState(false);
+  const[error,setError]=useState('');
+  const[entities,setEntities]=useState([]);
+  const[pendingSess,setPendingSess]=useState(null);
+  const[selEntity,setSelEntity]=useState(null);
+  const glpiUrl='https://suporte.tecnoit.com.br';
+  const desk=isDesktop();
 
-            if (isLoading) return <LoadingScreen message="Verificando sessão..." />;
+  const handleSubmit=async e=>{
+    e.preventDefault();setLoading(true);setError('');
+    try{
+      const res=await fetch(`${PROXY}/initSession`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,username,password,get_full_session:true})});
+      const data=await res.json();
+      if(!res.ok)throw new Error(data.message||'Falha na autenticação');
+      if(remember)localStorage.setItem('glpiUsername',username);else localStorage.removeItem('glpiUsername');
+      let fullSession=data.session?.glpimy_entities?data.session:null;
+      if(!fullSession){const sRes=await fetch(`${PROXY}/getFullSession`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken:data.session_token})});if(!sRes.ok)throw new Error('Erro ao carregar perfil');fullSession=(await sRes.json()).session}
+      const rawEnt=fullSession.glpimy_entities;const parsed=[];
+      if(Array.isArray(rawEnt))rawEnt.forEach(e=>parsed.push({id:e.id,name:e.completename||e.name}));
+      else if(typeof rawEnt==='object')Object.values(rawEnt).forEach(e=>{if(typeof e==='object')parsed.push({id:e.id,name:e.completename||e.name})});
+      parsed.sort((a,b)=>a.name.localeCompare(b.name));
+      if(parsed.length>1){setEntities(parsed);setPendingSess({sessionToken:data.session_token,fullSessionData:fullSession,glpiUrl})}
+      else onLogin({sessionToken:data.session_token,fullSessionData:fullSession,glpiUrl});
+    }catch(err){setError(err.message)}finally{setLoading(false)}
+  };
 
-            return (
-                <div className="flex flex-col h-full bg-slate-50">
-                     {view === 'login' && <LoginScreen onLogin={handleLoginSuccess} />}
-                     {view === 'dashboard' && <Dashboard session={glpiSession} onNavigate={(v, id) => { if(id) setSelectedTicketId(id); setView(v); }} onLogout={handleLogout} />}
-                     {view === 'ticketDetail' && <TicketDetail session={glpiSession} ticketId={selectedTicketId} onBack={() => setView('dashboard')} />}
-                </div>
-            );
-        }
+  const confirmEntity=async()=>{
+    if(!selEntity)return;setLoading(true);
+    try{const res=await fetch(`${PROXY}/changeActiveEntity`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken:pendingSess.sessionToken,entities_id:selEntity})});if(!res.ok)throw new Error('Falha ao mudar entidade');pendingSess.fullSessionData.glpiactive_entity=selEntity;onLogin(pendingSess)}
+    catch(e){setError(e.message);setLoading(false)}
+  };
 
-        const LoadingScreen = ({ message }) => (
-             <div className="flex flex-col items-center justify-center h-full bg-slate-50">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-lg font-medium text-slate-600 animate-pulse">{message}</p>
+  if(entities.length>0)return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100dvh',background:desk?'#F0F2F5':'#fff'}}>
+      <div style={{background:'#fff',borderRadius:desk?20:0,padding:32,width:desk?420:'100%',boxShadow:desk?'0 20px 60px rgba(15,27,45,.12)':'none'}}>
+        <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:'#0F1B2D',marginBottom:4}}>Selecione o Perfil</div>
+        <div style={{fontSize:14,color:'#9BABB8',marginBottom:20}}>Qual entidade deseja acessar?</div>
+        <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:300,overflowY:'auto',marginBottom:16}}>
+          {entities.map(ent=><button key={ent.id} onClick={()=>setSelEntity(ent.id)} style={{padding:'12px 16px',borderRadius:12,border:`2px solid ${selEntity===ent.id?'#2563EB':'#E8ECF0'}`,background:selEntity===ent.id?'#EEF2FF':'#fff',color:selEntity===ent.id?'#1D4ED8':'#1E2D3D',fontWeight:600,fontSize:14,cursor:'pointer',textAlign:'left'}}>{ent.name}</button>)}
+        </div>
+        {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:10,color:'#DC2626',fontSize:13,marginBottom:12}}>{error}</div>}
+        <button onClick={confirmEntity} disabled={loading||!selEntity} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontSize:15,fontWeight:700,cursor:loading||!selEntity?'not-allowed':'pointer',opacity:loading||!selEntity?.6:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          {loading?<Spinner size={20} color="#fff"/>:'ENTRAR'}
+        </button>
+      </div>
+    </div>
+  );
+
+  if(desk)return(
+    <div style={{display:'flex',width:'100%',height:'100dvh',overflow:'hidden'}}>
+      <div style={{width:'45%',background:'linear-gradient(160deg,#0F1B2D 0%,#1E3A5F 100%)',display:'flex',flexDirection:'column',justifyContent:'center',padding:'60px 48px',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',top:-80,right:-80,width:300,height:300,borderRadius:'50%',background:'rgba(37,99,235,.1)'}}/>
+        <div style={{position:'absolute',bottom:-60,left:-60,width:200,height:200,borderRadius:'50%',background:'rgba(96,165,250,.08)'}}/>
+        <img src="assets/logo.png" alt="TecnoIT" style={{height:40,filter:'brightness(0) invert(1)',opacity:.9,marginBottom:40}} onError={e=>e.target.style.display='none'}/>
+        <div style={{fontFamily:'Syne,sans-serif',fontSize:36,fontWeight:800,color:'#fff',lineHeight:1.15,marginBottom:16,letterSpacing:'-0.02em'}}>Field Service<br/>Portal</div>
+        <div style={{fontSize:15,color:'#4A7FA5',lineHeight:1.6,maxWidth:320}}>Gestão de chamados, inventário e equipe em um só lugar.</div>
+        <div style={{marginTop:48,display:'flex',flexDirection:'column',gap:12}}>
+          {['Chamados em tempo real','Inventário de equipamentos','Catálogo de usuários'].map(f=>(
+            <div key={f} style={{display:'flex',alignItems:'center',gap:10,fontSize:14,color:'#8AB4D4'}}>
+              <div style={{width:20,height:20,borderRadius:'50%',background:'rgba(37,99,235,.3)',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="check" size={12} color="#60A5FA"/></div>{f}
             </div>
-        );
+          ))}
+        </div>
+      </div>
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+        <div style={{width:'100%',maxWidth:400}}>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:24,fontWeight:700,color:'#0F1B2D',marginBottom:6}}>Bem-vindo de volta</div>
+          <div style={{fontSize:14,color:'#9BABB8',marginBottom:32}}>Acesse com suas credenciais de rede</div>
+          <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:16}}>
+            <FieldInput icon="user" label="USUÁRIO" value={username} onChange={e=>setUsername(e.target.value)} placeholder="usuário de rede" autoComplete="username"/>
+            <div>
+              <label style={{display:'block',fontSize:12,fontWeight:700,color:'#4A6380',marginBottom:6,letterSpacing:'.04em',textTransform:'uppercase'}}>SENHA</label>
+              <div style={{position:'relative'}}>
+                <div style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="lock" size={16} color="#9BABB8"/></div>
+                <input type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••"
+                  style={{width:'100%',padding:'12px 40px 12px 38px',borderRadius:12,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB',color:'#0F1B2D'}}/>
+                <button type="button" onClick={()=>setShowPass(!showPass)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',padding:4}}>
+                  <Icon name={showPass?'eyeoff':'eye'} size={16} color="#9BABB8"/>
+                </button>
+              </div>
+            </div>
+            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}>
+              <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:16,height:16,accentColor:'#2563EB'}}/>
+              <span style={{fontSize:13,color:'#6B7280'}}>Lembrar usuário</span>
+            </label>
+            {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:10,color:'#DC2626',fontSize:13}}>{error}</div>}
+            <button type="submit" disabled={loading} style={{padding:14,borderRadius:12,border:'none',background:'linear-gradient(135deg,#1D4ED8,#2563EB)',color:'#fff',fontSize:15,fontWeight:700,cursor:loading?'wait':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:'0 4px 16px rgba(37,99,235,.35)',marginTop:8}}>
+              {loading?<Spinner size={20} color="#fff"/>:<><Icon name="logout" size={18} color="#fff"/>ENTRAR</>}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
 
-        // --- 1. LOGIN SIMPLIFICADO ---
-        function LoginScreen({ onLogin }) {
-            const [username, setUsername] = useState('');
-            const [password, setPassword] = useState('');
-            const [showPassword, setShowPassword] = useState(false);
-            const [rememberMe, setRememberMe] = useState(true);
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState('');
+  return(
+    <div style={{width:'100%',height:'100dvh',display:'flex',flexDirection:'column',justifyContent:'center',padding:24,background:'#fff'}}>
+      <div style={{textAlign:'center',marginBottom:32}}>
+        <img src="assets/logo.png" alt="TecnoIT" style={{height:52,margin:'0 auto 12px',display:'block'}} onError={e=>e.target.style.display='none'}/>
+        <div style={{fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:700,color:'#0F1B2D'}}>Acesso Técnico</div>
+        <div style={{fontSize:14,color:'#9BABB8',marginTop:4}}>Field Service</div>
+      </div>
+      <form onSubmit={handleSubmit} style={{background:'#fff',borderRadius:20,padding:24,border:'1px solid #E8ECF0',display:'flex',flexDirection:'column',gap:16}}>
+        <FieldInput icon="user" label="Usuário" value={username} onChange={e=>setUsername(e.target.value)} placeholder="usuário de rede" autoComplete="username"/>
+        <div>
+          <label style={{display:'block',fontSize:13,fontWeight:600,color:'#4A6380',marginBottom:6}}>Senha</label>
+          <div style={{position:'relative'}}>
+            <div style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="lock" size={16} color="#9BABB8"/></div>
+            <input type={showPass?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} required placeholder="••••••••"
+              style={{width:'100%',padding:'12px 40px 12px 38px',borderRadius:12,border:'1px solid #E8ECF0',fontSize:16,outline:'none',background:'#F8FAFB'}}/>
+            <button type="button" onClick={()=>setShowPass(!showPass)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',padding:4}}>
+              <Icon name={showPass?'eyeoff':'eye'} size={16} color="#9BABB8"/>
+            </button>
+          </div>
+        </div>
+        <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer'}}>
+          <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} style={{width:18,height:18,accentColor:'#2563EB'}}/>
+          <span style={{fontSize:14,color:'#6B7280'}}>Lembrar meu usuário</span>
+        </label>
+        {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:10,color:'#DC2626',fontSize:13}}>{error}</div>}
+        <button type="submit" disabled={loading} style={{padding:14,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontSize:16,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          {loading?<Spinner size={20} color="#fff"/>:'ENTRAR'}
+        </button>
+      </form>
+    </div>
+  );
+}
 
-            // Entity Selection State
-            const [showEntitySelect, setShowEntitySelect] = useState(false);
-            const [entities, setEntities] = useState([]);
-            const [pendingSession, setPendingSession] = useState(null);
-            const [selectedEntityId, setSelectedEntityId] = useState(null);
+function FieldInput({icon,label,value,onChange,placeholder,autoComplete}){
+  return(
+    <div>
+      <label style={{display:'block',fontSize:12,fontWeight:700,color:'#4A6380',marginBottom:6,letterSpacing:'.04em',textTransform:'uppercase'}}>{label}</label>
+      <div style={{position:'relative'}}>
+        <div style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name={icon} size={16} color="#9BABB8"/></div>
+        <input type="text" value={value} onChange={onChange} placeholder={placeholder} autoCapitalize="none" autoComplete={autoComplete} required
+          style={{width:'100%',padding:'12px 14px 12px 38px',borderRadius:12,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB',color:'#0F1B2D'}}/>
+      </div>
+    </div>
+  );
+}
 
-            useEffect(() => {
-                const savedUser = localStorage.getItem('glpiUsername');
-                if (savedUser) setUsername(savedUser);
-            }, []);
+// ─── DESKTOP APP ──────────────────────────────────────────────────────────────
+function DesktopApp({session,onLogout}){
+  const[tab,setTab]=useState('tickets');
+  const[selectedTicketId,setSelectedTicketId]=useState(null);
+  const{fullSessionData}=session;
+  const userName=fullSessionData?.glpifirstname||'Técnico';
+  const userLast=fullSessionData?.glpirealname||'';
+  const ini=(userName[0]||'')+(userLast[0]||'');
 
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setLoading(true); setError('');
+  return(
+    <div style={{display:'flex',height:'100dvh',width:'100vw',overflow:'hidden'}}>
+      <aside className="sidebar">
+        <div style={{padding:'24px 20px 16px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
+          <img src="assets/logo.png" alt="TecnoIT" style={{height:28,filter:'brightness(0) invert(1)',opacity:.9}} onError={e=>e.target.style.display='none'}/>
+          <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,color:'#fff',marginTop:6,letterSpacing:'-0.02em'}}>TecnoIT</div>
+          <div style={{fontSize:10,color:'#2D4A66',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',marginTop:2}}>Field Service Portal</div>
+        </div>
+        <nav style={{flex:1,padding:'16px 0'}}>
+          <div style={{fontSize:10,color:'#2D4A66',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 20px 4px'}}>Principal</div>
+          {[{id:'tickets',icon:'ticket',label:'Chamados'},{id:'inventory',icon:'box',label:'Inventário'},{id:'users',icon:'users',label:'Usuários'}].map(item=>(
+            <div key={item.id} className={`nav-item ${tab===item.id?'active':''}`} onClick={()=>{setTab(item.id);setSelectedTicketId(null)}}>
+              <Icon name={item.icon} size={18} color="currentColor"/>{item.label}
+            </div>
+          ))}
+        </nav>
+        <div style={{padding:16,borderTop:'1px solid rgba(255,255,255,.06)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+            <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#2563EB,#60A5FA)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{ini||userName[0]}</div>
+            <div style={{overflow:'hidden'}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#fff',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{userName} {userLast}</div>
+              <div style={{fontSize:11,color:'#4A6380'}}>Field Service</div>
+            </div>
+          </div>
+          <button onClick={onLogout} style={{width:'100%',padding:'8px 12px',background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.2)',borderRadius:8,color:'#F87171',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+            <Icon name="logout" size={14} color="#F87171"/>Sair
+          </button>
+        </div>
+      </aside>
+      <div className="main-content">
+        {tab==='tickets'&&!selectedTicketId&&<DesktopTickets session={session} onTicket={id=>setSelectedTicketId(id)}/>}
+        {tab==='tickets'&&selectedTicketId&&<TicketDetail session={session} ticketId={selectedTicketId} onBack={()=>setSelectedTicketId(null)} desktop/>}
+        {tab==='inventory'&&<DesktopInventory session={session}/>}
+        {tab==='users'&&<DesktopUsers/>}
+      </div>
+    </div>
+  );
+}
 
-                try {
-                    const glpiUrl = 'https://suporte.tecnoit.com.br';
+// ─── DESKTOP TICKETS ──────────────────────────────────────────────────────────
+function DesktopTickets({session,onTicket}){
+  const{sessionToken,fullSessionData,glpiUrl}=session;
+  const userId=fullSessionData?.glpiID?parseInt(fullSessionData.glpiID):0;
+  const[tickets,setTickets]=useState([]);
+  const[loading,setLoading]=useState(true);
+  const[filter,setFilter]=useState('all');
+  const[search,setSearch]=useState('');
+  const[range,setRange]=useState(100);
 
-                    const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/initSession', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, username, password, get_full_session: true })
-                    });
+  const load=async()=>{
+    setLoading(true);
+    try{const res=await fetch(`${PROXY}/getTickets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,range:`0-${range-1}`})});const data=await res.json();setTickets(data.tickets||[])}
+    catch(e){console.error(e)}finally{setLoading(false)}
+  };
+  useEffect(()=>{load()},[range]);
 
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.message || 'Falha na autenticação');
+  const filtered=tickets.filter(t=>{
+    const s=t.status;
+    const ms=!search||t.name?.toLowerCase().includes(search.toLowerCase())||String(t.id).includes(search);
+    if(!ms)return false;
+    if(filter==='me')return t.users_id_assign===userId||t.users_id_recipient===userId;
+    if(filter==='open')return s===1||s===2||s===3;
+    if(filter==='pending')return s===4;
+    if(filter==='solved')return s===5||s===6;
+    return true;
+  });
 
-                    if (rememberMe) localStorage.setItem('glpiUsername', username);
-                    else localStorage.removeItem('glpiUsername');
+  const stats=[
+    {label:'Total',value:tickets.length,color:'#2563EB',dot:'#2563EB'},
+    {label:'Em andamento',value:tickets.filter(t=>t.status===1||t.status===2||t.status===3).length,color:'#E65100',dot:'#F97316'},
+    {label:'Pendentes',value:tickets.filter(t=>t.status===4).length,color:'#6A1B9A',dot:'#A855F7'},
+    {label:'Finalizados',value:tickets.filter(t=>t.status===5||t.status===6).length,color:'#2E7D32',dot:'#22C55E'},
+  ];
 
-                    let fullSession = null;
+  return(
+    <>
+      <div className="desktop-topbar">
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:'#0F1B2D',letterSpacing:'-0.02em'}}>Chamados</div>
+          <div style={{fontSize:13,color:'#9BABB8',marginTop:2}}>{tickets.length} chamados carregados</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{position:'relative'}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar chamado..." style={{padding:'8px 12px 8px 34px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:13,width:240,outline:'none',background:'#F8FAFB',color:'#1E2D3D'}}/>
+            <div style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="search" size={14} color="#9BABB8"/></div>
+          </div>
+          <button onClick={load} style={{padding:'8px 14px',borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#4A6380',fontWeight:500}}>
+            <Icon name="refresh" size={14} color="#4A6380"/>Atualizar
+          </button>
+        </div>
+      </div>
+      <div style={{flex:1,overflow:'auto',padding:'20px 28px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:20}}>
+          {stats.map(s=>(
+            <div key={s.label} className="stat-card fade-in">
+              <div style={{display:'flex',alignItems:'center'}}><span className="stat-dot" style={{background:s.dot}}/><span className="stat-label">{s.label}</span></div>
+              <div className="stat-value" style={{color:s.color}}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:6,marginBottom:16}}>
+          {[{id:'all',label:'Todos'},{id:'me',label:'Para mim'},{id:'open',label:'Em andamento'},{id:'pending',label:'Pendentes'},{id:'solved',label:'Finalizados'}].map(f=>(
+            <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'6px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:13,fontWeight:600,transition:'all .15s',background:filter===f.id?'#2563EB':'#fff',color:filter===f.id?'#fff':'#6B7280',boxShadow:filter===f.id?'0 2px 8px rgba(37,99,235,.25)':'0 1px 3px rgba(0,0,0,.06)'}}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div style={{background:'#fff',borderRadius:14,border:'1px solid #E8ECF0',overflow:'hidden'}}>
+          <table className="ticket-table">
+            <thead><tr><th style={{width:80}}>ID</th><th>Título</th><th style={{width:140}}>Status</th><th style={{width:160}}>Data</th><th style={{width:120}}>Modificado</th></tr></thead>
+            <tbody>
+              {loading?<tr><td colSpan="5" style={{textAlign:'center',padding:48,color:'#9BABB8'}}><div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12}}><Spinner/><span>Carregando chamados...</span></div></td></tr>
+              :filtered.length===0?<tr><td colSpan="5" style={{textAlign:'center',padding:48,color:'#9BABB8'}}><Icon name="ticket" size={32} color="#D0D8E4"/><div style={{marginTop:8}}>Nenhum chamado encontrado</div></td></tr>
+              :filtered.map(t=>{const st=statusInfo(t.status);return(
+                <tr key={t.id} onClick={()=>onTicket(t.id)}>
+                  <td><span className="mono" style={{fontSize:12,color:'#2563EB',fontWeight:500}}>#{t.id}</span></td>
+                  <td><div style={{fontWeight:500,color:'#0F1B2D',maxWidth:480,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.name}</div></td>
+                  <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
+                  <td style={{fontSize:12,color:'#9BABB8'}}>{t.date}</td>
+                  <td style={{fontSize:12,color:'#9BABB8'}}>{t.date_mod||'—'}</td>
+                </tr>
+              )})}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&tickets.length>0&&(
+          <div style={{display:'flex',alignItems:'center',gap:8,marginTop:16,color:'#9BABB8',fontSize:13}}>
+            <span>Exibindo até</span>
+            <select value={range} onChange={e=>setRange(Number(e.target.value))} style={{padding:'4px 8px',border:'1px solid #E8ECF0',borderRadius:6,fontSize:13,color:'#1E2D3D',background:'#fff',cursor:'pointer'}}>
+              <option value={50}>50</option><option value={100}>100</option><option value={200}>200</option>
+            </select>
+            <span>chamados</span>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
 
-                    // STRICT CHECK: Ensure glpimy_entities is present.
-                    // If the "Fast Login" returns session but NO entities, we MUST fetch full session.
-                    if (data.session && data.session.glpimy_entities) {
-                        fullSession = data.session;
-                    } else {
-                        // Fallback to Full Fetch if entities are missing
-                        const sessionRes = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getFullSession', {
-                            method: 'POST',
-                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ glpiUrl, sessionToken: data.session_token })
-                        });
+// ─── DESKTOP INVENTÁRIO ───────────────────────────────────────────────────────
+function DesktopInventory({session}){
+  const{sessionToken,glpiUrl}=session;
+  const[type,setType]=useState('Computer');
+  const[devices,setDevices]=useState([]);
+  const[loading,setLoading]=useState(false);
+  const[search,setSearch]=useState('');
+  const[showAdd,setShowAdd]=useState(false);
+  const typeMap=[{id:'Computer',label:'Computadores',icon:'monitor'},{id:'NetworkEquipment',label:'Rede',icon:'wifi'},{id:'Printer',label:'Impressoras',icon:'printer'},{id:'Peripheral',label:'Periféricos',icon:'cpu'}];
 
-                        if(!sessionRes.ok) throw new Error('Erro ao carregar perfil do usuário');
-                        fullSession = (await sessionRes.json()).session;
-                    }
+  const load=async()=>{
+    setLoading(true);
+    try{const res=await fetch(`${PROXY}/getInventory`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,range:'0-200'})});if(res.ok){const data=await res.json();setDevices(Array.isArray(data)?data:[])}else setDevices([])}
+    catch{setDevices([])}finally{setLoading(false)}
+  };
+  useEffect(()=>{load()},[type]);
 
-                    // Parse entities
-                    const rawEntities = fullSession.glpimy_entities;
-                    const parsedEntities = [];
-                    // Handle recursive structure or simple array
-                    if (Array.isArray(rawEntities)) {
-                        rawEntities.forEach(e => parsedEntities.push({ id: e.id, name: e.completename || e.name }));
-                    } else if (typeof rawEntities === 'object') {
-                         // Iterate values
-                         Object.values(rawEntities).forEach(e => {
-                             if(typeof e === 'object') parsedEntities.push({ id: e.id, name: e.completename || e.name });
-                             else parsedEntities.push({ id: e, name: e }); // Primitive?
-                         });
-                    }
-                    parsedEntities.sort((a,b) => a.name.localeCompare(b.name));
+  const filtered=devices.filter(d=>!search||(d.name||'').toLowerCase().includes(search.toLowerCase())||(d.serial||'').toLowerCase().includes(search.toLowerCase()));
+  const curTypeIcon=typeMap.find(t=>t.id===type)?.icon||'box';
 
-                    if (parsedEntities.length > 1) {
-                        setEntities(parsedEntities);
-                        setPendingSession({ sessionToken: data.session_token, fullSessionData: fullSession, glpiUrl });
-                        setShowEntitySelect(true);
-                    } else {
-                        onLogin({
-                            sessionToken: data.session_token,
-                            fullSessionData: fullSession,
-                            glpiUrl
-                        });
-                    }
+  return(
+    <>
+      <div className="desktop-topbar">
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:'#0F1B2D',letterSpacing:'-0.02em'}}>Inventário</div>
+          <div style={{fontSize:13,color:'#9BABB8',marginTop:2}}>{filtered.length} dispositivos</div>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <div style={{position:'relative'}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar dispositivo..." style={{padding:'8px 12px 8px 34px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:13,width:220,outline:'none',background:'#F8FAFB'}}/>
+            <div style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="search" size={14} color="#9BABB8"/></div>
+          </div>
+          <button onClick={()=>setShowAdd(true)} style={{padding:'8px 18px',borderRadius:10,background:'#2563EB',border:'none',color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+            <Icon name="plus" size={15} color="#fff"/>Adicionar
+          </button>
+        </div>
+      </div>
+      <div style={{flex:1,overflow:'auto',padding:'20px 28px'}}>
+        <div style={{display:'flex',gap:8,marginBottom:20}}>
+          {typeMap.map(t=>(
+            <button key={t.id} onClick={()=>setType(t.id)} style={{padding:'8px 18px',borderRadius:10,border:'1px solid',cursor:'pointer',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',gap:7,transition:'all .15s',background:type===t.id?'#0F1B2D':'#fff',color:type===t.id?'#fff':'#6B7280',borderColor:type===t.id?'#0F1B2D':'#E8ECF0'}}>
+              <Icon name={t.icon} size={14} color={type===t.id?'#60A5FA':'#9BABB8'}/>{t.label}
+            </button>
+          ))}
+        </div>
+        {loading?<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:200}}><Spinner/></div>
+        :filtered.length===0?<div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:200,color:'#9BABB8',gap:10}}>
+          <Icon name="box" size={36} color="#D0D8E4"/><span>Nenhum dispositivo encontrado</span>
+          <span style={{fontSize:12,textAlign:'center',maxWidth:360}}>O servidor precisa expor o endpoint <code>/getInventory</code> — adapte conforme seu proxy.</span>
+        </div>
+        :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
+          {filtered.map((d,i)=>(
+            <div key={i} className="device-card fade-in">
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+                <div style={{width:36,height:36,borderRadius:8,background:'#EEF2FF',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Icon name={curTypeIcon} size={18} color="#2563EB"/>
+                </div>
+                <div>
+                  <div style={{fontWeight:600,color:'#0F1B2D',fontSize:14}}>{d.name||'Sem nome'}</div>
+                  <div className="mono" style={{fontSize:11,color:'#9BABB8'}}>{d.serial||'S/N não informado'}</div>
+                </div>
+              </div>
+              {d.otherserial&&<div style={{fontSize:12,color:'#6B7280'}}>Inventário: <span className="mono">{d.otherserial}</span></div>}
+              {d.locations_id&&<div style={{fontSize:12,color:'#6B7280',marginTop:2}}>Local: {d.locations_id}</div>}
+            </div>
+          ))}
+        </div>}
+      </div>
+      {showAdd&&<AddDeviceModal session={session} type={type} onClose={()=>{setShowAdd(false);load()}}/>}
+    </>
+  );
+}
 
-                } catch (err) {
-                    setError(err.message);
-                } finally {
-                    setLoading(false);
-                }
-            };
+function AddDeviceModal({session,type,onClose}){
+  const{sessionToken,glpiUrl}=session;
+  const[form,setForm]=useState({name:'',serial:'',otherserial:'',comment:''});
+  const[saving,setSaving]=useState(false);
+  const[error,setError]=useState('');
+  const labels={Computer:'Computador',NetworkEquipment:'Equipamento de Rede',Printer:'Impressora',Peripheral:'Periférico'};
 
-            const confirmEntitySelection = async () => {
-                if (!selectedEntityId) return;
-                setLoading(true);
-                try {
-                     const { sessionToken, glpiUrl } = pendingSession;
-                     const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/changeActiveEntity', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ glpiUrl, sessionToken, entities_id: selectedEntityId })
-                     });
-                     if (!res.ok) throw new Error("Falha ao mudar entidade");
+  const save=async()=>{
+    if(!form.name.trim()){setError('Nome é obrigatório');return}
+    setSaving(true);setError('');
+    try{const res=await fetch(`${PROXY}/createInventory`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,data:form})});if(res.ok)onClose();else{const d=await res.json();setError(d.message||`Erro ${res.status}`)}}
+    catch(e){setError(e.message)}finally{setSaving(false)}
+  };
 
-                     // Update active entity in session data locally
-                     pendingSession.fullSessionData.glpiactive_entity = selectedEntityId;
-                     onLogin(pendingSession);
-                } catch (e) {
-                    setError(e.message);
-                    setLoading(false);
-                }
-            };
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(15,27,45,.5)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(2px)'}}>
+      <div className="fade-in" style={{background:'#fff',borderRadius:16,padding:28,width:480,boxShadow:'0 20px 60px rgba(15,27,45,.2)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+          <div>
+            <div style={{fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,color:'#0F1B2D'}}>Novo {labels[type]}</div>
+            <div style={{fontSize:13,color:'#9BABB8',marginTop:2}}>Preencha os dados do dispositivo</div>
+          </div>
+          <button onClick={onClose} style={{padding:8,borderRadius:8,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer'}}><Icon name="x" size={16} color="#6B7280"/></button>
+        </div>
+        {[{k:'name',label:'Nome *',ph:'Nome do dispositivo'},{k:'serial',label:'Número de série',ph:'Ex: SN123456'},{k:'otherserial',label:'Nº inventário',ph:'Ex: INV-001'},{k:'comment',label:'Observações',ph:'Informações adicionais'}].map(f=>(
+          <div key={f.k} style={{marginBottom:14}}>
+            <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>{f.label}</label>
+            <input value={form[f.k]} onChange={e=>setForm({...form,[f.k]:e.target.value})} placeholder={f.ph}
+              style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none',color:'#0F1B2D',background:'#F8FAFB'}}/>
+          </div>
+        ))}
+        {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:8,color:'#DC2626',fontSize:13,marginBottom:14}}>{error}</div>}
+        <div style={{display:'flex',gap:10,marginTop:8}}>
+          <button onClick={onClose} style={{flex:1,padding:11,borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',fontSize:14,color:'#6B7280',fontWeight:600}}>Cancelar</button>
+          <button onClick={save} disabled={saving} style={{flex:2,padding:11,borderRadius:10,border:'none',background:'#2563EB',cursor:saving?'wait':'pointer',fontSize:14,color:'#fff',fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            {saving?<><Spinner size={16} color="#fff"/>Salvando...</>:'Salvar dispositivo'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            if (showEntitySelect) {
-                return (
-                    <div className="flex-1 flex flex-col justify-center p-6 max-w-md mx-auto w-full">
-                        <div className="text-center mb-6">
-                             <h1 className="text-xl font-bold text-slate-800">Selecione o Perfil</h1>
-                             <p className="text-slate-500">Qual entidade você deseja acessar?</p>
-                        </div>
-                        <div className="space-y-3 max-h-[50vh] overflow-y-auto mb-6">
-                            {entities.map(ent => (
-                                <button key={ent.id} onClick={() => setSelectedEntityId(ent.id)}
-                                    className={`w-full text-left p-4 border rounded-xl transition-all font-medium ${selectedEntityId === ent.id ? 'bg-blue-100 border-blue-500 text-blue-800 ring-2 ring-blue-200' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
-                                    {ent.name}
-                                </button>
-                            ))}
-                        </div>
+// ─── DESKTOP USUÁRIOS ─────────────────────────────────────────────────────────
+function DesktopUsers(){
+  const[search,setSearch]=useState('');
+  const[deptFilter,setDeptFilter]=useState('Todos');
+  const depts=['Todos',...Array.from(new Set(USERS.map(u=>u[2]).filter(Boolean))).sort()];
+  const filtered=USERS.filter(u=>{
+    const q=search.toLowerCase();
+    return(!search||u[0].toLowerCase().includes(q)||u[1].toLowerCase().includes(q)||u[3].toLowerCase().includes(q))&&(deptFilter==='Todos'||u[2]===deptFilter);
+  });
 
-                        {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium text-center mb-4">{error}</div>}
-
-                        <button onClick={confirmEntitySelection} disabled={loading || !selectedEntityId}
-                            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 touch-btn flex items-center justify-center transition-all disabled:opacity-50 disabled:shadow-none">
-                            {loading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "ENTRAR"}
-                        </button>
-                    </div>
+  return(
+    <>
+      <div className="desktop-topbar">
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,color:'#0F1B2D',letterSpacing:'-0.02em'}}>Usuários</div>
+          <div style={{fontSize:13,color:'#9BABB8',marginTop:2}}>{filtered.length} de {USERS.length} usuários</div>
+        </div>
+        <div style={{position:'relative'}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome, e-mail ou cargo..." style={{padding:'8px 12px 8px 34px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:13,width:280,outline:'none',background:'#F8FAFB'}}/>
+          <div style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}><Icon name="search" size={14} color="#9BABB8"/></div>
+        </div>
+      </div>
+      <div style={{flex:1,overflow:'auto',padding:'20px 28px'}}>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:20}}>
+          {depts.slice(0,14).map(d=>(
+            <button key={d} onClick={()=>setDeptFilter(d)} style={{padding:'5px 12px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:12,fontWeight:600,transition:'all .15s',whiteSpace:'nowrap',background:deptFilter===d?'#0F1B2D':'#fff',color:deptFilter===d?'#fff':'#6B7280',borderColor:deptFilter===d?'#0F1B2D':'#E8ECF0'}}>
+              {d}
+            </button>
+          ))}
+        </div>
+        <div style={{background:'#fff',borderRadius:14,border:'1px solid #E8ECF0',overflow:'hidden'}}>
+          <table className="ticket-table">
+            <thead><tr><th>Nome</th><th>E-mail</th><th style={{width:180}}>Departamento</th><th>Cargo</th><th style={{width:160}}>Telefone</th></tr></thead>
+            <tbody>
+              {filtered.map((u,i)=>{
+                const dc=deptColor(u[2]||'');
+                return(
+                  <tr key={i}>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <div style={{width:32,height:32,borderRadius:'50%',background:avatarColor(u[0]),display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(u[0])}</div>
+                        <span style={{fontWeight:500,color:'#0F1B2D'}}>{u[0]}</span>
+                      </div>
+                    </td>
+                    <td><a href={`mailto:${u[1]}`} className="mono" style={{fontSize:12,color:'#2563EB',textDecoration:'none'}}>{u[1]}</a></td>
+                    <td>{u[2]&&<span style={{background:dc.bg,color:dc.color,padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700}}>{u[2]}</span>}</td>
+                    <td style={{color:'#4A6380',fontSize:13}}>{u[3]}</td>
+                    <td>{u[4]&&<a href={`tel:${u[4]}`} className="mono" style={{fontSize:12,color:'#0F1B2D',textDecoration:'none'}}>{u[4]}</a>}</td>
+                  </tr>
                 );
-            }
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
 
-            return (
-                <div className="flex-1 flex flex-col justify-center p-6 max-w-md mx-auto w-full">
-                    <div className="text-center mb-10">
-                         <img src="assets/logo.png" alt="Logo" className="h-16 mx-auto mb-4 object-contain" />
-                         <h1 className="text-2xl font-bold text-slate-800">Acesso Técnico</h1>
-                         <p className="text-slate-500">Field Service</p>
-                    </div>
+// ─── MOBILE DASHBOARD ─────────────────────────────────────────────────────────
+function MobileDashboard({session,onTicket,onLogout}){
+  const{sessionToken,fullSessionData,glpiUrl}=session;
+  const userName=fullSessionData?.glpifirstname||'Técnico';
+  const userId=fullSessionData?.glpiID?parseInt(fullSessionData.glpiID):0;
+  const[tab,setTab]=useState('tickets');
+  const[tickets,setTickets]=useState([]);
+  const[filter,setFilter]=useState('new');
+  const[loading,setLoading]=useState(true);
+  const[range,setRange]=useState(50);
+  const[showSearch,setShowSearch]=useState(false);
+  const[searchText,setSearchText]=useState('');
 
-                    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">Usuário</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    {User && <User className="h-5 w-5 text-slate-400" />}
-                                </div>
-                                <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                                    className="pl-10 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                    placeholder="Seu usuário de rede" autoCapitalize="none" autoComplete="username" inputMode="text" required />
-                            </div>
-                        </div>
+  useEffect(()=>{
+    if(tab!=='tickets')return;
+    setLoading(true);
+    fetch(`${PROXY}/getTickets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,range:`0-${range-1}`})})
+      .then(r=>r.json()).then(d=>setTickets(d.tickets||[])).catch(console.error).finally(()=>setLoading(false));
+  },[range,tab]);
 
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">Senha</label>
-                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    {Lock && <Lock className="h-5 w-5 text-slate-400" />}
-                                </div>
-                                <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
-                                    className="pl-10 pr-12 w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                                    placeholder="Sua senha" autoComplete="current-password" required />
-                                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
-                                    {showPassword ? (EyeOff && <EyeOff className="h-5 w-5"/>) : (Eye && <Eye className="h-5 w-5"/>)}
-                                </button>
-                            </div>
-                        </div>
+  const filteredTickets=tickets.filter(t=>{
+    const s=t.status;
+    const ms=!searchText||t.name?.toLowerCase().includes(searchText.toLowerCase())||String(t.id).includes(searchText);
+    if(!ms)return false;
+    if(filter==='me')return t.users_id_assign===userId||t.users_id_recipient===userId;
+    if(filter==='new')return s===1||s===2||s===3;
+    if(filter==='pending')return s===4;
+    if(filter==='solved')return s===5||s===6;
+    return true;
+  });
 
-                        <div className="flex items-center">
-                            <input id="remember-me" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
-                                className="h-5 w-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500" />
-                            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700 font-medium">Lembrar meu usuário</label>
-                        </div>
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100dvh',background:'#F8FAFB'}}>
+      <header style={{background:'#fff',padding:'12px 16px',boxShadow:'0 1px 3px rgba(0,0,0,.06)',zIndex:10,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+        {showSearch?(
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:8}}>
+            <input autoFocus value={searchText} onChange={e=>setSearchText(e.target.value)} style={{flex:1,padding:'8px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none'}} placeholder="Buscar ID ou título..."/>
+            <button onClick={()=>{setShowSearch(false);setSearchText('')}} style={{background:'none',border:'none',color:'#6B7280',cursor:'pointer',fontSize:14,fontWeight:600}}>Cancelar</button>
+          </div>
+        ):(
+          <>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#2563EB,#60A5FA)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff'}}>{userName[0]}</div>
+              <div><div style={{fontWeight:700,fontSize:14,color:'#0F1B2D',lineHeight:1.2}}>{userName}</div><div style={{fontSize:10,color:'#9BABB8',fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase'}}>Field Service</div></div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setShowSearch(true)} style={{padding:8,border:'1px solid #E8ECF0',borderRadius:10,background:'#fff',cursor:'pointer'}}><Icon name="search" size={16} color="#6B7280"/></button>
+              <button onClick={onLogout} style={{padding:'6px 12px',borderRadius:10,background:'#FEF2F2',border:'none',color:'#DC2626',fontSize:12,fontWeight:700,cursor:'pointer'}}>Sair</button>
+            </div>
+          </>
+        )}
+      </header>
 
-                        {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg font-medium text-center">{error}</div>}
-
-                        <button type="submit" disabled={loading}
-                            className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 touch-btn flex items-center justify-center transition-all disabled:opacity-70">
-                            {loading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <span className="flex items-center gap-2 text-lg">ENTRAR {LogIn && <LogIn className="w-5 h-5" />}</span>}
-                        </button>
-                    </form>
+      <div style={{flex:1,overflow:'auto'}}>
+        {tab==='tickets'&&(
+          <>
+            <div style={{display:'flex',gap:8,padding:'12px 16px',overflowX:'auto',background:'#fff',borderBottom:'1px solid #F0F2F5',flexShrink:0}} className="no-scrollbar">
+              {[{id:'me',label:'Para Mim'},{id:'new',label:'Em Andamento'},{id:'pending',label:'Pendentes'},{id:'solved',label:'Finalizados'}].map(f=>(
+                <button key={f.id} onClick={()=>setFilter(f.id)} style={{padding:'7px 16px',borderRadius:20,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap',flexShrink:0,background:filter===f.id?'#2563EB':'#F0F2F5',color:filter===f.id?'#fff':'#6B7280'}}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div style={{padding:'12px',display:'flex',flexDirection:'column',gap:10}}>
+              {loading?<div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:200,gap:12,color:'#9BABB8'}}><Spinner/><span>Carregando chamados...</span></div>
+              :filteredTickets.length===0?<div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:200,gap:10,color:'#9BABB8'}}><Icon name="ticket" size={32} color="#D0D8E4"/><span>Nenhum chamado encontrado.</span></div>
+              :filteredTickets.map(t=>{const st=statusInfo(t.status);return(
+                <div key={t.id} onClick={()=>onTicket(t.id)} style={{background:'#fff',borderRadius:14,padding:'14px 16px',border:'1px solid #E8ECF0',cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.04)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:6}}>
+                    <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14,lineHeight:1.3,flex:1}}>{t.name}</div>
+                    <span className="mono" style={{fontSize:11,color:'#2563EB',background:'#EEF2FF',padding:'2px 7px',borderRadius:6,fontWeight:600,flexShrink:0}}>#{t.id}</span>
+                  </div>
+                  {t.content&&<div style={{fontSize:12,color:'#9BABB8',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',marginBottom:8}} dangerouslySetInnerHTML={{__html:t.content}}/>}
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:8,borderTop:'1px solid #F0F2F5'}}>
+                    <span style={{fontSize:11,color:'#9BABB8'}}>📅 {t.date_mod||t.date}</span>
+                    <span className={`badge ${st.cls}`} style={{fontSize:11}}>{st.label}</span>
+                  </div>
                 </div>
-            );
-        }
-
-        // --- 3. TICKET DETAIL & RESPONSE ---
-        function TicketDetail({ session, ticketId, onBack }) {
-            const { sessionToken, glpiUrl } = session;
-            const [ticket, setTicket] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [responseContent, setResponseContent] = useState('');
-            const [evidence, setEvidence] = useState(null); // File object
-            const [responseType, setResponseType] = useState('comment'); // 'comment' | 'solution'
-
-            // Technical Data
-            // Initialized as strings to detect "empty" vs "0"
-            const [techData, setTechData] = useState({
-                ponto: '',
-                alcas: '',
-                esticador: '',
-                conector: '',
-                metragemInicial: '',
-                metragemFinal: '',
-                drop: '',
-                extras: ''
-            });
-            const [showHelp, setShowHelp] = useState(false);
-
-            const metragemGasta = useMemo(() => {
-                // Handle commas for Brazilian locale inputs
-                const clean = (val) => String(val).replace(',', '.');
-                const i = parseFloat(clean(techData.metragemInicial));
-                const f = parseFloat(clean(techData.metragemFinal));
-                if (isNaN(i) || isNaN(f)) return 0;
-                // Use absolute difference as spools may count up or down
-                return Math.abs(f - i).toFixed(2);
-            }, [techData.metragemInicial, techData.metragemFinal]);
-
-            // Stock Logic
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [stockItems, setStockItems] = useState([]);
-            const [availableStock, setAvailableStock] = useState([]);
-            const [selectedStockId, setSelectedStockId] = useState('');
-            const [customItemName, setCustomItemName] = useState('');
-            const [stockQty, setStockQty] = useState(1);
-            const [isSubmitting, setIsSubmitting] = useState(false);
-
-            // Fetch Detail
-            useEffect(() => {
-                const load = async () => {
-                    try {
-                        const res = await fetch(`https://portal-tecnoit-glpi.onrender.com/api/proxy/getTicketDetails/${ticketId}`, {
-                             method: 'POST',
-                             headers: { 'Content-Type': 'application/json' },
-                             body: JSON.stringify({ glpiUrl, sessionToken })
-                        });
-                        if(res.ok) setTicket(await res.json());
-                    } catch(e) { console.error(e); } finally { setLoading(false); }
-                };
-                load();
-
-                // Fetch Stock
-                fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getConsumables', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ glpiUrl, sessionToken })
-                })
-                .then(r => {
-                    if (!r.ok) throw new Error("Erro ao buscar insumos");
-                    return r.json();
-                })
-                .then(data => {
-                    if (Array.isArray(data)) setAvailableStock(data);
-                    else console.error("Invalid stock data", data);
-                })
-                .catch(console.error);
-
-            }, [ticketId]);
-
-            // Handlers
-            const handleAddStock = () => {
-                 if (!selectedStockId || stockQty <= 0) return;
-                 let itemName = '', itemId = selectedStockId;
-                 if (selectedStockId === 'other') {
-                     if (!customItemName.trim()) return alert("Digite o nome.");
-                     itemName = customItemName; itemId = 'custom-' + Date.now();
-                 } else {
-                     const item = availableStock.find(s => String(s.id) === String(selectedStockId));
-                     if (!item) return; itemName = item.name;
-                 }
-                 setStockItems(prev => [...prev, { id: itemId, name: itemName, qty: stockQty }]);
-                 setSelectedStockId(''); setCustomItemName(''); setStockQty(1); setIsModalOpen(false);
-            };
-
-            const handleSubmit = async () => {
-                if(!responseContent) return alert("Digite a descrição da ação realizada.");
-
-                const isSolving = responseType === 'solution';
-
-                // Validation for Solution
-                if (isSolving) {
-                    const requiredFields = [
-                        { k: 'ponto', label: 'Ponto' },
-                        { k: 'drop', label: 'Drop' },
-                        { k: 'alcas', label: 'Alças' },
-                        { k: 'esticador', label: 'Esticador' },
-                        { k: 'conector', label: 'Conector' },
-                        { k: 'metragemInicial', label: 'Metragem Inicial' },
-                        { k: 'metragemFinal', label: 'Metragem Final' }
-                    ];
-
-                    for (let f of requiredFields) {
-                        if (techData[f.k] === '' || techData[f.k] === null || techData[f.k] === undefined) {
-                            return alert(`O campo '${f.label}' é obrigatório (use "0" se necessário).`);
-                        }
-                    }
-
-                    if (!evidence) return alert("É obrigatório anexar uma evidência (foto).");
-                }
-
-                setIsSubmitting(true);
-                try {
-                    let finalContent = "";
-
-                    if (isSolving) {
-                        // Format Technical Data as HTML Table
-                        finalContent += `
-                            <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background-color: #f9f9f9;">
-                                <h3 style="margin-top:0; color: #333;">📋 Dados Técnicos</h3>
-                                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                                    <tr><td style="padding: 4px; font-weight:bold;">Ponto:</td><td>${techData.ponto}</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Drop:</td><td>${techData.drop}</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Alças:</td><td>${techData.alcas}</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Esticador:</td><td>${techData.esticador}</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Conector:</td><td>${techData.conector}</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Metragem Inicial:</td><td>${techData.metragemInicial}m</td></tr>
-                                    <tr><td style="padding: 4px; font-weight:bold;">Metragem Final:</td><td>${techData.metragemFinal}m</td></tr>
-                                    <tr style="background-color: #eef;"><td style="padding: 4px; font-weight:bold;">Metragem Gasta:</td><td><b>${metragemGasta}m</b></td></tr>
-                                    ${techData.extras ? `<tr><td style="padding: 4px; font-weight:bold;">Extras:</td><td>${techData.extras}</td></tr>` : ''}
-                                </table>
-                            </div>
-                            <div style="margin-bottom: 10px;">
-                                <strong>Ação Realizada:</strong><br/>
-                                ${responseContent.replace(/\n/g, '<br>')}
-                            </div>
-                        `;
-                    } else {
-                        finalContent = responseContent.replace(/\n/g, '<br>');
-                    }
-
-                    // Upload Evidence if exists
-                    // Note: In a real app we upload first, then link.
-                    // For this prototype, we'll assume the proxy handles upload if we passed it, but our current proxy 'respondTicket' doesn't handle multipart.
-                    // We must upload separately if evidence exists.
-                    if (evidence) {
-                        const formData = new FormData();
-                        formData.append('file', evidence);
-                        formData.append('glpiUrl', glpiUrl);
-                        formData.append('sessionToken', sessionToken);
-
-                        const uploadRes = await fetch(`https://portal-tecnoit-glpi.onrender.com/api/proxy/uploadDocument/${ticketId}`, {
-                             method: 'POST',
-                             body: formData
-                        });
-
-                        if (uploadRes.ok) {
-                             finalContent += `<br><i>[Evidência anexada: ${evidence.name}]</i>`;
-                        } else {
-                            throw new Error("Falha ao enviar evidência.");
-                        }
-                    }
-
-                    const payload = {
-                        glpiUrl, sessionToken, ticketId,
-                        content: finalContent,
-                        status: isSolving ? 5 : 2, // 5=Solved, 2=Processing
-                        stockItems,
-                        entities_id: ticket.entities_id
-                    };
-
-                    const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/respondTicket', {
-                        method: 'POST', headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(payload)
-                    });
-
-                    const data = await res.json();
-                    if (!res.ok || (data.errors && data.errors.length > 0)) {
-                        let msg = data.message || "Erro ao responder.";
-                        if (data.errors) msg += "\n" + data.errors.join("\n");
-                        throw new Error(msg);
-                    }
-
-                    alert(isSolving ? "Chamado solucionado!" : "Resposta enviada!");
-                    onBack();
-                } catch(e) { alert("Erro: " + e.message); } finally { setIsSubmitting(false); }
-            };
-
-            if(loading) return <LoadingScreen message="Carregando chamado..." />;
-            if(!ticket) return <div className="p-4">Erro ao carregar. <button onClick={onBack}>Voltar</button></div>;
-
-            return (
-                <div className="flex flex-col h-full bg-slate-50">
-                    {/* Header */}
-                    <div className="bg-white p-4 shadow-sm flex items-center justify-between z-20">
-                         <div className="flex items-center gap-4">
-                             <button onClick={onBack} className="p-2 -ml-2 text-slate-500 rounded-full"><ChevronDown className="w-6 h-6 rotate-90" /></button>
-                             <div>
-                                 <h2 className="text-lg font-bold text-slate-800 leading-tight">Chamado #{ticket.id}</h2>
-                                 <p className="text-xs text-slate-500">{ticket.name}</p>
-                             </div>
-                         </div>
-                         <button onClick={() => setShowHelp(true)} className="p-2 text-blue-600 bg-blue-50 rounded-full font-bold w-10 h-10 flex items-center justify-center">?</button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {/* Info Card */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                             <div className="flex justify-between mb-2">
-                                <span className="text-xs font-bold px-2 py-1 bg-blue-100 text-blue-700 rounded-md">Status: {ticket.status}</span>
-                                <span className="text-xs text-slate-400">{ticket.date}</span>
-                             </div>
-                             <div className="text-sm text-slate-600" dangerouslySetInnerHTML={{__html: ticket.content}} />
-                        </div>
-
-                        {/* Response Type Toggle */}
-                        <div className="flex p-1 bg-slate-200 rounded-lg">
-                            <button onClick={() => setResponseType('comment')}
-                                className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${responseType === 'comment' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>
-                                Comentário
-                            </button>
-                            <button onClick={() => setResponseType('solution')}
-                                className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${responseType === 'solution' ? 'bg-green-600 text-white shadow-sm' : 'text-slate-500'}`}>
-                                Solucionar
-                            </button>
-                        </div>
-
-                        {/* Response Form */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-4">
-
-                            {/* Technical Fields (Only for Solution) */}
-                            {responseType === 'solution' && (
-                                <div className="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200 animate-fade-in">
-                                    <h4 className="font-bold text-slate-700 text-sm">Dados Técnicos <span className="text-red-500">* Obrigatórios</span></h4>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Ponto <span className="text-red-500">*</span></label>
-                                            <input type="text" value={techData.ponto} onChange={e => setTechData({...techData, ponto: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Nome/ID" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Drop <span className="text-red-500">*</span></label>
-                                            <input type="text" value={techData.drop} onChange={e => setTechData({...techData, drop: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Tipo/Metros" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Alças <span className="text-red-500">*</span></label>
-                                            <input type="number" min="0" value={techData.alcas} onChange={e => setTechData({...techData, alcas: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Esticador <span className="text-red-500">*</span></label>
-                                            <input type="number" min="0" value={techData.esticador} onChange={e => setTechData({...techData, esticador: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Conector <span className="text-red-500">*</span></label>
-                                            <input type="number" min="0" value={techData.conector} onChange={e => setTechData({...techData, conector: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Qtd" />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Metr. Inicial <span className="text-red-500">*</span></label>
-                                            <input type="number" min="0" value={techData.metragemInicial} onChange={e => setTechData({...techData, metragemInicial: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Metros" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-slate-500">Metr. Final <span className="text-red-500">*</span></label>
-                                            <input type="number" min="0" value={techData.metragemFinal} onChange={e => setTechData({...techData, metragemFinal: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Metros" />
-                                        </div>
-                                    </div>
-
-                                    <div className="p-2 bg-blue-50 text-blue-800 rounded text-center text-sm font-bold">
-                                        Gasto: {metragemGasta}m
-                                    </div>
-
-                                    <div>
-                                        <label className="text-xs font-semibold text-slate-500">Materiais Extras</label>
-                                        <input type="text" value={techData.extras} onChange={e => setTechData({...techData, extras: e.target.value})} className="w-full p-2 border rounded-lg bg-white" placeholder="Ex: Fita isolante, Parafusos..." />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div>
-                                <h3 className="font-bold text-slate-700 flex items-center gap-2 mb-2">
-                                    <RefreshCw className="w-4 h-4"/> {responseType === 'solution' ? 'Descrição da Solução / Ação Realizada' : 'Comentário'}
-                                </h3>
-                                <textarea value={responseContent} onChange={e => setResponseContent(e.target.value)}
-                                    className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 h-32 outline-none focus:ring-2 focus:ring-blue-500"
-                                    placeholder={responseType === 'solution' ? "Descreva o que foi feito..." : "Escreva sua mensagem..."} />
-                            </div>
-
-                             {/* Evidence - Mandatory for Solution */}
-                             <div>
-                                 <label className={`block text-sm font-semibold mb-1 ${responseType === 'solution' && !evidence ? 'text-red-600' : 'text-slate-700'}`}>
-                                     {responseType === 'solution' ? 'Evidência (Obrigatório) *' : 'Evidência (Opcional)'}
-                                 </label>
-                                 <input type="file" onChange={e => setEvidence(e.target.files[0])}
-                                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                             </div>
-                        </div>
-
-                        {/* Stock (Consumables) */}
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-                             <div className="flex justify-between items-center">
-                                 <h3 className="font-bold text-slate-700 flex items-center gap-2"><Box className="w-4 h-4"/> Insumos do Sistema</h3>
-                                 <button onClick={() => setIsModalOpen(true)} className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">+ Add</button>
-                             </div>
-                             {stockItems.length === 0 && <p className="text-xs text-slate-400">Nenhum insumo selecionado.</p>}
-                             {stockItems.map((item, i) => (
-                                 <div key={i} className="flex justify-between text-sm p-2 bg-slate-50 rounded border border-slate-100">
-                                     <span>{item.qty}x {item.name}</span>
-                                     <span className="text-red-500" onClick={() => setStockItems(p => p.filter((_, idx) => idx !== i))}>X</span>
-                                 </div>
-                             ))}
-                        </div>
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="bg-white p-4 border-t border-slate-200 shadow-lg z-20">
-                        <button onClick={handleSubmit} disabled={isSubmitting}
-                            className={`w-full font-bold py-4 rounded-xl shadow-lg transition-all ${
-                                responseType === 'solution'
-                                ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
-                                : 'bg-slate-700 hover:bg-slate-800 text-white shadow-slate-300'
-                            }`}>
-                            {isSubmitting ? 'Enviando...' : (responseType === 'solution' ? 'FINALIZAR CHAMADO' : 'ENVIAR RESPOSTA')}
-                        </button>
-                    </div>
-
-                    {/* Help/Onboarding Modal */}
-                    {showHelp && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fade-in">
-                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
-                                <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
-
-                                <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <span className="bg-blue-100 text-blue-600 p-2 rounded-lg"><RefreshCw className="w-5 h-5"/></span>
-                                    Como Responder?
-                                </h3>
-
-                                <div className="space-y-4">
-                                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                        <h4 className="font-bold text-slate-700 mb-1">📝 Comentário</h4>
-                                        <p className="text-sm text-slate-500 leading-relaxed">
-                                            Use esta opção para dúvidas, avisos ou interações parciais. O chamado <b>não será encerrado</b> e continuará pendente.
-                                        </p>
-                                    </div>
-
-                                    <div className="p-3 bg-green-50 rounded-xl border border-green-100">
-                                        <h4 className="font-bold text-green-800 mb-1">✅ Solucionar</h4>
-                                        <p className="text-sm text-green-700 leading-relaxed">
-                                            Use para <b>finalizar</b> o serviço. É obrigatório preencher todos os dados técnicos (Ponto, Drop, Metragens...) e anexar a foto da evidência.
-                                        </p>
-                                        <p className="text-xs text-green-600 mt-2 font-bold">
-                                            * Se usou 0 materiais, preencha com "0".
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <button onClick={() => setShowHelp(false)} className="w-full mt-6 bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200">
-                                    Entendi
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stock Modal (Simplified) */}
-                    {isModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                            <div className="bg-white w-full max-w-sm rounded-2xl p-6 space-y-4">
-                                <h3>Adicionar Insumo</h3>
-                                <select value={selectedStockId} onChange={e => setSelectedStockId(e.target.value)} className="w-full p-3 border rounded-xl">
-                                    <option value="">Selecione...</option>
-                                    {availableStock.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    <option value="other">Outro...</option>
-                                </select>
-                                {selectedStockId === 'other' && <input value={customItemName} onChange={e => setCustomItemName(e.target.value)} placeholder="Nome" className="w-full p-3 border rounded-xl" />}
-                                <input type="number" value={stockQty} onChange={e => setStockQty(e.target.value)} className="w-full p-3 border rounded-xl" />
-                                <div className="flex gap-2">
-                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 p-3 bg-slate-100 rounded-xl">Cancelar</button>
-                                    <button onClick={handleAddStock} className="flex-1 p-3 bg-blue-600 text-white rounded-xl">Salvar</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+              )})}
+              {!loading&&tickets.length>0&&(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'8px 0',color:'#9BABB8',fontSize:13}}>
+                  <span>Exibir:</span>
+                  <select value={range} onChange={e=>setRange(Number(e.target.value))} style={{padding:'4px 8px',border:'1px solid #E8ECF0',borderRadius:6,fontSize:13,color:'#1E2D3D',background:'#fff'}}>
+                    <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option>
+                  </select>
                 </div>
-            );
-        }
+              )}
+            </div>
+          </>
+        )}
+        {tab==='inventory'&&(
+          <div style={{padding:24,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:300,gap:12,color:'#9BABB8',textAlign:'center'}}>
+            <Icon name="box" size={40} color="#D0D8E4"/>
+            <div style={{fontWeight:600,color:'#4A6380',fontSize:16}}>Inventário</div>
+            <div style={{fontSize:13}}>Consulte o inventário pelo portal desktop para experiência completa.</div>
+          </div>
+        )}
+        {tab==='users'&&<MobileUsers/>}
+      </div>
 
-        // --- 2. DASHBOARD (Ticket List) ---
-        function Dashboard({ session, onNavigate, onLogout }) {
-            const { sessionToken, fullSessionData, glpiUrl } = session;
-            const userName = fullSessionData?.glpifirstname || 'Técnico';
-            const userId = fullSessionData?.glpiID ? parseInt(fullSessionData.glpiID) : 0;
+      <nav style={{background:'#fff',borderTop:'1px solid #E8ECF0',display:'flex',flexShrink:0,height:60}}>
+        {[{id:'tickets',icon:'ticket',label:'Chamados'},{id:'inventory',icon:'box',label:'Inventário'},{id:'users',icon:'users',label:'Usuários'}].map(item=>(
+          <button key={item.id} onClick={()=>setTab(item.id)} style={{flex:1,border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,color:tab===item.id?'#2563EB':'#9BABB8',paddingBottom:2}}>
+            <Icon name={item.icon} size={20} color={tab===item.id?'#2563EB':'#9BABB8'}/>
+            <span style={{fontSize:10,fontWeight:tab===item.id?700:500}}>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
 
-            const [tickets, setTickets] = useState([]);
-            const [filter, setFilter] = useState('new'); // new, pending, solved, me
-            const [loading, setLoading] = useState(true);
-            const [range, setRange] = useState(50);
-            const [showSearch, setShowSearch] = useState(false);
-            const [searchText, setSearchText] = useState('');
+function MobileUsers(){
+  const[search,setSearch]=useState('');
+  const filtered=USERS.filter(u=>!search||u[0].toLowerCase().includes(search.toLowerCase())||u[2].toLowerCase().includes(search.toLowerCase())||u[3].toLowerCase().includes(search.toLowerCase()));
+  return(
+    <div style={{padding:12}}>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar nome ou departamento..." style={{width:'100%',padding:'10px 14px',borderRadius:12,border:'1px solid #E8ECF0',fontSize:14,outline:'none',marginBottom:12,background:'#fff'}}/>
+      <div style={{fontSize:12,color:'#9BABB8',marginBottom:10}}>{filtered.length} usuários</div>
+      {filtered.map((u,i)=>(
+        <div key={i} style={{background:'#fff',borderRadius:12,padding:'12px 14px',marginBottom:8,border:'1px solid #E8ECF0',display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:38,height:38,borderRadius:'50%',background:avatarColor(u[0]),display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(u[0])}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600,fontSize:14,color:'#0F1B2D'}}>{u[0]}</div>
+            <div style={{fontSize:12,color:'#6B7280'}}>{u[3]}</div>
+            <div style={{fontSize:11,color:'#9BABB8'}}>{u[2]}</div>
+          </div>
+          {u[4]&&<a href={`tel:${u[4]}`} style={{padding:8,borderRadius:10,background:'#EEF2FF',display:'flex',textDecoration:'none'}}><Icon name="users" size={14} color="#2563EB"/></a>}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-            // Fetch Tickets
-            useEffect(() => {
-                const load = async () => {
-                    setLoading(true);
-                    try {
-                        const res = await fetch('https://portal-tecnoit-glpi.onrender.com/api/proxy/getTickets', {
-                            method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ glpiUrl, sessionToken, range: `0-${range-1}` })
-                        });
-                        const data = await res.json();
-                        setTickets(data.tickets || []);
-                    } catch(e) { console.error(e); } finally { setLoading(false); }
-                };
-                load();
-            }, [glpiUrl, sessionToken, range]);
+// ─── TICKET DETAIL ────────────────────────────────────────────────────────────
+function TicketDetail({session,ticketId,onBack,desktop}){
+  const{sessionToken,glpiUrl}=session;
+  const[ticket,setTicket]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[responseContent,setResponseContent]=useState('');
+  const[evidence,setEvidence]=useState(null);
+  const[responseType,setResponseType]=useState('comment');
+  const[techData,setTechData]=useState({ponto:'',alcas:'',esticador:'',conector:'',metragemInicial:'',metragemFinal:'',drop:'',extras:''});
+  const[isSubmitting,setIsSubmitting]=useState(false);
+  const[stockItems,setStockItems]=useState([]);
+  const[availableStock,setAvailableStock]=useState([]);
+  const[selectedStockId,setSelectedStockId]=useState('');
+  const[customItemName,setCustomItemName]=useState('');
+  const[stockQty,setStockQty]=useState(1);
+  const[isModalOpen,setIsModalOpen]=useState(false);
+  const[showHelp,setShowHelp]=useState(false);
 
-            // Simple Filter Logic (Client-side for prototype)
-            // GLPI Status: 1=New, 2=Assign, 3=Plan, 4=Wait, 5=Solved, 6=Closed
-            const filteredTickets = tickets.filter(t => {
-                const s = t.status;
-                const matchesSearch = searchText ? (
-                    (t.name && t.name.toLowerCase().includes(searchText.toLowerCase())) ||
-                    (String(t.id).includes(searchText))
-                ) : true;
+  const metragemGasta=useMemo(()=>{
+    const clean=v=>String(v).replace(',','.');
+    const i=parseFloat(clean(techData.metragemInicial));const f=parseFloat(clean(techData.metragemFinal));
+    if(isNaN(i)||isNaN(f))return 0;return Math.abs(f-i).toFixed(2);
+  },[techData.metragemInicial,techData.metragemFinal]);
 
-                if (!matchesSearch) return false;
+  useEffect(()=>{
+    fetch(`${PROXY}/getTicketDetails/${ticketId}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken})})
+      .then(r=>r.ok?r.json():null).then(d=>{if(d)setTicket(d)}).finally(()=>setLoading(false));
+    fetch(`${PROXY}/getConsumables`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken})})
+      .then(r=>r.ok?r.json():[]).then(d=>{if(Array.isArray(d))setAvailableStock(d)}).catch(()=>{});
+  },[ticketId]);
 
-                if(filter === 'me') {
-                     // Check if I am the assigned technician (users_id_assign) or recipient
-                     // Note: GLPI response for users_id_assign can be int or array in some versions/contexts?
-                     // Assuming simple view returns basic fields. get_my_tickets usually filters by actor.
-                     // We check both for robustness.
-                     return (t.users_id_assign === userId || t.users_id_recipient === userId);
-                }
-                if(filter === 'new') return (s === 1 || s === 2 || s === 3); // Em atendimento
-                if(filter === 'pending') return s === 4; // Pendente
-                if(filter === 'solved') return (s === 5 || s === 6); // Solucionado
-                return true;
-            });
+  const handleAddStock=()=>{
+    if(!selectedStockId||stockQty<=0)return;
+    let name='',id=selectedStockId;
+    if(selectedStockId==='other'){if(!customItemName.trim())return;name=customItemName;id='custom-'+Date.now()}
+    else{const item=availableStock.find(s=>String(s.id)===String(selectedStockId));if(!item)return;name=item.name}
+    setStockItems(p=>[...p,{id,name,qty:stockQty}]);setSelectedStockId('');setCustomItemName('');setStockQty(1);setIsModalOpen(false);
+  };
 
-            return (
-                <div className="flex-1 flex flex-col h-full bg-slate-50">
-                    <header className="bg-white p-4 shadow-sm z-10 flex justify-between items-center sticky top-0">
-                        {showSearch ? (
-                            <div className="flex-1 flex items-center gap-2 animate-fade-in">
-                                <div className="relative flex-1">
-                                    <input autoFocus type="text" value={searchText} onChange={e => setSearchText(e.target.value)}
-                                        className="w-full pl-3 pr-8 py-2 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar ID ou Título..." />
-                                    {searchText && <button onClick={() => setSearchText('')} className="absolute right-2 top-2 text-slate-400"><X className="w-4 h-4"/></button>}
-                                </div>
-                                <button onClick={() => { setShowSearch(false); setSearchText(''); }} className="text-slate-500 font-medium text-sm">Cancelar</button>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex items-center gap-3">
-                                     <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold border-2 border-white shadow-sm">{userName.charAt(0)}</div>
-                                     <div className="flex flex-col">
-                                         <span className="font-bold text-slate-800 text-sm leading-tight">{userName}</span>
-                                         <span className="text-[10px] text-slate-500 font-medium tracking-wide">FIELD SERVICE</span>
-                                     </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button onClick={() => setShowSearch(true)} className="p-2 text-slate-600 bg-slate-50 rounded-full hover:bg-slate-100"><Search className="w-5 h-5"/></button>
-                                    <button onClick={onLogout} className="text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold">Sair</button>
-                                </div>
-                            </>
-                        )}
-                    </header>
+  const handleSubmit=async()=>{
+    if(!responseContent){alert('Digite a descrição.');return}
+    const isSolving=responseType==='solution';
+    if(isSolving){
+      for(const k of['ponto','drop','alcas','esticador','conector','metragemInicial','metragemFinal']){if(techData[k]===''){alert(`Campo obrigatório: ${k}`);return}}
+      if(!evidence){alert('Evidência obrigatória.');return}
+    }
+    setIsSubmitting(true);
+    try{
+      let finalContent='';
+      if(isSolving)finalContent=`<div style="border:1px solid #ddd;padding:10px;border-radius:8px;background:#f9f9f9;margin-bottom:15px"><h3 style="margin-top:0">📋 Dados Técnicos</h3><table style="width:100%;border-collapse:collapse;font-size:13px"><tr><td style="padding:4px;font-weight:bold">Ponto:</td><td>${techData.ponto}</td></tr><tr><td style="padding:4px;font-weight:bold">Drop:</td><td>${techData.drop}</td></tr><tr><td style="padding:4px;font-weight:bold">Alças:</td><td>${techData.alcas}</td></tr><tr><td style="padding:4px;font-weight:bold">Esticador:</td><td>${techData.esticador}</td></tr><tr><td style="padding:4px;font-weight:bold">Conector:</td><td>${techData.conector}</td></tr><tr><td style="padding:4px;font-weight:bold">Metr. Inicial:</td><td>${techData.metragemInicial}m</td></tr><tr><td style="padding:4px;font-weight:bold">Metr. Final:</td><td>${techData.metragemFinal}m</td></tr><tr style="background:#eef"><td style="padding:4px;font-weight:bold">Gasto:</td><td><b>${metragemGasta}m</b></td></tr>${techData.extras?`<tr><td style="padding:4px;font-weight:bold">Extras:</td><td>${techData.extras}</td></tr>`:''}</table></div><div><strong>Ação Realizada:</strong><br/>${responseContent.replace(/\n/g,'<br>')}</div>`;
+      else finalContent=responseContent.replace(/\n/g,'<br>');
+      if(evidence){const fd=new FormData();fd.append('file',evidence);fd.append('glpiUrl',glpiUrl);fd.append('sessionToken',sessionToken);const r=await fetch(`${PROXY}/uploadDocument/${ticketId}`,{method:'POST',body:fd});if(r.ok)finalContent+=`<br><i>[Evidência: ${evidence.name}]</i>`;else throw new Error('Falha ao enviar evidência.')}
+      const res=await fetch(`${PROXY}/respondTicket`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,ticketId,content:finalContent,status:isSolving?5:2,stockItems,entities_id:ticket?.entities_id})});
+      const data=await res.json();if(!res.ok)throw new Error(data.message||'Erro ao responder');
+      alert(isSolving?'Chamado solucionado!':'Resposta enviada!');onBack();
+    }catch(e){alert('Erro: '+e.message)}finally{setIsSubmitting(false)}
+  };
 
-                    {/* Filter Tabs */}
-                    <div className="flex px-4 py-3 gap-3 overflow-x-auto bg-white border-b border-slate-100 no-scrollbar">
-                        {[
-                            {id: 'me', label: 'Para Mim'},
-                            {id: 'new', label: 'Em Andamento'},
-                            {id: 'pending', label: 'Pendentes'},
-                            {id: 'solved', label: 'Finalizados'}
-                        ].map(tab => (
-                            <button key={tab.id} onClick={() => setFilter(tab.id)}
-                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${filter === tab.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
+  if(loading)return<LoadingScreen message="Carregando chamado..."/>;
+  if(!ticket)return<div style={{padding:24,textAlign:'center'}}><button onClick={onBack} style={{background:'none',border:'none',color:'#2563EB',cursor:'pointer',fontSize:14,fontWeight:600}}>← Voltar</button><p style={{color:'#9BABB8',marginTop:16}}>Erro ao carregar.</p></div>;
 
-                    {/* List */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {loading ? <p className="text-center text-slate-400 mt-10">Carregando chamados...</p> : (
-                            filteredTickets.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center mt-10 text-slate-400 gap-2">
-                                    <div className="bg-slate-100 p-4 rounded-full"><Box className="w-8 h-8 opacity-50"/></div>
-                                    <p>Nenhum chamado encontrado.</p>
-                                </div>
-                            ) :
-                            filteredTickets.map(t => (
-                                <div key={t.id} onClick={() => onNavigate('ticketDetail', t.id)}
-                                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 active:scale-98 transition-transform cursor-pointer hover:shadow-md">
-                                    <div className="flex justify-between items-start mb-1 gap-2">
-                                        <h4 className="font-bold text-slate-800 text-sm line-clamp-2 leading-snug flex-1">{t.name}</h4>
-                                        <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">#{t.id}</span>
-                                    </div>
-                                    <div className="text-xs text-slate-500 mb-3 line-clamp-2 h-8" dangerouslySetInnerHTML={{__html: t.content}}></div>
-                                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-50">
-                                        <div className="flex items-center gap-1 text-slate-400">
-                                            <span>📅 {t.date_mod || t.date}</span>
-                                        </div>
-                                        <span className={`px-2 py-0.5 rounded font-bold ${t.status === 5 || t.status === 6 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            {t.status === 5 || t.status === 6 ? 'Finalizado' : 'Aberto'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+  const st=statusInfo(ticket.status);
 
-                        {/* Pagination Control */}
-                        {!loading && tickets.length > 0 && (
-                            <div className="py-4 flex justify-center items-center gap-2 text-sm text-slate-500">
-                                <span>Exibir:</span>
-                                <select value={range} onChange={e => setRange(Number(e.target.value))} className="bg-white border border-slate-200 rounded p-1 font-bold">
-                                    <option value={10}>10</option>
-                                    <option value={25}>25</option>
-                                    <option value={50}>50</option>
-                                    <option value={100}>100</option>
-                                </select>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#F8FAFB'}}>
+      <div style={{background:'#fff',padding:'14px 20px',borderBottom:'1px solid #E8ECF0',display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+        <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',padding:4,display:'flex'}}><Icon name="back" size={20} color="#6B7280"/></button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'#0F1B2D',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>Chamado #{ticket.id}</div>
+          <div style={{fontSize:12,color:'#9BABB8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ticket.name}</div>
+        </div>
+        <span className={`badge ${st.cls}`}>{st.label}</span>
+        <button onClick={()=>setShowHelp(true)} style={{width:32,height:32,borderRadius:'50%',background:'#EEF2FF',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#2563EB',fontSize:14}}>?</button>
+      </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<AppWrapper />);
-    </script>
+      <div style={{flex:1,overflowY:'auto',padding:desktop?'20px 28px':16,display:'flex',flexDirection:'column',gap:14}}>
+        <div style={{background:'#fff',borderRadius:14,padding:16,border:'1px solid #E8ECF0'}}>
+          <div style={{fontSize:12,color:'#9BABB8',marginBottom:8}}>{ticket.date}</div>
+          <div style={{fontSize:14,color:'#4A6380',lineHeight:1.6}} dangerouslySetInnerHTML={{__html:ticket.content}}/>
+        </div>
+
+        <div style={{display:'flex',background:'#E8ECF0',borderRadius:12,padding:4,gap:4}}>
+          {[{id:'comment',label:'Comentário'},{id:'solution',label:'✅ Solucionar'}].map(opt=>(
+            <button key={opt.id} onClick={()=>setResponseType(opt.id)} style={{flex:1,padding:'8px',borderRadius:9,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,transition:'all .15s',background:responseType===opt.id?'#fff':'transparent',color:responseType===opt.id?(opt.id==='solution'?'#15803D':'#0F1B2D'):'#9BABB8',boxShadow:responseType===opt.id?'0 1px 4px rgba(0,0,0,.1)':'none'}}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {responseType==='solution'&&(
+          <div style={{background:'#fff',borderRadius:14,padding:16,border:'1px solid #E8ECF0'}}>
+            <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14,marginBottom:12}}>Dados Técnicos <span style={{color:'#DC2626'}}>* Obrigatórios</span></div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              {[{k:'ponto',label:'Ponto *',ph:'Nome/ID'},{k:'drop',label:'Drop *',ph:'Tipo/Metros'}].map(f=>(
+                <div key={f.k}><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>{f.label}</div><input value={techData[f.k]} onChange={e=>setTechData({...techData,[f.k]:e.target.value})} placeholder={f.ph} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
+              ))}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
+              {[{k:'alcas',label:'Alças *'},{k:'esticador',label:'Esticador *'},{k:'conector',label:'Conector *'}].map(f=>(
+                <div key={f.k}><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>{f.label}</div><input type="number" min="0" value={techData[f.k]} onChange={e=>setTechData({...techData,[f.k]:e.target.value})} placeholder="0" style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
+              ))}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              {[{k:'metragemInicial',label:'Metr. Inicial *'},{k:'metragemFinal',label:'Metr. Final *'}].map(f=>(
+                <div key={f.k}><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>{f.label}</div><input type="number" min="0" value={techData[f.k]} onChange={e=>setTechData({...techData,[f.k]:e.target.value})} placeholder="Metros" style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
+              ))}
+            </div>
+            <div style={{padding:'8px 12px',background:'#EEF2FF',borderRadius:8,textAlign:'center',fontSize:13,fontWeight:700,color:'#1D4ED8',marginBottom:10}}>Gasto: {metragemGasta}m</div>
+            <div><div style={{fontSize:11,fontWeight:600,color:'#4A6380',marginBottom:4}}>Extras</div><input value={techData.extras} onChange={e=>setTechData({...techData,extras:e.target.value})} placeholder="Ex: Fita isolante..." style={{width:'100%',padding:'8px 10px',borderRadius:8,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/></div>
+          </div>
+        )}
+
+        <div style={{background:'#fff',borderRadius:14,padding:16,border:'1px solid #E8ECF0',display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14}}>{responseType==='solution'?'Descrição da solução':'Comentário'}</div>
+          <textarea value={responseContent} onChange={e=>setResponseContent(e.target.value)} style={{width:'100%',padding:'10px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,minHeight:100,outline:'none',resize:'vertical',background:'#F8FAFB'}} placeholder={responseType==='solution'?'Descreva o que foi feito...':'Escreva sua mensagem...'}/>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:responseType==='solution'&&!evidence?'#DC2626':'#4A6380',marginBottom:6}}>{responseType==='solution'?'Evidência *':'Evidência (opcional)'}</div>
+            <input type="file" onChange={e=>setEvidence(e.target.files[0])} style={{display:'block',width:'100%',fontSize:13,color:'#6B7280'}}/>
+          </div>
+        </div>
+
+        <div style={{background:'#fff',borderRadius:14,padding:16,border:'1px solid #E8ECF0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+            <div style={{fontWeight:700,color:'#0F1B2D',fontSize:14}}>Insumos</div>
+            <button onClick={()=>setIsModalOpen(true)} style={{padding:'5px 12px',borderRadius:8,background:'#EEF2FF',border:'none',color:'#2563EB',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Adicionar</button>
+          </div>
+          {stockItems.length===0?<div style={{fontSize:13,color:'#9BABB8'}}>Nenhum insumo selecionado.</div>:stockItems.map((item,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 10px',background:'#F8FAFB',borderRadius:8,marginBottom:6,fontSize:13}}>
+              <span>{item.qty}x {item.name}</span>
+              <button onClick={()=>setStockItems(p=>p.filter((_,idx)=>idx!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'#DC2626',fontWeight:700}}>✕</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{background:'#fff',padding:'14px 20px',borderTop:'1px solid #E8ECF0',flexShrink:0}}>
+        <button onClick={handleSubmit} disabled={isSubmitting} style={{width:'100%',padding:14,borderRadius:12,border:'none',cursor:isSubmitting?'wait':'pointer',fontSize:15,fontWeight:700,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:responseType==='solution'?'linear-gradient(135deg,#15803D,#16A34A)':'linear-gradient(135deg,#1E3A5F,#2563EB)'}}>
+          {isSubmitting?<><Spinner size={18} color="#fff"/>Enviando...</>:(responseType==='solution'?'FINALIZAR CHAMADO':'ENVIAR RESPOSTA')}
+        </button>
+      </div>
+
+      {showHelp&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+          <div style={{background:'#fff',borderRadius:20,padding:24,width:'100%',maxWidth:400}}>
+            <div style={{fontWeight:700,fontSize:18,color:'#0F1B2D',marginBottom:16}}>Como responder?</div>
+            <div style={{background:'#F8FAFB',borderRadius:12,padding:14,marginBottom:12}}><div style={{fontWeight:700,marginBottom:4}}>📝 Comentário</div><div style={{fontSize:13,color:'#6B7280'}}>O chamado não será encerrado.</div></div>
+            <div style={{background:'#F0FDF4',borderRadius:12,padding:14,marginBottom:20}}><div style={{fontWeight:700,color:'#15803D',marginBottom:4}}>✅ Solucionar</div><div style={{fontSize:13,color:'#4B5563'}}>Preencha todos os dados técnicos e anexe a evidência. Use "0" se necessário.</div></div>
+            <button onClick={()=>setShowHelp(false)} style={{width:'100%',padding:12,borderRadius:12,border:'none',background:'#2563EB',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:14}}>Entendi</button>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+          <div style={{background:'#fff',borderRadius:20,padding:24,width:'100%',maxWidth:380,display:'flex',flexDirection:'column',gap:12}}>
+            <div style={{fontWeight:700,fontSize:16,color:'#0F1B2D'}}>Adicionar Insumo</div>
+            <select value={selectedStockId} onChange={e=>setSelectedStockId(e.target.value)} style={{padding:'10px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none'}}>
+              <option value="">Selecione...</option>
+              {availableStock.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              <option value="other">Outro...</option>
+            </select>
+            {selectedStockId==='other'&&<input value={customItemName} onChange={e=>setCustomItemName(e.target.value)} placeholder="Nome do item" style={{padding:'10px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none'}}/>}
+            <input type="number" min="1" value={stockQty} onChange={e=>setStockQty(e.target.value)} style={{padding:'10px 12px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none'}}/>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setIsModalOpen(false)} style={{flex:1,padding:10,borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',fontSize:14,fontWeight:600,color:'#6B7280'}}>Cancelar</button>
+              <button onClick={handleAddStock} style={{flex:2,padding:10,borderRadius:10,border:'none',background:'#2563EB',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:600}}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
+</script>
 </body>
 </html>
