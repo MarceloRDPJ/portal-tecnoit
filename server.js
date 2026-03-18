@@ -434,3 +434,238 @@ app.post('/api/proxy/respondTicket', async (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor proxy rodando na porta ${port}`);
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO: GESTÃO DE ATIVOS (INVENTÁRIO)
+// ═══════════════════════════════════════════════════════════════════
+
+// Rota: Listar todos os ativos (Computer, Phone, Monitor, Peripheral, etc.)
+app.post('/api/proxy/getAssets', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype = 'Computer', range = '0-199' } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.get(`${glpiUrl}/apirest.php/${itemtype}`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range, expand_dropdowns: true, with_infocoms: false }
+        });
+        const total = response.headers['content-range']
+            ? parseInt(response.headers['content-range'].split('/')[1], 10)
+            : (Array.isArray(response.data) ? response.data.length : 0);
+        res.json({ assets: Array.isArray(response.data) ? response.data : [], total });
+    } catch (error) {
+        const status = error.response?.status;
+        if (status === 206 || status === 200) {
+            res.json({ assets: error.response?.data || [], total: 0 });
+        } else {
+            res.status(status || 500).json({ message: `Falha ao buscar ${itemtype}.`, error: error.response?.data });
+        }
+    }
+});
+
+// Rota: Detalhes de um ativo específico
+app.post('/api/proxy/getAssetDetail', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype, id } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.get(`${glpiUrl}/apirest.php/${itemtype}/${id}`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { expand_dropdowns: true, with_infocoms: true, with_components: true, with_disks: true, with_softwares: false, with_connections: true, with_networkports: false, with_devices: true }
+        });
+        res.json(response.data);
+    } catch (error) {
+        res.status(error.response?.status || 500).json({ message: 'Falha ao buscar detalhes.' });
+    }
+});
+
+// Rota: Buscar usuários do GLPI (para vincular responsável)
+app.post('/api/proxy/getUsers', async (req, res) => {
+    const { glpiUrl, sessionToken, search = '' } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const params = { range: '0-999', expand_dropdowns: true };
+        if (search) {
+            params['searchText[name]'] = `%${search}%`;
+        }
+        const response = await axios.get(`${glpiUrl}/apirest.php/User`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params
+        });
+        const users = (Array.isArray(response.data) ? response.data : []).map(u => ({
+            id: u.id,
+            name: u.name,
+            realname: u.realname || '',
+            firstname: u.firstname || '',
+            display: `${u.firstname || ''} ${u.realname || ''}`.trim() || u.name,
+            email: u.email || ''
+        }));
+        res.json(users);
+    } catch (error) {
+        res.status(error.response?.status || 500).json({ message: 'Falha ao buscar usuários.' });
+    }
+});
+
+// Rota: Criar novo ativo no GLPI
+app.post('/api/proxy/createAsset', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype, data } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.post(
+            `${glpiUrl}/apirest.php/${itemtype}`,
+            { input: data },
+            { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } }
+        );
+        res.status(201).json(response.data);
+    } catch (error) {
+        console.error('createAsset error:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json({
+            message: 'Falha ao criar ativo.',
+            error: error.response?.data || error.message
+        });
+    }
+});
+
+// Rota: Atualizar ativo existente
+app.post('/api/proxy/updateAsset', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype, id, data } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.put(
+            `${glpiUrl}/apirest.php/${itemtype}/${id}`,
+            { input: data },
+            { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } }
+        );
+        res.json(response.data);
+    } catch (error) {
+        res.status(error.response?.status || 500).json({ message: 'Falha ao atualizar ativo.' });
+    }
+});
+
+// Rota: Vincular usuário responsável a um ativo
+app.post('/api/proxy/linkUserToAsset', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype, itemId, userId } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        // GLPI: update the asset's users_id field
+        const response = await axios.put(
+            `${glpiUrl}/apirest.php/${itemtype}/${itemId}`,
+            { input: { users_id: userId } },
+            { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } }
+        );
+        res.json({ success: true, data: response.data });
+    } catch (error) {
+        res.status(error.response?.status || 500).json({ message: 'Falha ao vincular usuário.' });
+    }
+});
+
+// Rota: OCR inteligente via Claude API (lê foto e extrai dados do ativo)
+app.post('/api/proxy/ocrAsset', upload.single('image'), async (req, res) => {
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) return res.status(500).json({ message: 'ANTHROPIC_API_KEY não configurada.' });
+    if (!req.file) return res.status(400).json({ message: 'Imagem não enviada.' });
+
+    const imageBase64 = req.file.buffer.toString('base64');
+    const mediaType = req.file.mimetype || 'image/jpeg';
+
+    try {
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024,
+            messages: [{
+                role: 'user',
+                content: [
+                    {
+                        type: 'image',
+                        source: { type: 'base64', media_type: mediaType, data: imageBase64 }
+                    },
+                    {
+                        type: 'text',
+                        text: `Analise esta imagem de um equipamento de TI (computador, notebook, celular, monitor, etc.) e extraia TODOS os dados visíveis.
+
+Retorne APENAS um JSON válido com os campos abaixo (deixe em branco "" se não encontrar):
+{
+  "name": "nome ou hostname do equipamento",
+  "serial": "número de série (S/N, Serial Number)",
+  "model": "modelo do equipamento",
+  "manufacturer": "fabricante/marca",
+  "mac_address": "endereço MAC (se visível)",
+  "asset_tag": "patrimônio ou tag de ativo",
+  "os": "sistema operacional (se visível)",
+  "type": "tipo: notebook | desktop | celular | monitor | impressora | outro",
+  "notes": "qualquer outra informação relevante visível na imagem",
+  "confidence": "alta | media | baixa"
+}
+
+Seja preciso. Extraia EXATAMENTE o que está escrito na imagem, sem inventar dados.`
+                    }
+                ]
+            }]
+        }, {
+            headers: {
+                'x-api-key': anthropicKey,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            }
+        });
+
+        const text = response.data.content[0].text;
+        // Extract JSON from response
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return res.status(422).json({ message: 'Não foi possível extrair dados da imagem.', raw: text });
+
+        const extracted = JSON.parse(jsonMatch[0]);
+        res.json(extracted);
+    } catch (error) {
+        console.error('OCR error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'Falha no OCR.', error: error.response?.data || error.message });
+    }
+});
+
+// Rota: Buscar modelos de equipamentos para autocomplete
+app.post('/api/proxy/getModels', async (req, res) => {
+    const { glpiUrl, sessionToken, itemtype } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    const modelEndpoint = {
+        Computer: 'ComputerModel', Phone: 'PhoneModel',
+        Monitor: 'MonitorModel', Peripheral: 'PeripheralModel', Printer: 'PrinterModel'
+    }[itemtype] || 'ComputerModel';
+    try {
+        const response = await axios.get(`${glpiUrl}/apirest.php/${modelEndpoint}`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range: '0-500' }
+        });
+        res.json(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+        res.json([]);
+    }
+});
+
+// Rota: Buscar fabricantes para autocomplete
+app.post('/api/proxy/getManufacturers', async (req, res) => {
+    const { glpiUrl, sessionToken } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.get(`${glpiUrl}/apirest.php/Manufacturer`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range: '0-500' }
+        });
+        res.json(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+        res.json([]);
+    }
+});
+
+// Rota: Buscar estados de equipamentos
+app.post('/api/proxy/getStates', async (req, res) => {
+    const { glpiUrl, sessionToken } = req.body;
+    const appToken = process.env.GLPI_APP_TOKEN;
+    try {
+        const response = await axios.get(`${glpiUrl}/apirest.php/State`, {
+            headers: { 'Session-Token': sessionToken, 'App-Token': appToken },
+            params: { range: '0-100' }
+        });
+        res.json(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+        res.json([]);
+    }
+});
+
