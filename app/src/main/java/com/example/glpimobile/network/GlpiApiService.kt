@@ -12,6 +12,8 @@ import okhttp3.MultipartBody
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.Path
+import retrofit2.http.PUT
 import retrofit2.http.Query
 
 interface GlpiApiService {
@@ -32,21 +34,20 @@ interface GlpiApiService {
         @Body body: JsonObject
     ): Response<Void>
 
+    // ── Tickets ──────────────────────────────────────────────────────────────
     @GET("Ticket")
     suspend fun getTickets(): Response<List<Ticket>>
 
-    @retrofit2.http.PUT("Ticket/{id}")
+    @PUT("Ticket/{id}")
     suspend fun updateTicket(
-        @retrofit2.http.Path("id") id: Int,
+        @Path("id") id: Int,
         @Header("Session-Token") sessionToken: String,
         @Header("App-Token") appToken: String,
         @Body ticket: JsonObject
     ): Response<JsonObject>
 
     @POST("Ticket")
-    suspend fun createTicket(
-        @Body ticket: JsonObject
-    ): Response<JsonObject>
+    suspend fun createTicket(@Body ticket: JsonObject): Response<JsonObject>
 
     @POST("ITILSolution")
     suspend fun addSolution(
@@ -55,6 +56,7 @@ interface GlpiApiService {
         @Body solution: JsonObject
     ): Response<JsonObject>
 
+    // ── Consumables ───────────────────────────────────────────────────────────
     @GET("ConsumableItem")
     suspend fun getConsumables(
         @Header("Session-Token") sessionToken: String,
@@ -69,10 +71,6 @@ interface GlpiApiService {
         @Body payload: JsonObject
     ): Response<JsonObject>
 
-    // Linking Consumable to Ticket usually involves Item_Ticket or similar,
-    // but for "Consumables" tab in GLPI, it might be separate.
-    // Assuming we use standard GLPI API to link item.
-    // For now I will add a generic createItem endpoint that can be used for Ticket_Item or Consumable.
     @POST("Item_Ticket")
     suspend fun linkItemToTicket(
         @Header("Session-Token") sessionToken: String,
@@ -80,6 +78,47 @@ interface GlpiApiService {
         @Body payload: JsonObject
     ): Response<JsonObject>
 
+    // ── Inventário — Computadores ─────────────────────────────────────────────
+    @GET("Computer")
+    suspend fun getComputers(
+        @Query("range") range: String = "0-100",
+        @Query("expand_dropdowns") expandDropdowns: Boolean = true
+    ): Response<List<JsonObject>>
+
+    @POST("Computer")
+    suspend fun createComputer(@Body payload: JsonObject): Response<JsonObject>
+
+    // ── Inventário — Equipamentos de Rede ─────────────────────────────────────
+    @GET("NetworkEquipment")
+    suspend fun getNetworkEquipment(
+        @Query("range") range: String = "0-100",
+        @Query("expand_dropdowns") expandDropdowns: Boolean = true
+    ): Response<List<JsonObject>>
+
+    @POST("NetworkEquipment")
+    suspend fun createNetworkEquipment(@Body payload: JsonObject): Response<JsonObject>
+
+    // ── Inventário — Periféricos ──────────────────────────────────────────────
+    @GET("Peripheral")
+    suspend fun getPeripherals(
+        @Query("range") range: String = "0-100",
+        @Query("expand_dropdowns") expandDropdowns: Boolean = true
+    ): Response<List<JsonObject>>
+
+    @POST("Peripheral")
+    suspend fun createPeripheral(@Body payload: JsonObject): Response<JsonObject>
+
+    // ── Inventário — Impressoras ──────────────────────────────────────────────
+    @GET("Printer")
+    suspend fun getPrinters(
+        @Query("range") range: String = "0-100",
+        @Query("expand_dropdowns") expandDropdowns: Boolean = true
+    ): Response<List<JsonObject>>
+
+    @POST("Printer")
+    suspend fun createPrinter(@Body payload: JsonObject): Response<JsonObject>
+
+    // ── Documentos ────────────────────────────────────────────────────────────
     @Multipart
     @POST("Document")
     suspend fun uploadDocument(

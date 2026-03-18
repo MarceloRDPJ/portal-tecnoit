@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
         android:allowBackup="true"
@@ -19,7 +20,6 @@
         android:theme="@style/Theme.GlpiMobile"
         tools:targetApi="31">
 
-        <!-- MainActivity is now the primary entry point. It will redirect to LoginActivity if needed. -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">
@@ -41,6 +41,25 @@
             android:name=".ui.RespondTicketActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- NOVO: Inventário -->
+        <activity
+            android:name=".ui.InventoryActivity"
+            android:exported="false"
+            android:label="Inventário" />
+
+        <!-- NOVO: Adicionar dispositivo -->
+        <activity
+            android:name=".ui.AddDeviceActivity"
+            android:exported="false"
+            android:label="Novo Dispositivo"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- NOVO: Usuários -->
+        <activity
+            android:name=".ui.UsersActivity"
+            android:exported="false"
+            android:label="Usuários TecnoIT" />
 
     </application>
 

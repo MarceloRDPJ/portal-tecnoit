@@ -14,7 +14,7 @@ import com.example.glpimobile.R
 import com.example.glpimobile.auth.SessionManager
 import com.example.glpimobile.model.Ticket
 import com.example.glpimobile.network.ApiClient
-import com.google.android.material.chip.Chip
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.launch
@@ -27,9 +27,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var chipGroupFilters: ChipGroup
     private lateinit var etSearch: TextInputEditText
+    private lateinit var bottomNavigation: BottomNavigationView
 
     private var allTickets: List<Ticket> = emptyList()
-    private var currentFilterStatus: List<Int>? = null // Changed to List to support grouping
+    private var currentFilterStatus: List<Int>? = null
     private var filterAssignedToMe: Boolean = false
     private var currentSearchQuery: String = ""
     private var currentUserId: Int = 0
@@ -48,23 +49,44 @@ class MainActivity : AppCompatActivity() {
         ticketsRecyclerView = findViewById(R.id.rvTickets)
         chipGroupFilters = findViewById(R.id.chipGroupFilters)
         etSearch = findViewById(R.id.etSearch)
+        bottomNavigation = findViewById(R.id.bottomNavigation)
 
         setupRecyclerView()
-        // Get user ID from session if possible (saved in prefs maybe?)
-        // Currently SessionManager saves only token. We need to save ID in LoginActivity if we want to filter by "Me".
-        // Checking LoginActivity logic... it saves "saved_entities" and "active_entity_id".
-        // It does NOT save user ID. I need to update LoginActivity to save it or parse it from body.session.glpiID
-        // For now, I'll try to load it from prefs "glpi_user_id" if it exists.
+
         val prefs = getSharedPreferences("glpi_prefs", MODE_PRIVATE)
         currentUserId = prefs.getInt("glpi_user_id", 0)
 
         setupFilters()
         setupSearch()
+        setupBottomNavigation()
     }
 
     override fun onResume() {
         super.onResume()
+        // Garante que o item "Chamados" fique selecionado ao voltar
+        bottomNavigation.selectedItemId = R.id.nav_tickets
         fetchTickets()
+    }
+
+    private fun setupBottomNavigation() {
+        bottomNavigation.selectedItemId = R.id.nav_tickets
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_tickets -> {
+                    // já estamos aqui
+                    true
+                }
+                R.id.nav_inventory -> {
+                    startActivity(Intent(this, InventoryActivity::class.java))
+                    true
+                }
+                R.id.nav_users -> {
+                    startActivity(Intent(this, UsersActivity::class.java))
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -74,21 +96,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupFilters() {
-        chipGroupFilters.setOnCheckedStateChangeListener { group, checkedIds ->
+        chipGroupFilters.setOnCheckedStateChangeListener { _, checkedIds ->
             filterAssignedToMe = false
             if (checkedIds.isEmpty()) {
                 currentFilterStatus = null
             } else {
-                val chipId = checkedIds[0]
-                when (chipId) {
-                    R.id.chipAssignedToMe -> {
-                        filterAssignedToMe = true
-                        currentFilterStatus = null
-                    }
-                    R.id.chipNew -> currentFilterStatus = listOf(1, 2, 3) // New, Assigned, Planned -> "In Progress"
-                    R.id.chipAssigned -> currentFilterStatus = listOf(2, 3) // Specific Assigned/Planned
+                when (checkedIds[0]) {
+                    R.id.chipAssignedToMe -> { filterAssignedToMe = true; currentFilterStatus = null }
+                    R.id.chipNew -> currentFilterStatus = listOf(1, 2, 3)
+                    R.id.chipAssigned -> currentFilterStatus = listOf(2, 3)
                     R.id.chipPending -> currentFilterStatus = listOf(4)
-                    R.id.chipSolved -> currentFilterStatus = listOf(5, 6) // Solved, Closed
+                    R.id.chipSolved -> currentFilterStatus = listOf(5, 6)
                     else -> currentFilterStatus = null
                 }
             }
@@ -144,28 +162,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyFilters() {
         var filteredList = allTickets
-
-        // Status Filter
         if (currentFilterStatus != null) {
             filteredList = filteredList.filter { it.status in currentFilterStatus!! }
         }
-
-        // Assigned To Me Filter
         if (filterAssignedToMe) {
-             filteredList = filteredList.filter {
-                 it.users_id_recipient == currentUserId || it.users_id_assign == currentUserId
-             }
+            filteredList = filteredList.filter {
+                it.users_id_recipient == currentUserId || it.users_id_assign == currentUserId
+            }
         }
-
-        // Search Filter
         if (currentSearchQuery.isNotEmpty()) {
             val query = currentSearchQuery.lowercase(Locale.getDefault())
             filteredList = filteredList.filter {
-                it.name.lowercase(Locale.getDefault()).contains(query) ||
-                it.id.toString().contains(query)
+                it.name.lowercase(Locale.getDefault()).contains(query) || it.id.toString().contains(query)
             }
         }
-
         ticketAdapter.updateTickets(filteredList)
     }
 
