@@ -278,9 +278,10 @@ function LoginScreen({onLogin}){
     if(selEntity===null)return;setLoading(true);
     try{
       const ent=entities.find(e=>e.id===selEntity);
-      const recursive=ent?.isRoot?1:0;
+      // Entidade raiz: sessão já tem acesso a tudo, não precisa trocar
+      if(ent?.isRoot){pendingSess.fullSessionData.glpiactive_entity=selEntity;onLogin(pendingSess);return;}
       const res=await fetch(`${PROXY}/changeActiveEntity`,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({glpiUrl,sessionToken:pendingSess.sessionToken,entities_id:selEntity,is_recursive:recursive})});
+        body:JSON.stringify({glpiUrl,sessionToken:pendingSess.sessionToken,entities_id:selEntity})});
       if(!res.ok)throw new Error('Falha ao mudar entidade');
       pendingSess.fullSessionData.glpiactive_entity=selEntity;
       onLogin(pendingSess);
