@@ -3,13 +3,18 @@ package com.example.glpimobile.ui
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
+import com.google.android.material.snackbar.Snackbar
 import androidx.lifecycle.lifecycleScope
 import com.example.glpimobile.R
 import com.example.glpimobile.network.ApiClient
@@ -20,6 +25,11 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class AddDeviceActivity : AppCompatActivity() {
 
@@ -38,11 +48,14 @@ class AddDeviceActivity : AppCompatActivity() {
     private lateinit var progress: ProgressBar
 
     private var deviceType = "Computer"
+    private var currentPhotoPath: String? = null
 
     private val takePhotoLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
-            imageBitmap?.let { processImageOCR(it) }
+            currentPhotoPath?.let { path ->
+                val bitmap = BitmapFactory.decodeFile(path)
+                bitmap?.let { processImageOCR(it) }
+            }
         }
     }
 
@@ -73,12 +86,42 @@ class AddDeviceActivity : AppCompatActivity() {
 
         btnSave.setOnClickListener { saveDevice() }
         btnScan.setOnClickListener {
-            val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            try {
-                takePhotoLauncher.launch(takePictureIntent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "Erro ao abrir câmera", Toast.LENGTH_SHORT).show()
+            dispatchTakePictureIntent()
+        }
+    }
+
+    private fun dispatchTakePictureIntent() {
+        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
+            takePictureIntent.resolveActivity(packageManager)?.also {
+                val photoFile: File? = try {
+                    createImageFile()
+                } catch (ex: IOException) {
+                    Toast.makeText(this, "Erro ao criar arquivo de imagem", Toast.LENGTH_SHORT).show()
+                    null
+                }
+                photoFile?.also {
+                    val photoURI: Uri = FileProvider.getUriForFile(
+                        this,
+                        "com.example.glpimobile.fileprovider",
+                        it
+                    )
+                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    takePhotoLauncher.launch(takePictureIntent)
+                }
             }
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        ).apply {
+            currentPhotoPath = absolutePath
         }
     }
 
@@ -124,17 +167,14 @@ class AddDeviceActivity : AppCompatActivity() {
 
                 if (response.isSuccessful) {
                     val id = response.body()?.getAsJsonPrimitive("id")?.asInt
-                    Toast.makeText(this@AddDeviceActivity,
-                        "Dispositivo criado! ID: $id", Toast.LENGTH_LONG).show()
-                    finish()
+                    Snackbar.make(btnSave, "Dispositivo criado! ID: $id", Snackbar.LENGTH_LONG).show()
+                    btnSave.postDelayed({ finish() }, 1500)
                 } else {
                     val err = response.errorBody()?.string() ?: response.code().toString()
-                    Toast.makeText(this@AddDeviceActivity,
-                        "Erro ao criar dispositivo: $err", Toast.LENGTH_LONG).show()
+                    Snackbar.make(btnSave, "Erro ao criar: $err", Snackbar.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@AddDeviceActivity,
-                    "Erro de rede: ${e.message}", Toast.LENGTH_LONG).show()
+                Snackbar.make(btnSave, "Erro de rede: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
                 setLoading(false)
             }
@@ -153,13 +193,13 @@ class AddDeviceActivity : AppCompatActivity() {
                     val serialMatch = Regex("(?:S/N|SERIAL|SERIE|S/N:)\\s*([A-Z0-9]{5,})", RegexOption.IGNORE_CASE).find(text)
                     val modelMatch = Regex("(?:MODEL|MODELO|MOD:)\\s*([A-Z0-9\\-\\/]{3,})", RegexOption.IGNORE_CASE).find(text)
 
-                    serialMatch?.let { etSerial.setText(it.groupValues[1]) }
-                    modelMatch?.let { etName.setText(it.groupValues[1]) }
+                    serialMatch?.let { etSerial.setText(it.groupValues[1].trim()) }
+                    modelMatch?.let { etName.setText(it.groupValues[1].trim()) }
 
                     val currentComment = etComment.text.toString()
-                    etComment.setText("${currentComment}${if (currentComment.isNotEmpty()) "\n" else ""}[OCR]: ${text.take(150)}...")
+                    etComment.setText("${currentComment}${if (currentComment.isNotEmpty()) "\n" else ""}[OCR]: ${text.take(200)}...")
 
-                    Toast.makeText(this, "OCR finalizado!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "OCR finalizado! Verifique os campos preenchidos.", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(this, "Nenhum texto encontrado na etiqueta", Toast.LENGTH_SHORT).show()
                 }

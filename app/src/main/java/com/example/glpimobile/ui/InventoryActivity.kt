@@ -45,7 +45,7 @@ class InventoryActivity : AppCompatActivity() {
         chipGroupType = findViewById(R.id.chipGroupType)
         fabAddDevice = findViewById(R.id.fabAddDevice)
 
-        adapter = DeviceAdapter(emptyList())
+        adapter = DeviceAdapter(emptyList(), { currentType })
         rvInventory.adapter = adapter
         rvInventory.layoutManager = LinearLayoutManager(this)
 
@@ -116,7 +116,7 @@ class InventoryActivity : AppCompatActivity() {
 }
 
 // ── Adapter simples inline ────────────────────────────────────────────────────
-class DeviceAdapter(private var items: List<JsonObject>) :
+class DeviceAdapter(private var items: List<JsonObject>, private val typeProvider: () -> String) :
     RecyclerView.Adapter<DeviceAdapter.VH>() {
 
     inner class VH(v: View) : RecyclerView.ViewHolder(v) {
@@ -140,6 +140,13 @@ class DeviceAdapter(private var items: List<JsonObject>) :
         holder.serial.text   = if (serial.isNotEmpty()) "Serial: $serial" else "Sem serial"
         val location         = item.getAsJsonPrimitive("locations_id")?.asString ?: ""
         holder.location.text = if (location.isNotEmpty()) "Local: $location" else ""
+
+        holder.itemView.setOnClickListener {
+            val intent = Intent(holder.itemView.context, DeviceDetailActivity::class.java)
+            intent.putExtra("device_json", com.google.gson.Gson().toJson(item))
+            intent.putExtra("device_type", typeProvider())
+            holder.itemView.context.startActivity(intent)
+        }
     }
 
     fun updateItems(newItems: List<JsonObject>) {

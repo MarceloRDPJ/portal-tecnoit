@@ -118,6 +118,29 @@ interface GlpiApiService {
     @POST("Printer")
     suspend fun createPrinter(@Body payload: JsonObject): Response<JsonObject>
 
+    // ── Genérico para Ativos ──────────────────────────────────────────────────
+    @PUT("{itemtype}/{id}")
+    suspend fun updateAsset(
+        @Path("itemtype") itemtype: String,
+        @Path("id") id: Int,
+        @Header("Session-Token") sessionToken: String,
+        @Header("App-Token") appToken: String,
+        @Body payload: JsonObject
+    ): Response<JsonObject>
+
+    @GET("User")
+    suspend fun getUsers(
+        @Query("range") range: String = "0-500",
+        @Query("expand_dropdowns") expandDropdowns: Boolean = true
+    ): Response<List<JsonObject>>
+
+    @POST("Document_Item")
+    suspend fun linkDocumentToItem(
+        @Header("Session-Token") sessionToken: String,
+        @Header("App-Token") appToken: String,
+        @Body payload: JsonObject
+    ): Response<JsonObject>
+
     // ── Documentos ────────────────────────────────────────────────────────────
     @Multipart
     @POST("Document")

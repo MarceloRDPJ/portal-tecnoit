@@ -65,7 +65,7 @@
 const firebaseConfig={apiKey:"AIzaSyCh47eM6oXz-vN-2iAZXbDtTIi0CvFe_wY",authDomain:"app-tecnoit.firebaseapp.com",projectId:"app-tecnoit",storageBucket:"app-tecnoit.firebasestorage.app",messagingSenderId:"675993906644",appId:"1:675993906644:web:90f5fdbbb852a5caa43a41",measurementId:"G-MLEH036DLK"};
 </script>
 <script type="text/babel" data-presets="react">
-const{useState,useEffect,useMemo,useRef}=React;
+const{useState,useEffect,useMemo,useRef,useCallback}=React;
 const PROXY='https://portal-tecnoit-glpi.onrender.com/api/proxy';
 const APP_VERSION='2.0.0';
 const firebaseAppUrl="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -187,14 +187,34 @@ const avatarColor=name=>AVATAR_COLORS[name.charCodeAt(0)%AVATAR_COLORS.length];
 const initials=name=>{const p=name.trim().split(' ');return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():name.slice(0,2).toUpperCase()};
 
 // ─── APP WRAPPER ──────────────────────────────────────────────────────────────
+let showToast=()=>{};
+
 function AppWrapper(){
   const[ready,setReady]=useState(false);
+  const[toast,setToast]=useState(null);
+
+  showToast=useCallback((msg,type='success')=>{
+    setToast({msg,type});
+    setTimeout(()=>setToast(null),3000);
+  },[]);
+
   useEffect(()=>{
     Promise.all([import(firebaseAppUrl),import(firebaseAuthUrl)])
       .then(([app,auth])=>{window.firebase={app,auth};setReady(true)});
   },[]);
+
   if(!ready)return<LoadingScreen message="Iniciando sistema..."/>;
-  return<App/>;
+  return(
+    <>
+      <App/>
+      {toast && (
+        <div className="fade-in" style={{position:'fixed',bottom:24,right:24,left:isDesktop()? 'auto':24,zIndex:1000,padding:'12px 20px',borderRadius:12,background:'#fff',boxShadow:'0 10px 30px rgba(0,0,0,0.15)',display:'flex',alignItems:'center',gap:10,border:'1px solid #E8ECF0'}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:toast.type==='error'?'#EF4444':(toast.type==='info'?'#3B82F6':'#10B981')}}/>
+          <span style={{fontSize:14,fontWeight:600,color:'#0F1B2D'}}>{toast.msg}</span>
+        </div>
+      )}
+    </>
+  );
 }
 
 function App(){
@@ -207,6 +227,12 @@ function App(){
   const[glpiSession,setGlpiSession]=useState(null);
   const[isLoading,setIsLoading]=useState(true);
   const[selectedTicketId,setSelectedTicketId]=useState(null);
+  const[selectedDevice,setSelectedDevice]=useState(null);
+
+  const navigateToDevice = (device) => {
+    setSelectedDevice(device);
+    if (!isDesktop()) setView('deviceDetail');
+  };
 
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{if(u)setUser(u);else await signInAnonymously(auth)});
@@ -230,8 +256,9 @@ function App(){
   if(isDesktop()&&view==='dashboard')return<DesktopApp session={glpiSession} onLogout={handleLogout}/>;
   return(
     <div style={{display:'flex',flexDirection:'column',height:'100dvh',background:'#f8fafc'}}>
-      {view==='dashboard'&&<MobileDashboard session={glpiSession} onTicket={id=>{setSelectedTicketId(id);setView('ticketDetail')}} onLogout={handleLogout}/>}
+      {view==='dashboard'&&<MobileDashboard session={glpiSession} onTicket={id=>{setSelectedTicketId(id);setView('ticketDetail')}} onDevice={navigateToDevice} onLogout={handleLogout}/>}
       {view==='ticketDetail'&&<TicketDetail session={glpiSession} ticketId={selectedTicketId} onBack={()=>setView('dashboard')}/>}
+      {view==='deviceDetail'&&<DeviceDetail session={glpiSession} device={selectedDevice} onBack={()=>setView('dashboard')}/>}
     </div>
   );
 }
@@ -432,6 +459,7 @@ function FieldInput({icon,label,value,onChange,placeholder,autoComplete}){
 function DesktopApp({session,onLogout}){
   const[tab,setTab]=useState('tickets');
   const[selectedTicketId,setSelectedTicketId]=useState(null);
+  const[selectedDevice,setSelectedDevice]=useState(null);
   const{fullSessionData}=session;
   const userName=fullSessionData?.glpifirstname||'Técnico';
   const userLast=fullSessionData?.glpirealname||'';
@@ -440,10 +468,8 @@ function DesktopApp({session,onLogout}){
   return(
     <div style={{display:'flex',height:'100dvh',width:'100vw',overflow:'hidden'}}>
       <aside className="sidebar">
-        <div style={{padding:'24px 20px 16px',borderBottom:'1px solid rgba(255,255,255,.06)'}}>
-          <img src="assets/logo.png" alt="TecnoIT" style={{height:28,filter:'brightness(0) invert(1)',opacity:.9}} onError={e=>e.target.style.display='none'}/>
-          <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,color:'#fff',marginTop:6,letterSpacing:'-0.02em'}}>TecnoIT</div>
-          <div style={{fontSize:10,color:'#2D4A66',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',marginTop:2}}>Field Service Portal</div>
+        <div style={{padding:'24px 20px 24px',borderBottom:'1px solid rgba(255,255,255,.06)',display:'flex',justifyContent:'center'}}>
+          <img src="assets/logo.png" alt="TecnoIT" style={{height:40,filter:'brightness(0) invert(1)',opacity:.9}} onError={e=>e.target.style.display='none'}/>
         </div>
         <nav style={{flex:1,padding:'16px 0'}}>
           <div style={{fontSize:10,color:'#2D4A66',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',padding:'8px 20px 4px'}}>Principal</div>
@@ -469,7 +495,8 @@ function DesktopApp({session,onLogout}){
       <div className="main-content">
         {tab==='tickets'&&!selectedTicketId&&<DesktopTickets session={session} onTicket={id=>setSelectedTicketId(id)}/>}
         {tab==='tickets'&&selectedTicketId&&<TicketDetail session={session} ticketId={selectedTicketId} onBack={()=>setSelectedTicketId(null)} desktop/>}
-        {tab==='inventory'&&<DesktopInventory session={session}/>}
+        {tab==='inventory'&&!selectedDevice&&<DesktopInventory session={session} onDevice={setSelectedDevice}/>}
+        {tab==='inventory'&&selectedDevice&&<DeviceDetail session={session} device={selectedDevice} onBack={()=>setSelectedDevice(null)} desktop/>}
         {tab==='users'&&<DesktopUsers/>}
       </div>
     </div>
@@ -577,7 +604,7 @@ function DesktopTickets({session,onTicket}){
 }
 
 // ─── DESKTOP INVENTÁRIO ───────────────────────────────────────────────────────
-function DesktopInventory({session}){
+function DesktopInventory({session, onDevice}){
   const{sessionToken,glpiUrl}=session;
   const[type,setType]=useState('Computer');
   const[devices,setDevices]=useState([]);
@@ -628,7 +655,7 @@ function DesktopInventory({session}){
         </div>
         :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
           {filtered.map((d,i)=>(
-            <div key={i} className="device-card fade-in">
+            <div key={i} className="device-card fade-in" onClick={()=>onDevice(d)}>
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
                 <div style={{width:36,height:36,borderRadius:8,background:'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <Icon name={curTypeIcon} size={18} color="#EA580C"/>
@@ -649,44 +676,195 @@ function DesktopInventory({session}){
   );
 }
 
+function DeviceDetail({session, device, onBack, desktop}){
+  const{sessionToken,glpiUrl}=session;
+  const[linking,setLinking]=useState(false);
+  const[responsibleSearch,setResponsibleSearch]=useState('');
+  const[selectedResponsible,setSelectedResponsible]=useState(null);
+  const[termo,setTermo]=useState(null);
+  const[saving,setSaving]=useState(false);
+
+  if(!device) return null;
+
+  const filteredUsers = responsibleSearch ? USERS.filter(u =>
+    u[0].toLowerCase().includes(responsibleSearch.toLowerCase())
+  ).slice(0, 5) : [];
+
+  const handleLink = async () => {
+    if(!selectedResponsible) { showToast('Selecione um responsável', 'error'); return; }
+    setSaving(true);
+    try {
+      const newComment = (device.comment ? device.comment + '\n' : '') + `Responsável: ${selectedResponsible[0]} (${selectedResponsible[1]})`;
+      const res = await fetch(`${PROXY}/updateAsset`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          glpiUrl, sessionToken,
+          itemtype: device._glpiType || 'Computer',
+          id: device.id,
+          data: { comment: newComment }
+        })
+      });
+
+      if (res.ok) {
+        if (termo) {
+          const fd = new FormData();
+          fd.append('file', termo);
+          fd.append('glpiUrl', glpiUrl);
+          fd.append('sessionToken', sessionToken);
+          await fetch(`${PROXY}/uploadDocumentAsset/${device._glpiType || 'Computer'}/${device.id}`, { method: 'POST', body: fd });
+        }
+        showToast('Vínculo realizado com sucesso!');
+        onBack();
+      } else {
+        const data = await res.json();
+        showToast(data.message || 'Erro ao vincular', 'error');
+      }
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height: desktop ? '100%' : '100dvh',background:'#F8FAFB'}}>
+      <header style={{background:'#fff',padding:'14px 20px',borderBottom:'1px solid #E8ECF0',display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+        <button onClick={onBack} style={{background:'none',border:'none',cursor:'pointer',padding:4,display:'flex'}}><Icon name="back" size={20} color="#6B7280"/></button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'#0F1B2D',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{device.name || 'Dispositivo'}</div>
+          <div style={{fontSize:12,color:'#9BABB8'}}>{device.serial || 'S/N não informado'}</div>
+        </div>
+      </header>
+      <div style={{flex:1,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:16}}>
+        <div style={{background:'#fff',borderRadius:16,padding:20,border:'1px solid #E8ECF0',boxShadow:'0 2px 10px rgba(0,0,0,0.02)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+            <div style={{width:52,height:52,borderRadius:12,background:'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Icon name="monitor" size={28} color="#EA580C"/>
+            </div>
+            <div>
+              <div style={{fontSize:18,fontWeight:700,color:'#0F1B2D'}}>{device.name}</div>
+              <div style={{fontSize:13,color:'#9BABB8'}}>ID GLPI: #{device.id}</div>
+            </div>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <div style={{background:'#F8FAFB',padding:12,borderRadius:12}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#9BABB8',textTransform:'uppercase',marginBottom:4}}>Número de Série</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1E2D3D',fontFamily:'monospace'}}>{device.serial || '—'}</div>
+            </div>
+            <div style={{background:'#F8FAFB',padding:12,borderRadius:12}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#9BABB8',textTransform:'uppercase',marginBottom:4}}>Inventário</div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1E2D3D',fontFamily:'monospace'}}>{device.otherserial || '—'}</div>
+            </div>
+          </div>
+          <div style={{marginTop:12,background:'#F8FAFB',padding:12,borderRadius:12}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#9BABB8',textTransform:'uppercase',marginBottom:4}}>Localização</div>
+            <div style={{fontSize:14,fontWeight:600,color:'#1E2D3D'}}>{device.locations_id || 'Não informada'}</div>
+          </div>
+          {device.comment && (
+            <div style={{marginTop:12,background:'#F8FAFB',padding:12,borderRadius:12}}>
+              <div style={{fontSize:11,fontWeight:600,color:'#9BABB8',textTransform:'uppercase',marginBottom:4}}>Observações</div>
+              <div style={{fontSize:13,color:'#4A6380',lineHeight:1.5,whiteSpace:'pre-wrap'}}>{device.comment}</div>
+            </div>
+          )}
+        </div>
+
+        {linking ? (
+          <div className="fade-in" style={{background:'#fff',borderRadius:16,padding:20,border:'1px solid #EA580C'}}>
+            <div style={{fontWeight:700,color:'#0F1B2D',fontSize:15,marginBottom:16}}>Vincular Responsável</div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>Buscar Funcionário</label>
+              <div style={{position:'relative'}}>
+                <input value={responsibleSearch} onChange={e=>setResponsibleSearch(e.target.value)} placeholder="Nome do colaborador..."
+                  style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#F8FAFB'}}/>
+                {filteredUsers.length > 0 && (
+                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'1px solid #E8ECF0',borderRadius:10,zIndex:100,marginTop:4,boxShadow:'0 10px 20px rgba(0,0,0,0.1)',maxHeight:160,overflowY:'auto'}}>
+                    {filteredUsers.map((u,i)=>(
+                      <div key={i} onClick={()=>{setSelectedResponsible(u);setResponsibleSearch('');}} style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid #F0F2F5',fontSize:13}}>
+                        <div style={{fontWeight:600}}>{u[0]}</div>
+                        <div style={{fontSize:11,color:'#9BABB8'}}>{u[2]}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {selectedResponsible && (
+              <div style={{marginBottom:14,padding:'10px',background:'#F0FDF4',borderRadius:10,border:'1px solid #BBF7D0',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <span style={{fontSize:13,fontWeight:600,color:'#16A34A'}}>✓ {selectedResponsible[0]}</span>
+                <button onClick={()=>setSelectedResponsible(null)} style={{color:'#6B7280',fontSize:12}}>Trocar</button>
+              </div>
+            )}
+            <div style={{marginBottom:14}}>
+              <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>Anexar Termo Assinado</label>
+              <input type="file" onChange={e=>setTermo(e.target.files[0])} style={{fontSize:12,width:'100%'}}/>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setLinking(false)} style={{flex:1,padding:12,borderRadius:12,border:'1px solid #E8ECF0',background:'#fff',fontSize:13,fontWeight:700}}>Cancelar</button>
+              <button onClick={handleLink} disabled={saving} style={{flex:1,padding:12,borderRadius:12,border:'none',background:'#EA580C',color:'#fff',fontSize:13,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                {saving ? <Spinner size={16} color="#fff"/> : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{background:'#fff',borderRadius:16,padding:20,border:'1px solid #E8ECF0'}}>
+            <div style={{fontWeight:700,color:'#0F1B2D',fontSize:15,marginBottom:16}}>Ações Rápidas</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <button onClick={()=>showToast('Em breve: Geração automática de termo PDF', 'info')} style={{padding:12,borderRadius:12,border:'1.5px solid #E8ECF0',background:'#fff',fontSize:13,fontWeight:700,color:'#4A6380'}}>Gerar Termo</button>
+              <button onClick={()=>setLinking(true)} style={{padding:12,borderRadius:12,border:'none',background:'#0F1B2D',fontSize:13,fontWeight:700,color:'#fff'}}>Vincular</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AddDeviceModal({session,type,onClose}){
   const{sessionToken,glpiUrl}=session;
   const[form,setForm]=useState({name:'',serial:'',otherserial:'',comment:''});
   const[saving,setSaving]=useState(false);
+  const[responsibleSearch,setResponsibleSearch]=useState('');
+  const[selectedResponsible,setSelectedResponsible]=useState(null);
+  const[termo,setTermo]=useState(null);
   const[isOcrLoading,setIsOcrLoading]=useState(false);
   const[error,setError]=useState('');
   const labels={Computer:'Computador',NetworkEquipment:'Equipamento de Rede',Printer:'Impressora',Peripheral:'Periférico'};
   const fileInputRef = useRef(null);
 
   const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
 
     setIsOcrLoading(true);
     setError('');
     try {
-      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+      const { data: { text } } = await Tesseract.recognize(file, 'por+eng', {
         logger: m => console.log(m)
       });
 
       console.log("OCR Result:", text);
 
-      const serialRegex = /(?:S\/N|SERIAL|SERIE|S\/N:)\s*([A-Z0-9]{5,})/i;
-      const modelRegex = /(?:MODEL|MODELO|MOD:)\s*([A-Z0-9\-\/]{3,})/i;
+      const serialRegex = /(?:S\/N|SERIAL|SERIE|S\/N:|N\/S|SÉRIE)\s*[:=]?\s*([A-Z0-9]{5,})/i;
+      const modelRegex = /(?:MODEL|MODELO|MOD:|TYPE|TIPO)\s*[:=]?\s*([A-Z0-9\-\/ ]{3,})/i;
 
       const serialMatch = text.match(serialRegex);
       const modelMatch = text.match(modelRegex);
 
-      setForm(prev => ({
-        ...prev,
-        serial: serialMatch ? serialMatch[1].trim() : prev.serial,
-        name: modelMatch ? modelMatch[1].trim() : prev.name,
-      }));
+      setForm(prev => {
+        const next = { ...prev };
+        if (serialMatch) next.serial = serialMatch[1].trim();
+        if (modelMatch) next.name = modelMatch[1].trim();
+        next.comment = (next.comment ? next.comment + '\n' : '') + `[OCR]: ${text.slice(0, 200)}...`;
+        return next;
+      });
 
-      alert('Informações extraídas da foto com sucesso!');
+      showToast('OCR finalizado com sucesso!', 'success');
     } catch (err) {
       console.error("OCR Error:", err);
       setError('Falha ao processar imagem (OCR).');
@@ -695,11 +873,21 @@ function AddDeviceModal({session,type,onClose}){
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    if(!responsibleSearch) return [];
+    return USERS.filter(u => u[0].toLowerCase().includes(responsibleSearch.toLowerCase())).slice(0, 5);
+  }, [responsibleSearch]);
+
   const save=async()=>{
     if(!form.name.trim()){setError('Nome é obrigatório');return}
     setSaving(true);setError('');
     try{
-      const res=await fetch(`${PROXY}/createAsset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,data:form})});
+      const finalForm = { ...form };
+      if (selectedResponsible) {
+        finalForm.comment = (finalForm.comment ? finalForm.comment + '\n' : '') + `Responsável: ${selectedResponsible[0]} (${selectedResponsible[1]})`;
+      }
+
+      const res=await fetch(`${PROXY}/createAsset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,data:finalForm})});
       const data = await res.json();
       if(res.ok) {
         if (photo) {
@@ -707,9 +895,16 @@ function AddDeviceModal({session,type,onClose}){
            fd.append('file', photo);
            fd.append('glpiUrl', glpiUrl);
            fd.append('sessionToken', sessionToken);
-           // We need a generic upload route that supports Assets
            await fetch(`${PROXY}/uploadDocumentAsset/${type}/${data.id}`, { method: 'POST', body: fd });
         }
+        if (termo) {
+           const fd = new FormData();
+           fd.append('file', termo);
+           fd.append('glpiUrl', glpiUrl);
+           fd.append('sessionToken', sessionToken);
+           await fetch(`${PROXY}/uploadDocumentAsset/${type}/${data.id}`, { method: 'POST', body: fd });
+        }
+        showToast('Dispositivo criado com sucesso!');
         onClose();
       } else {
         setError(data.message||`Erro ${res.status}`);
@@ -734,6 +929,12 @@ function AddDeviceModal({session,type,onClose}){
             <button onClick={onClose} style={{padding:8,borderRadius:8,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer'}}><Icon name="x" size={16} color="#6B7280"/></button>
           </div>
         </div>
+        {photoPreview && (
+          <div style={{marginBottom:16, position:'relative'}}>
+             <img src={photoPreview} style={{width:'100%', height:120, objectFit:'cover', borderRadius:12, border:'1px solid #E8ECF0'}}/>
+             <button onClick={()=>{setPhoto(null);setPhotoPreview(null)}} style={{position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.5)', border:'none', borderRadius:'50%', width:24, height:24, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><Icon name="x" size={14}/></button>
+          </div>
+        )}
         {[{k:'name',label:'Nome / Modelo *',ph:'Ex: IdeaPad 3'},{k:'serial',label:'Número de série',ph:'Ex: SN123456'},{k:'otherserial',label:'Nº inventário',ph:'Ex: INV-001'},{k:'comment',label:'Observações',ph:'Informações adicionais'}].map(f=>(
           <div key={f.k} style={{marginBottom:14}}>
             <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>{f.label}</label>
@@ -741,6 +942,35 @@ function AddDeviceModal({session,type,onClose}){
               style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none',color:'#0F1B2D',background:'#F8FAFB'}}/>
           </div>
         ))}
+        <div style={{marginBottom:14}}>
+          <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>Responsável</label>
+          <div style={{position:'relative'}}>
+            <input value={responsibleSearch} onChange={e=>setResponsibleSearch(e.target.value)} placeholder="Buscar funcionário..."
+              style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid #E8ECF0',fontSize:14,outline:'none',color:'#0F1B2D',background:'#F8FAFB'}}/>
+            {filteredUsers.length > 0 && (
+              <div style={{position:'absolute',top:'100%',left:0,right:0,background:'#fff',border:'1px solid #E8ECF0',borderRadius:10,zIndex:100,marginTop:4,boxShadow:'0 10px 20px rgba(0,0,0,0.1)',maxHeight:160,overflowY:'auto'}}>
+                {filteredUsers.map((u,i)=>(
+                  <div key={i} onClick={()=>{setSelectedResponsible(u);setResponsibleSearch('');}} style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid #F0F2F5',fontSize:13}}>
+                    <div style={{fontWeight:600}}>{u[0]}</div>
+                    <div style={{fontSize:11,color:'#9BABB8'}}>{u[2]} · {u[3]}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {selectedResponsible && (
+            <div style={{marginTop:8,padding:'8px 12px',background:'#F0FDF4',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid #BBF7D0'}}>
+              <span style={{fontSize:13,fontWeight:600,color:'#16A34A'}}>✓ {selectedResponsible[0]}</span>
+              <button onClick={()=>setSelectedResponsible(null)} style={{color:'#6B7280',fontSize:12}}>Remover</button>
+            </div>
+          )}
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>Anexar Termo (PDF/Img)</label>
+          <input type="file" onChange={e=>setTermo(e.target.files[0])} style={{fontSize:12,color:'#6B7280',width:'100%'}}/>
+        </div>
+
         {error&&<div style={{padding:'10px 14px',background:'#FEF2F2',borderRadius:8,color:'#DC2626',fontSize:13,marginBottom:14}}>{error}</div>}
         <div style={{display:'flex',gap:10,marginTop:8}}>
           <button onClick={onClose} style={{flex:1,padding:11,borderRadius:10,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer',fontSize:14,color:'#6B7280',fontWeight:600}}>Cancelar</button>
@@ -813,7 +1043,7 @@ function DesktopUsers(){
 }
 
 // ─── MOBILE DASHBOARD ─────────────────────────────────────────────────────────
-function MobileDashboard({session,onTicket,onLogout}){
+function MobileDashboard({session,onTicket,onDevice,onLogout}){
   const{sessionToken,fullSessionData,glpiUrl}=session;
   const userName=fullSessionData?.glpifirstname||'Técnico';
   const userId=fullSessionData?.glpiID?parseInt(fullSessionData.glpiID):0;
@@ -855,7 +1085,7 @@ function MobileDashboard({session,onTicket,onLogout}){
           <>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#EA580C,#FB923C)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,color:'#fff'}}>{userName[0]}</div>
-              <div><div style={{fontWeight:700,fontSize:14,color:'#0F1B2D',lineHeight:1.2}}>{userName}</div><div style={{fontSize:10,color:'#9BABB8',fontWeight:600,letterSpacing:'.08em',textTransform:'uppercase'}}>Field Service</div></div>
+              <div><div style={{fontWeight:700,fontSize:14,color:'#0F1B2D',lineHeight:1.2}}>{userName}</div></div>
             </div>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setShowSearch(true)} style={{padding:8,border:'1px solid #E8ECF0',borderRadius:10,background:'#fff',cursor:'pointer'}}><Icon name="search" size={16} color="#6B7280"/></button>
@@ -903,11 +1133,7 @@ function MobileDashboard({session,onTicket,onLogout}){
           </>
         )}
         {tab==='inventory'&&(
-          <div style={{padding:24,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:300,gap:12,color:'#9BABB8',textAlign:'center'}}>
-            <Icon name="box" size={40} color="#D0D8E4"/>
-            <div style={{fontWeight:600,color:'#4A6380',fontSize:16}}>Inventário</div>
-            <div style={{fontSize:13}}>Consulte o inventário pelo portal desktop para experiência completa.</div>
-          </div>
+          <MobileInventory session={session} onDevice={onDevice}/>
         )}
         {tab==='users'&&<MobileUsers/>}
       </div>
@@ -920,6 +1146,66 @@ function MobileDashboard({session,onTicket,onLogout}){
           </button>
         ))}
       </nav>
+    </div>
+  );
+function MobileInventory({session, onDevice}){
+  const{sessionToken,glpiUrl}=session;
+  const[type,setType]=useState('Computer');
+  const[devices,setDevices]=useState([]);
+  const[loading,setLoading]=useState(false);
+  const[search,setSearch]=useState('');
+  const[showAdd,setShowAdd]=useState(false);
+  const typeMap=[{id:'Computer',label:'Computadores',icon:'monitor'},{id:'NetworkEquipment',label:'Rede',icon:'wifi'},{id:'Printer',label:'Impressoras',icon:'printer'},{id:'Peripheral',label:'Periféricos',icon:'cpu'}];
+
+  const load=async()=>{
+    setLoading(true);
+    try{const res=await fetch(`${PROXY}/getAssets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,range:'0-100'})});if(res.ok){const data=await res.json();setDevices(Array.isArray(data.assets)?data.assets:[])}else setDevices([])}
+    catch{setDevices([])}finally{setLoading(false)}
+  };
+  useEffect(()=>{load()},[type]);
+
+  const filtered=devices.filter(d=>!search||(d.name||'').toLowerCase().includes(search.toLowerCase())||(d.serial||'').toLowerCase().includes(search.toLowerCase()));
+  const curTypeIcon=typeMap.find(t=>t.id===type)?.icon||'box';
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+      <div style={{display:'flex',gap:8,padding:'12px 16px',overflowX:'auto',background:'#fff',borderBottom:'1px solid #F0F2F5',flexShrink:0}} className="no-scrollbar">
+        {typeMap.map(t=>(
+          <button key={t.id} onClick={()=>setType(t.id)} style={{padding:'7px 16px',borderRadius:20,border:'none',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap',flexShrink:0,background:type===t.id?'#0F1B2D':'#F0F2F5',color:type===t.id?'#fff':'#6B7280'}}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div style={{padding:12,flex:1,overflowY:'auto'}}>
+        <div style={{display:'flex',gap:8,marginBottom:12}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar dispositivo..." style={{flex:1,padding:'10px 14px',borderRadius:12,border:'1px solid #E8ECF0',fontSize:14,outline:'none',background:'#fff'}}/>
+          <button onClick={()=>setShowAdd(true)} style={{padding:'10px',borderRadius:12,background:'#EA580C',border:'none',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="plus" size={20} color="#fff"/></button>
+        </div>
+        {loading?<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:200}}><Spinner/></div>
+        :filtered.length===0?<div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:200,color:'#9BABB8',gap:10}}><Icon name="box" size={32} color="#D0D8E4"/><span>Nenhum dispositivo encontrado</span></div>
+        :<div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {filtered.map((d,i)=>(
+            <div key={i} className="device-card fade-in" style={{padding:14}} onClick={()=>onDevice(d)}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <div style={{width:40,height:40,borderRadius:10,background:'#FFF7ED',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <Icon name={curTypeIcon} size={20} color="#EA580C"/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:'#0F1B2D',fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{d.name||'Sem nome'}</div>
+                  <div className="mono" style={{fontSize:12,color:'#9BABB8',marginTop:1}}>{d.serial||'S/N não informado'}</div>
+                </div>
+              </div>
+              {(d.otherserial || d.locations_id) && (
+                <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid #F0F2F5',display:'flex',flexDirection:'column',gap:4}}>
+                  {d.otherserial&&<div style={{fontSize:12,color:'#6B7280'}}>Inventário: <span className="mono" style={{fontWeight:600}}>{d.otherserial}</span></div>}
+                  {d.locations_id&&<div style={{fontSize:12,color:'#6B7280'}}>Local: {d.locations_id}</div>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>}
+      </div>
+      {showAdd&&<AddDeviceModal session={session} type={type} onClose={()=>{setShowAdd(false);load()}}/>}
     </div>
   );
 }
@@ -986,11 +1272,11 @@ function TicketDetail({session,ticketId,onBack,desktop}){
   };
 
   const handleSubmit=async()=>{
-    if(!responseContent){alert('Digite a descrição.');return}
+    if(!responseContent){showToast('Digite a descrição.', 'error');return}
     const isSolving=responseType==='solution';
     if(isSolving){
-      for(const k of['ponto','drop','alcas','esticador','conector','metragemInicial','metragemFinal']){if(techData[k]===''){alert(`Campo obrigatório: ${k}`);return}}
-      if(!evidence){alert('Evidência obrigatória.');return}
+      for(const k of['ponto','drop','alcas','esticador','conector','metragemInicial','metragemFinal']){if(techData[k]===''){showToast(`Campo obrigatório: ${k}`, 'error');return}}
+      if(!evidence){showToast('Evidência obrigatória.', 'error');return}
     }
     setIsSubmitting(true);
     try{
@@ -1000,8 +1286,8 @@ function TicketDetail({session,ticketId,onBack,desktop}){
       if(evidence){const fd=new FormData();fd.append('file',evidence);fd.append('glpiUrl',glpiUrl);fd.append('sessionToken',sessionToken);const r=await fetch(`${PROXY}/uploadDocument/${ticketId}`,{method:'POST',body:fd});if(r.ok)finalContent+=`<br><i>[Evidência: ${evidence.name}]</i>`;else throw new Error('Falha ao enviar evidência.')}
       const res=await fetch(`${PROXY}/respondTicket`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,ticketId,content:finalContent,status:isSolving?5:2,stockItems,entities_id:ticket?.entities_id})});
       const data=await res.json();if(!res.ok)throw new Error(data.message||'Erro ao responder');
-      alert(isSolving?'Chamado solucionado!':'Resposta enviada!');onBack();
-    }catch(e){alert('Erro: '+e.message)}finally{setIsSubmitting(false)}
+      showToast(isSolving?'Chamado solucionado!':'Resposta enviada!', 'success');onBack();
+    }catch(e){showToast('Erro: '+e.message, 'error')}finally{setIsSubmitting(false)}
   };
 
   if(loading)return<LoadingScreen message="Carregando chamado..."/>;
