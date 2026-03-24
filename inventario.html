@@ -319,9 +319,8 @@ tbody td.primary { color: var(--text); font-weight: 500; }
 <div id="app">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-logo">
-      <div class="brand">TecnoIT</div>
-      <div class="sub">Gestão de Ativos v1.0</div>
+    <div class="sidebar-logo" style="display:flex;justify-content:center;padding:24px 20px">
+      <img src="assets/logo.png" alt="TecnoIT" style="height:32px" onError="this.style.display='none';this.parentElement.innerHTML='<div class=\'brand\'>TecnoIT</div>'">
     </div>
     <div class="nav-section">
       <div class="nav-label">Principal</div>
@@ -666,6 +665,9 @@ tbody td.primary { color: var(--text); font-weight: 500; }
       </div>
     </div>
     <div class="modal-body">
+      <div id="fa-photo-preview" style="display:none;margin-bottom:16px">
+        <img id="fa-img-preview" style="width:100%;height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Nome / Hostname *</label>
@@ -723,6 +725,10 @@ tbody td.primary { color: var(--text); font-weight: 500; }
         <input class="form-input" type="text" id="fa-resp-search" placeholder="Buscar colaborador..." oninput="searchRespUser(this.value)">
         <div id="fa-resp-results" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-top:4px;max-height:120px;overflow-y:auto;display:none"></div>
         <div id="fa-resp-selected" style="margin-top:6px"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Anexar Termo (PDF/Imagem)</label>
+        <input class="form-input" type="file" id="fa-termo-file" style="padding:6px">
       </div>
     </div>
     <div class="modal-footer">
@@ -1281,6 +1287,12 @@ async function handleAssetPhoto(input) {
   const file = input.files[0];
   if (!file) return;
 
+  // Show preview
+  const preview = document.getElementById('fa-photo-preview');
+  const img = document.getElementById('fa-img-preview');
+  preview.style.display = 'block';
+  img.src = URL.createObjectURL(file);
+
   const btn = document.getElementById('btn-ocr');
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
@@ -1289,16 +1301,19 @@ async function handleAssetPhoto(input) {
   toast('Processando imagem (OCR)...', 'info');
 
   try {
-    const { data: { text } } = await Tesseract.recognize(file, 'eng');
+    const { data: { text } } = await Tesseract.recognize(file, 'por+eng');
     console.log("OCR Result:", text);
 
-    const serialMatch = text.match(/(?:S\/N|Serial|Sereal)[:\s]*([A-Z0-9]{6,})/i);
-    const modelMatch = text.match(/(?:Model|Modelo)[:\s]*([A-Z0-9\-\/]{3,})/i);
+    const serialRegex = /(?:S\/N|SERIAL|SERIE|S\/N:|N\/S|SÉRIE)\s*[:=]?\s*([A-Z0-9]{5,})/i;
+    const modelRegex = /(?:MODEL|MODELO|MOD:|TYPE|TIPO)\s*[:=]?\s*([A-Z0-9\-\/ ]{3,})/i;
+
+    const serialMatch = text.match(serialRegex);
+    const modelMatch = text.match(modelRegex);
 
     if (serialMatch) document.getElementById('fa-serial').value = serialMatch[1].trim();
     if (modelMatch) document.getElementById('fa-model').value = modelMatch[1].trim();
 
-    document.getElementById('fa-obs').value += (document.getElementById('fa-obs').value ? '\n' : '') + '[OCR]: ' + text.slice(0, 100);
+    document.getElementById('fa-obs').value += (document.getElementById('fa-obs').value ? '\n' : '') + '[OCR]: ' + text.slice(0, 200);
 
     toast('Informações extraídas com sucesso!', 'success');
   } catch (e) {
@@ -1307,7 +1322,6 @@ async function handleAssetPhoto(input) {
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalHtml;
-    input.value = '';
   }
 }
 

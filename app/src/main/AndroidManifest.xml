@@ -55,11 +55,27 @@
             android:label="Novo Dispositivo"
             android:windowSoftInputMode="adjustResize" />
 
+        <activity
+            android:name=".ui.DeviceDetailActivity"
+            android:exported="false"
+            android:label="Detalhes do Dispositivo"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- NOVO: Usuários -->
         <activity
             android:name=".ui.UsersActivity"
             android:exported="false"
             android:label="Usuários TecnoIT" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.glpimobile.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

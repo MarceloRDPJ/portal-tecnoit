@@ -232,10 +232,9 @@ app.post('/api/proxy/updateTicket/:ticketId', async (req, res) => {
 // Configuração do Multer para upload de arquivos em memória
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Rota para fazer upload de um documento para um item (Ticket, Computer, Phone, etc.)
-app.post('/api/proxy/uploadDocument/:itemtype/:items_id', upload.single('file'), async (req, res) => {
+// Shared function for document upload and linking
+async function uploadAndLinkDocument(req, res, itemtype, items_id) {
     const { glpiUrl, sessionToken } = req.body;
-    const { itemtype, items_id } = req.params;
     const appToken = process.env.GLPI_APP_TOKEN;
 
     if (!req.file) {
@@ -289,20 +288,22 @@ app.post('/api/proxy/uploadDocument/:itemtype/:items_id', upload.single('file'),
             error: error.response?.data || 'Erro desconhecido.'
         });
     }
+}
+
+// Rota para fazer upload de um documento para um item (Ticket, Computer, Phone, etc.)
+app.post('/api/proxy/uploadDocument/:itemtype/:items_id', upload.single('file'), (req, res) => {
+    uploadAndLinkDocument(req, res, req.params.itemtype, req.params.items_id);
 });
 
-// Alias for backward compatibility
-app.post('/api/proxy/uploadDocument/:ticketId', (req, res, next) => {
-    req.params.itemtype = 'Ticket';
-    req.params.items_id = req.params.ticketId;
-    next();
-}, app._router.stack.find(s => s.route && s.route.path === '/api/proxy/uploadDocument/:itemtype/:items_id').handle);
+// Alias for backward compatibility (Tickets)
+app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), (req, res) => {
+    uploadAndLinkDocument(req, res, 'Ticket', req.params.ticketId);
+});
 
 // New alias for assets to match what I put in index.html
-app.post('/api/proxy/uploadDocumentAsset/:itemtype/:items_id', (req, res, next) => {
-    // itemtype and items_id are already in params
-    next();
-}, app._router.stack.find(s => s.route && s.route.path === '/api/proxy/uploadDocument/:itemtype/:items_id').handle);
+app.post('/api/proxy/uploadDocumentAsset/:itemtype/:items_id', upload.single('file'), (req, res) => {
+    uploadAndLinkDocument(req, res, req.params.itemtype, req.params.items_id);
+});
 
 // Rota para buscar consumíveis (getConsumables)
 app.post('/api/proxy/getConsumables', async (req, res) => {
