@@ -69,4 +69,7 @@ dependencies {
     // WorkManager
     val work_version = "2.9.0"
     implementation("androidx.work:work-runtime-ktx:$work_version")
+
+    // ML Kit for OCR (Free on-device AI/ML by Google)
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 }

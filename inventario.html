@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 :root {
   --bg: #f5f5f5;
@@ -648,13 +649,21 @@ tbody td.primary { color: var(--text); font-weight: 500; }
       <button class="btn btn-ghost" onclick="closeModal('modal-access')">Cancelar</button>
       <button class="btn btn-accent" onclick="saveAccess()">Liberar acesso</button>
     </div>
+  </div>
+</div>
 
 <!-- MODAL ADD ASSET -->
 <div class="modal-overlay" id="modal-asset">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="modal-asset-title">Novo Equipamento</div>
-      <button class="modal-close" onclick="closeModal('modal-asset')">✕</button>
+      <div style="display:flex; gap: 10px; align-items: center;">
+        <button class="btn btn-ghost" onclick="document.getElementById('fa-photo-input').click()" id="btn-ocr" title="Escanear Etiqueta (OCR)" style="height: 30px; padding: 0 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        <input type="file" id="fa-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleAssetPhoto(this)">
+        <button class="modal-close" onclick="closeModal('modal-asset')">✕</button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="form-row">
@@ -1268,6 +1277,40 @@ function selectRespUser(uid) {
 }
 function clearRespUser() { state.selectedRespUser=null; document.getElementById('fa-resp-selected').innerHTML=''; }
 
+async function handleAssetPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('btn-ocr');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span style="font-size:10px">...</span>';
+
+  toast('Processando imagem (OCR)...', 'info');
+
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'eng');
+    console.log("OCR Result:", text);
+
+    const serialMatch = text.match(/(?:S\/N|Serial|Sereal)[:\s]*([A-Z0-9]{6,})/i);
+    const modelMatch = text.match(/(?:Model|Modelo)[:\s]*([A-Z0-9\-\/]{3,})/i);
+
+    if (serialMatch) document.getElementById('fa-serial').value = serialMatch[1].trim();
+    if (modelMatch) document.getElementById('fa-model').value = modelMatch[1].trim();
+
+    document.getElementById('fa-obs').value += (document.getElementById('fa-obs').value ? '\n' : '') + '[OCR]: ' + text.slice(0, 100);
+
+    toast('Informações extraídas com sucesso!', 'success');
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao processar imagem', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    input.value = '';
+  }
+}
+
 // ─── VINCULAR ─────────────────────────────────────────────────────────────────
 let vincSelectedUser = null, vincSelectedAsset = null;
 
@@ -1387,6 +1430,8 @@ let toastTimer;
 function toast(msg, type='success') {
   const el = document.getElementById('toast');
   el.textContent = msg; el.className = `toast ${type} show`;
+  if (type === 'info') el.style.borderColor = 'var(--accent)';
+  else el.style.borderColor = '';
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
