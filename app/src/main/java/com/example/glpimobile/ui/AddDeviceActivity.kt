@@ -1,9 +1,14 @@
 package com.example.glpimobile.ui
 
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.glpimobile.R
@@ -11,6 +16,9 @@ import com.example.glpimobile.network.ApiClient
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.gson.JsonObject
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.launch
 
 class AddDeviceActivity : AppCompatActivity() {
@@ -26,9 +34,17 @@ class AddDeviceActivity : AppCompatActivity() {
     private lateinit var etModel: TextInputEditText
     private lateinit var etComment: TextInputEditText
     private lateinit var btnSave: MaterialButton
+    private lateinit var btnScan: MaterialButton
     private lateinit var progress: ProgressBar
 
     private var deviceType = "Computer"
+
+    private val takePhotoLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
+            imageBitmap?.let { processImageOCR(it) }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,9 +68,18 @@ class AddDeviceActivity : AppCompatActivity() {
         etModel           = findViewById(R.id.etModel)
         etComment         = findViewById(R.id.etComment)
         btnSave           = findViewById(R.id.btnSaveDevice)
+        btnScan           = findViewById(R.id.btnScanDevice)
         progress          = findViewById(R.id.progressAddDevice)
 
         btnSave.setOnClickListener { saveDevice() }
+        btnScan.setOnClickListener {
+            val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            try {
+                takePhotoLauncher.launch(takePictureIntent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Erro ao abrir câmera", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -116,8 +141,39 @@ class AddDeviceActivity : AppCompatActivity() {
         }
     }
 
+    private fun processImageOCR(bitmap: Bitmap) {
+        val image = InputImage.fromBitmap(bitmap, 0)
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+        setLoading(true)
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                val text = visionText.text
+                if (text.isNotEmpty()) {
+                    val serialMatch = Regex("(?:S/N|SERIAL|SERIE|S/N:)\\s*([A-Z0-9]{5,})", RegexOption.IGNORE_CASE).find(text)
+                    val modelMatch = Regex("(?:MODEL|MODELO|MOD:)\\s*([A-Z0-9\\-\\/]{3,})", RegexOption.IGNORE_CASE).find(text)
+
+                    serialMatch?.let { etSerial.setText(it.groupValues[1]) }
+                    modelMatch?.let { etName.setText(it.groupValues[1]) }
+
+                    val currentComment = etComment.text.toString()
+                    etComment.setText("${currentComment}${if (currentComment.isNotEmpty()) "\n" else ""}[OCR]: ${text.take(150)}...")
+
+                    Toast.makeText(this, "OCR finalizado!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Nenhum texto encontrado na etiqueta", Toast.LENGTH_SHORT).show()
+                }
+                setLoading(false)
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(this, "Falha no OCR: ${e.message}", Toast.LENGTH_SHORT).show()
+                setLoading(false)
+            }
+    }
+
     private fun setLoading(loading: Boolean) {
         progress.visibility = if (loading) View.VISIBLE else View.GONE
         btnSave.isEnabled = !loading
+        btnScan?.isEnabled = !loading
     }
 }

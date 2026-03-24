@@ -13,9 +13,10 @@ const port = process.env.PORT || 3001;
 // Middlewares
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('.'));
 
 // Rota principal para verificar se o servidor está online
-app.get('/', (req, res) => {
+app.get('/status', (req, res) => {
   res.send('Proxy TecnoiT GLPI está no ar!');
 });
 
@@ -231,10 +232,10 @@ app.post('/api/proxy/updateTicket/:ticketId', async (req, res) => {
 // Configuração do Multer para upload de arquivos em memória
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Rota para fazer upload de um documento para um chamado
-app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (req, res) => {
-    const { glpiUrl, sessionToken } = req.body; // sessionToken will be passed in the body
-    const { ticketId } = req.params;
+// Rota para fazer upload de um documento para um item (Ticket, Computer, Phone, etc.)
+app.post('/api/proxy/uploadDocument/:itemtype/:items_id', upload.single('file'), async (req, res) => {
+    const { glpiUrl, sessionToken } = req.body;
+    const { itemtype, items_id } = req.params;
     const appToken = process.env.GLPI_APP_TOKEN;
 
     if (!req.file) {
@@ -245,11 +246,9 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
 
     try {
         const form = new FormData();
-
         const manifest = {
             input: {
                 name: req.file.originalname,
-                tickets_id: parseInt(ticketId, 10), // Ensure ticketId is an integer
                 _filename: req.file.originalname
             }
         };
@@ -265,8 +264,6 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
             }
         });
 
-        // SAFETY LINK: Explicitly link the document to the ticket via Document_Item
-        // This ensures the image doesn't "disappear" or fail to link if the manifest method is flaky.
         if (response.data && response.data.id) {
             const docId = response.data.id;
             try {
@@ -274,14 +271,13 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
                 await axios.post(linkUrl, {
                     input: {
                         documents_id: docId,
-                        items_id: parseInt(ticketId, 10),
-                        itemtype: 'Ticket'
+                        items_id: parseInt(items_id, 10),
+                        itemtype: itemtype
                     }
                 }, { headers: { 'Session-Token': sessionToken, 'App-Token': appToken } });
-                console.log(`Document ${docId} explicitly linked to Ticket ${ticketId}`);
+                console.log(`Document ${docId} linked to ${itemtype} ${items_id}`);
             } catch (linkError) {
-                console.warn(`Failed to explicitly link document ${docId} (might already be linked via manifest):`, linkError.message);
-                // We don't fail the request here because the manifest method might have worked.
+                console.warn(`Failed to link document ${docId}:`, linkError.message);
             }
         }
 
@@ -294,6 +290,19 @@ app.post('/api/proxy/uploadDocument/:ticketId', upload.single('file'), async (re
         });
     }
 });
+
+// Alias for backward compatibility
+app.post('/api/proxy/uploadDocument/:ticketId', (req, res, next) => {
+    req.params.itemtype = 'Ticket';
+    req.params.items_id = req.params.ticketId;
+    next();
+}, app._router.stack.find(s => s.route && s.route.path === '/api/proxy/uploadDocument/:itemtype/:items_id').handle);
+
+// New alias for assets to match what I put in index.html
+app.post('/api/proxy/uploadDocumentAsset/:itemtype/:items_id', (req, res, next) => {
+    // itemtype and items_id are already in params
+    next();
+}, app._router.stack.find(s => s.route && s.route.path === '/api/proxy/uploadDocument/:itemtype/:items_id').handle);
 
 // Rota para buscar consumíveis (getConsumables)
 app.post('/api/proxy/getConsumables', async (req, res) => {

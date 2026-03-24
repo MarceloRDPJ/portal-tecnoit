@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <meta name="theme-color" content="#0F1B2D">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
@@ -102,6 +103,7 @@ const SVG_PATHS={
   x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
   refresh:<><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></>,
   monitor:<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>,
+  camera:<><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>,
   wifi:<><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></>,
   printer:<><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></>,
   cpu:<><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></>,
@@ -586,7 +588,7 @@ function DesktopInventory({session}){
 
   const load=async()=>{
     setLoading(true);
-    try{const res=await fetch(`${PROXY}/getInventory`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,range:'0-200'})});if(res.ok){const data=await res.json();setDevices(Array.isArray(data)?data:[])}else setDevices([])}
+    try{const res=await fetch(`${PROXY}/getAssets`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,range:'0-200'})});if(res.ok){const data=await res.json();setDevices(Array.isArray(data.assets)?data.assets:[])}else setDevices([])}
     catch{setDevices([])}finally{setLoading(false)}
   };
   useEffect(()=>{load()},[type]);
@@ -651,13 +653,68 @@ function AddDeviceModal({session,type,onClose}){
   const{sessionToken,glpiUrl}=session;
   const[form,setForm]=useState({name:'',serial:'',otherserial:'',comment:''});
   const[saving,setSaving]=useState(false);
+  const[isOcrLoading,setIsOcrLoading]=useState(false);
   const[error,setError]=useState('');
   const labels={Computer:'Computador',NetworkEquipment:'Equipamento de Rede',Printer:'Impressora',Peripheral:'Periférico'};
+  const fileInputRef = useRef(null);
+
+  const [photo, setPhoto] = useState(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhoto(file);
+
+    setIsOcrLoading(true);
+    setError('');
+    try {
+      const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+        logger: m => console.log(m)
+      });
+
+      console.log("OCR Result:", text);
+
+      const serialRegex = /(?:S\/N|SERIAL|SERIE|S\/N:)\s*([A-Z0-9]{5,})/i;
+      const modelRegex = /(?:MODEL|MODELO|MOD:)\s*([A-Z0-9\-\/]{3,})/i;
+
+      const serialMatch = text.match(serialRegex);
+      const modelMatch = text.match(modelRegex);
+
+      setForm(prev => ({
+        ...prev,
+        serial: serialMatch ? serialMatch[1].trim() : prev.serial,
+        name: modelMatch ? modelMatch[1].trim() : prev.name,
+      }));
+
+      alert('Informações extraídas da foto com sucesso!');
+    } catch (err) {
+      console.error("OCR Error:", err);
+      setError('Falha ao processar imagem (OCR).');
+    } finally {
+      setIsOcrLoading(false);
+    }
+  };
 
   const save=async()=>{
     if(!form.name.trim()){setError('Nome é obrigatório');return}
     setSaving(true);setError('');
-    try{const res=await fetch(`${PROXY}/createInventory`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,data:form})});if(res.ok)onClose();else{const d=await res.json();setError(d.message||`Erro ${res.status}`)}}
+    try{
+      const res=await fetch(`${PROXY}/createAsset`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({glpiUrl,sessionToken,itemtype:type,data:form})});
+      const data = await res.json();
+      if(res.ok) {
+        if (photo) {
+           const fd = new FormData();
+           fd.append('file', photo);
+           fd.append('glpiUrl', glpiUrl);
+           fd.append('sessionToken', sessionToken);
+           // We need a generic upload route that supports Assets
+           await fetch(`${PROXY}/uploadDocumentAsset/${type}/${data.id}`, { method: 'POST', body: fd });
+        }
+        onClose();
+      } else {
+        setError(data.message||`Erro ${res.status}`);
+      }
+    }
     catch(e){setError(e.message)}finally{setSaving(false)}
   };
 
@@ -669,9 +726,15 @@ function AddDeviceModal({session,type,onClose}){
             <div style={{fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,color:'#0F1B2D'}}>Novo {labels[type]}</div>
             <div style={{fontSize:13,color:'#9BABB8',marginTop:2}}>Preencha os dados do dispositivo</div>
           </div>
-          <button onClick={onClose} style={{padding:8,borderRadius:8,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer'}}><Icon name="x" size={16} color="#6B7280"/></button>
+          <div style={{display:'flex', gap: 8}}>
+            <button id="btn-ocr" onClick={() => fileInputRef.current?.click()} disabled={isOcrLoading} style={{padding:8,borderRadius:8,border:'1px solid #E8ECF0',background:'#FFF7ED',cursor:'pointer', position:'relative'}} title="Escanear Etiqueta (OCR)">
+              {isOcrLoading ? <Spinner size={16}/> : <Icon name="camera" size={16} color="#EA580C"/>}
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" capture="environment" style={{display:'none'}}/>
+            </button>
+            <button onClick={onClose} style={{padding:8,borderRadius:8,border:'1px solid #E8ECF0',background:'#fff',cursor:'pointer'}}><Icon name="x" size={16} color="#6B7280"/></button>
+          </div>
         </div>
-        {[{k:'name',label:'Nome *',ph:'Nome do dispositivo'},{k:'serial',label:'Número de série',ph:'Ex: SN123456'},{k:'otherserial',label:'Nº inventário',ph:'Ex: INV-001'},{k:'comment',label:'Observações',ph:'Informações adicionais'}].map(f=>(
+        {[{k:'name',label:'Nome / Modelo *',ph:'Ex: IdeaPad 3'},{k:'serial',label:'Número de série',ph:'Ex: SN123456'},{k:'otherserial',label:'Nº inventário',ph:'Ex: INV-001'},{k:'comment',label:'Observações',ph:'Informações adicionais'}].map(f=>(
           <div key={f.k} style={{marginBottom:14}}>
             <label style={{display:'block',fontSize:12,fontWeight:600,color:'#4A6380',marginBottom:5}}>{f.label}</label>
             <input value={form[f.k]} onChange={e=>setForm({...form,[f.k]:e.target.value})} placeholder={f.ph}

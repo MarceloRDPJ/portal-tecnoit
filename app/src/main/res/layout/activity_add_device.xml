@@ -10,6 +10,15 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScanDevice"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Escanear Etiqueta (OCR)"
+            android:layout_marginBottom="16dp"
+            app:icon="@android:drawable/ic_menu_camera" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilDeviceName"
             android:layout_width="match_parent"
